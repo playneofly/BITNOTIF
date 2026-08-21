@@ -385,13 +385,13 @@
       .composer .tool.t-clip::before {          /* بدنهٔ پوشه */
         inset-inline-start: 5px; bottom: 7px;
         width: 30px; height: 21px; border-radius: 5px;
-        background: linear-gradient(135deg, #ffe563, #ffc663);
+        background: linear-gradient(135deg, #F3D48A, #E0B45C);
         box-shadow: 0 4px 9px rgba(0, 0, 0, .35);
       }
       .composer .tool.t-clip::after {           /* زبانهٔ پوشه */
         inset-inline-start: 5px; bottom: 26px;
         width: 16px; height: 6px; border-radius: 3px 3px 0 0;
-        background: linear-gradient(135deg, #ff9a56, #ff6f56);
+        background: linear-gradient(135deg, #E9A26A, #D97A55);
       }
       .composer .tool.t-clip:hover::before,
       .composer .tool.t-clip:hover::after { animation: t-float 2.2s ease-in-out infinite; }
@@ -404,12 +404,14 @@
         --transition: 350ms;
         --folder-W: 90px;
         --folder-H: 60px;
+        --card-a: #7C5CD6;
+        --card-b: #5B21B6;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-end;
         padding: 9px;
-        background: linear-gradient(135deg, #f162ba, #ed45ae);
+        background: linear-gradient(135deg, var(--card-a), var(--card-b));
         border-radius: 14px;
         box-shadow: 0 15px 30px rgba(0, 0, 0, .2);
         height: calc(var(--folder-H) * 1.7);
@@ -455,7 +457,7 @@
       .t-upload .front-side { z-index: 1; }
       .t-upload:hover .front-side { transform: rotateX(-40deg) skewX(15deg); }
       .t-upload .tip {
-        background: linear-gradient(135deg, #ff9a56, #ff6f56);
+        background: linear-gradient(135deg, #E9A26A, #D97A55);
         width: 60px; height: 15px;
         border-radius: 10px 10px 0 0;
         box-shadow: 0 5px 15px rgba(0, 0, 0, .2);
@@ -464,7 +466,7 @@
         z-index: 2;
       }
       .t-upload .cover {
-        background: linear-gradient(135deg, #ffe563, #ffc663);
+        background: linear-gradient(135deg, #F3D48A, #E0B45C);
         width: var(--folder-W);
         height: var(--folder-H);
         box-shadow: 0 15px 30px rgba(0, 0, 0, .3);
@@ -1044,7 +1046,7 @@
         /* متن: سفیدِ خاکستریِ ملایم، نه سفید خالص (خستگی چشم کمتر) */
         --cream: #E4E2EE;
         --mute:  #8B87A0;
-        --mute2: #63607A;
+        --mute2: #6E6B88;
 
         /* رنگ‌های معنایی دست‌نخورده می‌مانند */
         --owner: #9B7AE0;
@@ -1114,6 +1116,28 @@
       /* حباب پیام‌ها و لبه‌ها کمی نرم‌تر تا کنتراست چشم را نزند */
       .bubble.mine { box-shadow: 0 6px 18px rgba(109, 40, 217, .18); }
       ::selection { background: rgba(139, 92, 246, .3); }
+    </style>
+
+    <!-- ===== آپلود عکس پروفایل بات‌ها از پنل ادمین ===== -->
+    <style>
+      .t-avup {
+        display: inline-flex; align-items: center; gap: 5px;
+        margin-inline-start: 8px; padding: 4px 9px;
+        border: 1px solid rgba(167, 139, 250, .32);
+        background: rgba(139, 92, 246, .12);
+        color: var(--gold, #A78BFA);
+        border-radius: 8px; font-family: inherit; font-size: 11.5px; font-weight: 600;
+        cursor: pointer; white-space: nowrap;
+        transition: background .18s ease, border-color .18s ease, transform .12s ease;
+      }
+      .t-avup:hover { background: rgba(139, 92, 246, .24); border-color: var(--gold, #A78BFA); }
+      .t-avup:active { transform: translateY(1px); }
+      .t-avup[disabled] { opacity: .55; cursor: default; }
+      .t-avup svg { width: 13px; height: 13px; }
+      .t-avup.done { color: #7ddc9a; border-color: rgba(125, 220, 154, .45); background: rgba(125, 220, 154, .12); }
+      .t-avup.err  { color: #e9a0a0; border-color: rgba(233, 160, 160, .45); background: rgba(233, 160, 160, .12); }
+      .t-avup-rm { font-size: 11px; opacity: .7; }
+      .t-avup-rm:hover { opacity: 1; }
     </style>
     <script type="module" crossorigin src="/assets/index-Bt5upPRT.js"></script>
   </head>
@@ -1816,9 +1840,10 @@
 
       function enhance() {
         /* ۱) فایل‌های پنل ادمین */
-        var files = document.querySelectorAll('.admin input[type="file"]');
+        var files = document.querySelectorAll('.admin input[type="file"]:not(.t-av-input)');
         for (var i = 0; i < files.length; i++) {
           var inp = files[i];
+          if (inp.closest("table")) continue;          /* ورودی‌های آواتار داخل جدول کارت نمی‌گیرند */
           var next = inp.nextElementSibling;
           if (next && next.getAttribute && next.getAttribute("data-t-upload")) {
             if (!inp.classList.contains("t-file-native")) inp.classList.add("t-file-native");
@@ -2213,6 +2238,173 @@
           history[m] = function () { var r = orig.apply(this, arguments); setTimeout(tick, 0); return r; };
         });
         window.addEventListener("popstate", tick);
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+      else start();
+    })();
+    </script>
+
+    <script>
+    (function () {
+      "use strict";
+      /* در پنل ادمین → تب کاربران، برای هر بات دکمهٔ آپلود عکس پروفایل */
+
+      var AV_MAX = 118000;          /* کمی زیر سقف سرور (۱۲۰٬۰۰۰) */
+      var usersById = null, lastFetch = 0;
+
+      var ICON =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+        'stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M4 19V7a2 2 0 0 1 2-2h2l1.2-2h5.6L16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>' +
+        '<circle cx="12" cy="12.5" r="3.4"/></svg>';
+
+      function loadUsers() {
+        if (usersById && Date.now() - lastFetch < 20000) return Promise.resolve(usersById);
+        return fetch("/api/admin/users", { credentials: "include", cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var map = {};
+            (d.users || []).forEach(function (u) {
+              if (u.username) map[String(u.username).toLowerCase()] = u.id;
+            });
+            usersById = map; lastFetch = Date.now();
+            return map;
+          })
+          .catch(function () { return usersById || {}; });
+      }
+
+      /* عکس را کوچک و فشرده می‌کند تا زیر سقف سرور بماند */
+      function shrink(file) {
+        return new Promise(function (resolve, reject) {
+          var fr = new FileReader();
+          fr.onerror = function () { reject(new Error("فایل خوانده نشد")); };
+          fr.onload = function () {
+            var img = new Image();
+            img.onerror = function () { reject(new Error("این فایل عکس نیست")); };
+            img.onload = function () {
+              var size = 256;
+              var cv = document.createElement("canvas");
+              cv.width = size; cv.height = size;
+              var ctx = cv.getContext("2d");
+              var s = Math.min(img.width, img.height);
+              ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+              var q = 0.85, out = cv.toDataURL("image/jpeg", q);
+              while (out.length > AV_MAX && q > 0.35) { q -= 0.1; out = cv.toDataURL("image/jpeg", q); }
+              if (out.length > AV_MAX) {
+                cv.width = cv.height = 168;
+                cv.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 168, 168);
+                out = cv.toDataURL("image/jpeg", 0.7);
+              }
+              if (out.length > AV_MAX) return reject(new Error("عکس خیلی سنگین است"));
+              resolve(out);
+            };
+            img.src = fr.result;
+          };
+          fr.readAsDataURL(file);
+        });
+      }
+
+      function send(id, payload) {
+        return fetch("/api/admin/users/" + encodeURIComponent(id), {
+          method: "PATCH", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }).then(function (r) {
+          return r.json().then(function (d) {
+            if (!r.ok) throw new Error((d && d.error) || "نشد");
+            return d;
+          });
+        });
+      }
+
+      function flash(btn, cls, text) {
+        var old = btn.dataset.label || btn.textContent;
+        btn.classList.add(cls);
+        btn.querySelector("span").textContent = text;
+        setTimeout(function () {
+          btn.classList.remove(cls);
+          btn.querySelector("span").textContent = old;
+        }, 2200);
+      }
+
+      function attach(row, username, id) {
+        if (row.querySelector(".t-avup")) return;
+        var cell = row.cells && row.cells.length ? row.cells[0] : row;
+
+        var input = document.createElement("input");
+        input.type = "file";
+        input.className = "t-av-input";
+        input.accept = "image/png,image/jpeg,image/webp";
+        input.style.display = "none";
+
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "t-avup";
+        btn.title = "آپلود عکس پروفایل برای @" + username;
+        btn.innerHTML = ICON + "<span>عکس</span>";
+        btn.dataset.label = "عکس";
+
+        var rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "t-avup t-avup-rm";
+        rm.title = "برداشتن عکس";
+        rm.innerHTML = "<span>حذف عکس</span>";
+        rm.dataset.label = "حذف عکس";
+
+        btn.addEventListener("click", function (e) {
+          e.preventDefault(); e.stopPropagation(); input.click();
+        });
+        rm.addEventListener("click", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          rm.disabled = true;
+          send(id, { stripAvatar: true })
+            .then(function () { rm.disabled = false; flash(rm, "done", "پاک شد ✓"); })
+            .catch(function (err) { rm.disabled = false; flash(rm, "err", err.message); });
+        });
+        input.addEventListener("change", function () {
+          var f = input.files && input.files[0];
+          input.value = "";
+          if (!f) return;
+          btn.disabled = true;
+          btn.querySelector("span").textContent = "…";
+          shrink(f)
+            .then(function (dataUrl) { return send(id, { avatar: dataUrl }); })
+            .then(function () { btn.disabled = false; flash(btn, "done", "ثبت شد ✓"); })
+            .catch(function (err) { btn.disabled = false; flash(btn, "err", err.message || "نشد"); });
+        });
+
+        cell.appendChild(input);
+        cell.appendChild(btn);
+        cell.appendChild(rm);
+      }
+
+      function scan() {
+        if (location.pathname.indexOf("/13899831a") !== 0) return;
+        var rows = document.querySelectorAll(".admin table tbody tr");
+        if (!rows.length) return;
+        var bots = [];
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].textContent.indexOf("بات رسمی") > -1 && !rows[i].querySelector(".t-avup")) bots.push(rows[i]);
+        }
+        if (!bots.length) return;
+        loadUsers().then(function (map) {
+          bots.forEach(function (row) {
+            var m = /@([A-Za-z0-9_]+)/.exec(row.textContent || "");
+            if (!m) return;
+            var id = map[m[1].toLowerCase()];
+            if (id) attach(row, m[1], id);
+          });
+        });
+      }
+
+      var t = null;
+      function tick() {
+        if (t) return;
+        t = setTimeout(function () { t = null; try { scan(); } catch (e) {} }, 220);
+      }
+      function start() {
+        tick();
+        new MutationObserver(tick).observe(document.body, { childList: true, subtree: true });
       }
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
       else start();

@@ -6028,7 +6028,9 @@ app.patch("/admin/users/:id", async (c) => {
   const target = await one(c.env.DB, `SELECT * FROM users WHERE id = ?`, c.req.param("id"));
   if (!target) return jsonError(c, "\u06A9\u0627\u0631\u0628\u0631 \u0646\u06CC\u0633\u062A", 404);
   const officialBot = isOfficialBot(target.id);
-  if (officialBot && !("badge" in body)) return jsonError(c, "\u0628\u0631\u0627\u06CC \u0628\u0627\u062A \u0641\u0642\u0637 \u062A\u06CC\u06A9 \u0639\u0648\u0636 \u0645\u06CC\u200C\u0634\u0648\u062F", 403);
+  if (officialBot && !("badge" in body) && !("avatar" in body) && !body.stripAvatar) {
+    return jsonError(c, "\u0628\u0631\u0627\u06CC \u0628\u0627\u062A \u0641\u0642\u0637 \u062A\u06CC\u06A9 \u0648 \u0639\u06A9\u0633 \u0639\u0648\u0636 \u0645\u06CC\u200C\u0634\u0648\u062F", 403);
+  }
   if (gate !== "bootstrap" && target.badge === "owner" && user.badge !== "owner") {
     return jsonError(c, "\u062A\u06CC\u06A9 \u0645\u0627\u0644\u06A9 \u062F\u0633\u062A\u200C\u0646\u062E\u0648\u0631\u062F\u0646\u06CC \u0627\u0633\u062A", 403);
   }
@@ -6097,6 +6099,12 @@ app.patch("/admin/users/:id", async (c) => {
     if (!isOwnerGate(gate)) return jsonError(c, "\u0627\u062C\u0627\u0632\u0647 \u0646\u062F\u0627\u0631\u06CC", 403);
     await run(c.env.DB, `UPDATE users SET can_create_space = ? WHERE id = ?`, body.canCreateSpace ? 1 : 0, target.id);
     await logAdmin(c.env.DB, user.id, "create_space", target.id, body.canCreateSpace ? "on" : "off");
+  }
+  if (body.avatar !== void 0 && !body.stripAvatar) {
+    const av = parseAvatar(body.avatar);
+    if (av === false) return jsonError(c, "\u0639\u06A9\u0633 \u0646\u0627\u0645\u0639\u062A\u0628\u0631 \u06CC\u0627 \u062E\u06CC\u0644\u06CC \u0628\u0632\u0631\u06AF \u0627\u0633\u062A");
+    await run(c.env.DB, `UPDATE users SET avatar = ? WHERE id = ?`, av, target.id);
+    await logAdmin(c.env.DB, user.id, "set_avatar", target.id, av ? "set" : "clear");
   }
   if (body.stripAvatar) {
     await run(c.env.DB, `UPDATE users SET avatar = NULL WHERE id = ?`, target.id);
