@@ -8140,7 +8140,7 @@ app.get("/admin/support/:userId", async (c) => {
   const conv = await ensureTConv(c.env.DB, target);
   const rows = await many(
     c.env.DB,
-    `SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 150`,
+    `SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 400`,
     conv.id
   );
   if (c.req.query("read") !== "0") {
