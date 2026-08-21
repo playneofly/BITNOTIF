@@ -3889,7 +3889,7 @@ async function conversationPayload(db, conv, user) {
     joinLocked: !!conv.join_locked,
     publicIdLocked: !!conv.public_id_locked,
     frozen: !!conv.frozen,
-    bot: !!(peer && isOfficialBot(peer.id)),
+    bot: !!(peer && isOfficialBot(peer.id) && peer.id !== T_BOT_ID),
     saved,
     menu: peer && peer.id === BARGH_BOT_ID ? await getBarghMenu(db, user) : void 0
   };
