@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
-    <meta name="theme-color" content="#050506" />
+    <meta name="theme-color" content="#0B0B12" />
     <meta name="description" content="پیام‌رسان T" />
     <title>T</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23050506'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='20' font-family='Georgia' fill='%23d4a84b'%3ET%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g1%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23C4B5FD%22%2F%3E%3Cstop%20offset%3D%2245%25%22%20stop-color%3D%22%238B5CF6%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%236D28D9%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22translate(0%2C512)%20scale(0.1%2C-0.1)%22%20fill%3D%22url(%23g1)%22%20stroke%3D%22none%22%3E%3Cpath%20d%3D%22M2010%204499%20c-706%20-406%20-825%20-475%20-1033%20-603%20-256%20-156%20-297%20-189%20-333%20-263%20l-29%20-58%20-3%20-1013%20-2%20-1012%2021%20-50%20c29%20-68%20112%20-142%20235%20-210%2054%20-30%20200%20-112%20323%20-182%20123%20-70%20239%20-130%20258%20-134%2041%20-8%2073%2012%20107%2064%2045%2069%20767%201467%20783%201515%2041%20124%20-2%20237%20-112%20292%20l-60%2030%20-330%205%20-330%205%20-67%2033%20c-270%20133%20-272%20504%20-4%20635%2096%2047%2094%2047%201543%2047%201494%200%201435%20-2%201445%2054%2014%2073%20-28%20106%20-443%20344%20-162%2093%20-522%20300%20-801%20460%20l-507%20292%20-113%200%20-113%20-1%20-435%20-250z%22%2F%3E%3Cpath%20d%3D%22M3719%202860%20c-249%20-29%20-448%20-150%20-583%20-355%20-21%20-31%20-173%20-316%20-338%20-633%20-165%20-317%20-385%20-740%20-489%20-940%20-104%20-199%20-189%20-365%20-189%20-370%200%20-4%2073%20-47%20161%20-97%20l161%20-90%20102%20-6%20c125%20-7%20101%20-17%20451%20186%20154%2089%20521%20300%20815%20469%20594%20341%20623%20361%20671%20483%20l24%2058%20-4%20645%20c-2%20355%20-5%20648%20-8%20653%20-6%209%20-688%207%20-774%20-3z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E" />
     <style>
       /* ===== پنل ورود flip-card — تم تیره ===== */
       :root {
@@ -88,7 +88,7 @@
       /* ===== لودر اول سایت — Banter loader (Uiverse.io by Nawsome) ===== */
       #bootLoader {
         position: fixed; inset: 0; z-index: 100000; display: block;
-        background: #050506;
+        background: #0B0B12;
         opacity: 1; transition: opacity .28s ease;
       }
       #bootLoader.fade { opacity: 0; pointer-events: none; }
@@ -683,34 +683,39 @@
       #tDl .download-button.off .button-text { color: #75757e; font-size: .82rem; }
       #tDl .tdl-note { margin: -.15rem 0 0; font-size: .66rem; color: #8b8b93; text-align: center; line-height: 1.9; }
 
-      /* ---------- ۳) نشان T: فونت شیک + خط منحنی + شاخ‌وبرگ ---------- */
-      .mark { position: relative; overflow: visible !important; }
-      .mark > span {
-        font-family: "Didot", "Bodoni MT", Georgia, "Times New Roman", serif !important;
-        font-weight: 400 !important;
-        font-style: italic;
-        letter-spacing: .5px;
-        background: linear-gradient(160deg, #fff6dc 0%, #e0b84d 45%, #a97c22 100%);
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 2px 6px rgba(224,184,77,.35));
-        position: relative; z-index: 2;
+      /* ---------- ۳) نشان T = لوگوی شش‌ضلعی ---------- */
+      .mark {
+        position: relative;
+        overflow: visible !important;
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g1%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23C4B5FD%22%2F%3E%3Cstop%20offset%3D%2245%25%22%20stop-color%3D%22%238B5CF6%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%236D28D9%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22translate(0%2C512)%20scale(0.1%2C-0.1)%22%20fill%3D%22url(%23g1)%22%20stroke%3D%22none%22%3E%3Cpath%20d%3D%22M2010%204499%20c-706%20-406%20-825%20-475%20-1033%20-603%20-256%20-156%20-297%20-189%20-333%20-263%20l-29%20-58%20-3%20-1013%20-2%20-1012%2021%20-50%20c29%20-68%20112%20-142%20235%20-210%2054%20-30%20200%20-112%20323%20-182%20123%20-70%20239%20-130%20258%20-134%2041%20-8%2073%2012%20107%2064%2045%2069%20767%201467%20783%201515%2041%20124%20-2%20237%20-112%20292%20l-60%2030%20-330%205%20-330%205%20-67%2033%20c-270%20133%20-272%20504%20-4%20635%2096%2047%2094%2047%201543%2047%201494%200%201435%20-2%201445%2054%2014%2073%20-28%20106%20-443%20344%20-162%2093%20-522%20300%20-801%20460%20l-507%20292%20-113%200%20-113%20-1%20-435%20-250z%22%2F%3E%3Cpath%20d%3D%22M3719%202860%20c-249%20-29%20-448%20-150%20-583%20-355%20-21%20-31%20-173%20-316%20-338%20-633%20-165%20-317%20-385%20-740%20-489%20-940%20-104%20-199%20-189%20-365%20-189%20-370%200%20-4%2073%20-47%20161%20-97%20l161%20-90%20102%20-6%20c125%20-7%20101%20-17%20451%20186%20154%2089%20521%20300%20815%20469%20594%20341%20623%20361%20671%20483%20l24%2058%20-4%20645%20c-2%20355%20-5%20648%20-8%20653%20-6%209%20-688%207%20-774%20-3z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"), linear-gradient(160deg, rgba(139,92,246,.16), rgba(139,92,246,.04)) !important;
+        background-size: 64%, 100% 100%;
+        background-position: center, center;
+        background-repeat: no-repeat, no-repeat;
+        filter: drop-shadow(0 3px 10px rgba(139, 92, 246, .28));
       }
-      /* شاخ‌وبرگ خیلی کم‌رنگ دور نشان */
-      .mark::before {
-        content: ""; position: absolute; inset: -22%;
-        pointer-events: none; z-index: 1; opacity: .5;
-        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23c9a24a' stroke-width='1.5' stroke-linecap='round' opacity='.75'%3E%3Cpath d='M18 74c-4-13 1-27 11-35'/%3E%3Cpath d='M82 26c4 13-1 27-11 35'/%3E%3C/g%3E%3Cg fill='%238f7a3a' opacity='.75'%3E%3Cpath d='M20 66c-6-2-9-8-8-14 6 1 10 6 8 14z'/%3E%3Cpath d='M27 50c-6 1-11-3-12-9 6-2 11 2 12 9z'/%3E%3Cpath d='M80 34c6 2 9 8 8 14-6-1-10-6-8-14z'/%3E%3Cpath d='M73 50c6-1 11 3 12 9-6 2-11-2-12-9z'/%3E%3C/g%3E%3C/svg%3E");
-        background-size: 100% 100%; background-repeat: no-repeat;
+      .mark > span { visibility: hidden; }        /* حرف T جای خود را به لوگو داد */
+      .hall-dark-card .mark { background-size: 66%, 100% 100%; }
+      .admin-rail .mark { background-size: 68%, 100% 100%; }
+      .admin-hero-orb { position: relative; }
+      .admin-hero-orb > span { visibility: hidden; }
+      /* لوگوی بزرگِ صفحهٔ خالی */
+      .stage-empty .giant {
+        color: transparent !important;
+        position: relative;
+        width: 108px; height: 108px;
+        margin-inline: auto;
       }
-      /* خط منحنی که از روی نشان رد می‌شود */
-      .mark::after {
-        content: ""; position: absolute; inset: -10%;
-        pointer-events: none; z-index: 3;
-        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M6 66C26 84 74 70 94 30' fill='none' stroke='%23f0d894' stroke-width='2.6' stroke-linecap='round' opacity='.85'/%3E%3C/svg%3E");
-        background-size: 100% 100%; background-repeat: no-repeat;
+      .stage-empty .giant::after {
+        content: ""; position: absolute; inset: 0;
+        background: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g1%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23C4B5FD%22%2F%3E%3Cstop%20offset%3D%2245%25%22%20stop-color%3D%22%238B5CF6%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%236D28D9%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22translate(0%2C512)%20scale(0.1%2C-0.1)%22%20fill%3D%22url(%23g1)%22%20stroke%3D%22none%22%3E%3Cpath%20d%3D%22M2010%204499%20c-706%20-406%20-825%20-475%20-1033%20-603%20-256%20-156%20-297%20-189%20-333%20-263%20l-29%20-58%20-3%20-1013%20-2%20-1012%2021%20-50%20c29%20-68%20112%20-142%20235%20-210%2054%20-30%20200%20-112%20323%20-182%20123%20-70%20239%20-130%20258%20-134%2041%20-8%2073%2012%20107%2064%2045%2069%20767%201467%20783%201515%2041%20124%20-2%20237%20-112%20292%20l-60%2030%20-330%205%20-330%205%20-67%2033%20c-270%20133%20-272%20504%20-4%20635%2096%2047%2094%2047%201543%2047%201494%200%201435%20-2%201445%2054%2014%2073%20-28%20106%20-443%20344%20-162%2093%20-522%20300%20-801%20460%20l-507%20292%20-113%200%20-113%20-1%20-435%20-250z%22%2F%3E%3Cpath%20d%3D%22M3719%202860%20c-249%20-29%20-448%20-150%20-583%20-355%20-21%20-31%20-173%20-316%20-338%20-633%20-165%20-317%20-385%20-740%20-489%20-940%20-104%20-199%20-189%20-365%20-189%20-370%200%20-4%2073%20-47%20161%20-97%20l161%20-90%20102%20-6%20c125%20-7%20101%20-17%20451%20186%20154%2089%20521%20300%20815%20469%20594%20341%20623%20361%20671%20483%20l24%2058%20-4%20645%20c-2%20355%20-5%20648%20-8%20653%20-6%209%20-688%207%20-774%20-3z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center/contain no-repeat;
+        opacity: .92;
+        filter: drop-shadow(0 6px 22px rgba(139, 92, 246, .3));
       }
-      .admin-rail .mark::before, .admin-rail .mark::after { opacity: .45; }
+      .admin-hero-orb::after {
+        content: ""; position: absolute; inset: 22%;
+        background: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g1%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23C4B5FD%22%2F%3E%3Cstop%20offset%3D%2245%25%22%20stop-color%3D%22%238B5CF6%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%236D28D9%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22translate(0%2C512)%20scale(0.1%2C-0.1)%22%20fill%3D%22url(%23g1)%22%20stroke%3D%22none%22%3E%3Cpath%20d%3D%22M2010%204499%20c-706%20-406%20-825%20-475%20-1033%20-603%20-256%20-156%20-297%20-189%20-333%20-263%20l-29%20-58%20-3%20-1013%20-2%20-1012%2021%20-50%20c29%20-68%20112%20-142%20235%20-210%2054%20-30%20200%20-112%20323%20-182%20123%20-70%20239%20-130%20258%20-134%2041%20-8%2073%2012%20107%2064%2045%2069%20767%201467%20783%201515%2041%20124%20-2%20237%20-112%20292%20l-60%2030%20-330%205%20-330%205%20-67%2033%20c-270%20133%20-272%20504%20-4%20635%2096%2047%2094%2047%201543%2047%201494%200%201435%20-2%201445%2054%2014%2073%20-28%20106%20-443%20344%20-162%2093%20-522%20300%20-801%20460%20l-507%20292%20-113%200%20-113%20-1%20-435%20-250z%22%2F%3E%3Cpath%20d%3D%22M3719%202860%20c-249%20-29%20-448%20-150%20-583%20-355%20-21%20-31%20-173%20-316%20-338%20-633%20-165%20-317%20-385%20-740%20-489%20-940%20-104%20-199%20-189%20-365%20-189%20-370%200%20-4%2073%20-47%20161%20-97%20l161%20-90%20102%20-6%20c125%20-7%20101%20-17%20451%20186%20154%2089%20521%20300%20815%20469%20594%20341%20623%20361%20671%20483%20l24%2058%20-4%20645%20c-2%20355%20-5%20648%20-8%20653%20-6%209%20-688%207%20-774%20-3z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center/contain no-repeat;
+        opacity: .9;
+      }
 
       /* ---------- ۴) لینک تلگرام داخل پنجرهٔ پرمیوم ---------- */
       .prem-tip .t-tg {
@@ -1016,9 +1021,103 @@
         .t-chatbg .container, .t-chatbg .container::after { animation: none; }
       }
     </style>
+
+    <!-- ===== طیف رنگی «نیلی و یاس» — ملایم برای چشم ===== -->
+    <style>
+      :root {
+        --bg0: #0B0B12;
+        --bg1: #101018;
+        --bg2: #16161F;
+        --bg3: #1C1C28;
+
+        --line:  rgba(167, 139, 250, .13);
+        --line2: rgba(255, 255, 255, .05);
+        --line-gold: rgba(139, 92, 246, .30);
+
+        /* بنفش اصلی: روشن‌تر برای متن، پررنگ‌تر برای پُرکردن */
+        --gold:  #A78BFA;
+        --gold2: #8B5CF6;
+        --gold3: #6D28D9;
+        --accent:  #A78BFA;
+        --accent2: #8B5CF6;
+
+        /* متن: سفیدِ خاکستریِ ملایم، نه سفید خالص (خستگی چشم کمتر) */
+        --cream: #E4E2EE;
+        --mute:  #8B87A0;
+        --mute2: #63607A;
+
+        /* رنگ‌های معنایی دست‌نخورده می‌مانند */
+        --owner: #9B7AE0;
+        --admin: #C9A856;
+        --verify: #6AA0FF;
+        --danger: #C97A7A;
+
+        --glass: rgba(11, 11, 18, .82);
+        --shadow: 0 18px 48px rgba(0, 0, 0, .5);
+
+        /* لهجهٔ فیروزه‌ای — فقط جاهای کوچک */
+        --cyan: #22D3EE;
+        --cyan-soft: rgba(34, 211, 238, .55);
+      }
+      html, body { background: var(--bg0); }
+
+      /* ورودی درخشان: بنفش → فیروزه‌ای ملایم به‌جای صورتی */
+      .settings > input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+      .settings > textarea.field,
+      .admin input.search,
+      #tsupPanel .tsup-search {
+        background-image:
+          linear-gradient(#0a0a10, #0a0a10),
+          conic-gradient(from var(--t-ang),
+            #17161f, #5B21B6 5%, #17161f 14%, #17161f 50%, var(--cyan) 60%, #17161f 64%) !important;
+        background-color: #0a0a10 !important;
+        box-shadow: 0 0 18px rgba(139, 92, 246, .13);
+      }
+      .admin input.search,
+      #tsupPanel .tsup-search {
+        background-image:
+          url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23a49fbe' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='22' y1='22' x2='16.65' y2='16.65'/%3E%3C/svg%3E"),
+          linear-gradient(#0a0a10, #0a0a10),
+          conic-gradient(from var(--t-ang),
+            #17161f, #5B21B6 5%, #17161f 14%, #17161f 50%, var(--cyan) 60%, #17161f 64%) !important;
+      }
+      .settings > input:focus, .settings > textarea.field:focus,
+      .admin input.search:focus, #tsupPanel .tsup-search:focus {
+        box-shadow: 0 0 22px rgba(34, 211, 238, .16), 0 0 10px rgba(139, 92, 246, .28) !important;
+      }
+
+      /* دکمهٔ دانلود با لهجهٔ فیروزه‌ای (به‌جای آبی تند) */
+      .apk-nav .Btn .svgIcon { fill: var(--cyan); }
+      .apk-nav .Btn .icon2 {
+        border-bottom-color: var(--cyan);
+        border-left-color: var(--cyan);
+        border-right-color: var(--cyan);
+      }
+      .rail .apk-nav.dl-wrap:hover .Btn,
+      .mobile-nav .apk-nav.dl-wrap:hover .Btn { background-color: var(--cyan); }
+      .apk-nav .Btn { background-color: #15151d; }
+
+      /* باران چت بات‌ها: فیروزه‌ای ملایم */
+      .t-chatbg .container { --c: #1FA8C4; }
+      .t-chatbg::after { background: rgba(11, 11, 18, .52); }
+
+      /* پنجرهٔ دانلود: هم‌خانوادهٔ تم */
+      #tDl .card { --bg-card: #16161F; --primary: #8B5CF6; --primary-800: #5B21B6;
+                   --primary-shadow: #2E1065; --light: #E4E2EE; --zinc-800: #101018; }
+      /* کادر آیکن تیره‌تر تا لوگوی بنفش خوب دیده شود */
+      #tDl .image_container {
+        background-color: #140F26;
+        background-image: radial-gradient(120% 120% at 30% 8%, rgba(139,92,246,.22), transparent 60%);
+        border: 1px solid rgba(139,92,246,.28);
+      }
+
+      /* حباب پیام‌ها و لبه‌ها کمی نرم‌تر تا کنتراست چشم را نزند */
+      .bubble.mine { box-shadow: 0 6px 18px rgba(109, 40, 217, .18); }
+      ::selection { background: rgba(139, 92, 246, .3); }
+    </style>
     <script type="module" crossorigin src="/assets/index-Bt5upPRT.js"></script>
   </head>
-  <body style="margin:0;background:#050506">
+  <body style="margin:0;background:#0B0B12">
     <!-- اپ تا وقتی وضعیت ورود مشخص نشده مخفی است -->
     <div id="root" style="display:none"></div>
 
@@ -1815,24 +1914,8 @@
       document.addEventListener("contextmenu", function () { setTimeout(scanMenus, 30); }, true);
 
       /* ================= ۳) پنجرهٔ دانلود ================= */
-      /* آیکن برنامه: همان نشان T با خط منحنی و شاخ‌وبرگ */
-      var APP_ICON =
-        '<svg class="image" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
-        '<defs><linearGradient id="tdlg" x1="0" y1="0" x2="1" y2="1">' +
-        '<stop offset="0%" stop-color="#fff6dc"/><stop offset="45%" stop-color="#e0b84d"/>' +
-        '<stop offset="100%" stop-color="#a97c22"/></linearGradient></defs>' +
-        '<rect x="2" y="2" width="60" height="60" rx="16" fill="#1b1430" stroke="#7c53d6" stroke-width="1.5"/>' +
-        '<g fill="none" stroke="#c9a24a" stroke-width="1.6" stroke-linecap="round" opacity=".6">' +
-        '<path d="M13 46c-3-8 .5-16 6.5-20.5"/><path d="M51 18c3 8-.5 16-6.5 20.5"/></g>' +
-        '<g fill="#8f7a3a" opacity=".6">' +
-        '<path d="M15 41c-3.6-1-5.5-4.6-4.6-8.3 3.7.7 5.9 3.7 4.6 8.3z"/>' +
-        '<path d="M19 32c-3.7.6-6.5-1.8-7.1-5.4 3.7-1.2 6.5 1.2 7.1 5.4z"/>' +
-        '<path d="M49 23c3.6 1 5.5 4.6 4.6 8.3-3.7-.7-5.9-3.7-4.6-8.3z"/>' +
-        '<path d="M45 32c3.7-.6 6.5 1.8 7.1 5.4-3.7 1.2-6.5-1.2-7.1-5.4z"/></g>' +
-        '<text x="32" y="45" text-anchor="middle" font-family="Georgia,serif" font-style="italic" ' +
-        'font-size="36" fill="url(#tdlg)">T</text>' +
-        '<path d="M9 43C19 53 46 45 56 22" fill="none" stroke="#f0d894" stroke-width="2.4" ' +
-        'stroke-linecap="round" opacity=".9"/></svg>';
+      /* آیکن برنامه = لوگوی رسمی T */
+      var APP_ICON = '<svg class="image" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tlgm" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#C4B5FD"/><stop offset="45%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#6D28D9"/></linearGradient></defs><g transform="translate(0,512) scale(0.1,-0.1)" fill="url(#tlgm)" stroke="none"><path d="M2010 4499 c-706 -406 -825 -475 -1033 -603 -256 -156 -297 -189 -333 -263 l-29 -58 -3 -1013 -2 -1012 21 -50 c29 -68 112 -142 235 -210 54 -30 200 -112 323 -182 123 -70 239 -130 258 -134 41 -8 73 12 107 64 45 69 767 1467 783 1515 41 124 -2 237 -112 292 l-60 30 -330 5 -330 5 -67 33 c-270 133 -272 504 -4 635 96 47 94 47 1543 47 1494 0 1435 -2 1445 54 14 73 -28 106 -443 344 -162 93 -522 300 -801 460 l-507 292 -113 0 -113 -1 -435 -250z"/><path d="M3719 2860 c-249 -29 -448 -150 -583 -355 -21 -31 -173 -316 -338 -633 -165 -317 -385 -740 -489 -940 -104 -199 -189 -365 -189 -370 0 -4 73 -47 161 -97 l161 -90 102 -6 c125 -7 101 -17 451 186 154 89 521 300 815 469 594 341 623 361 671 483 l24 58 -4 645 c-2 355 -5 648 -8 653 -6 9 -688 7 -774 -3z"/></g></svg>';
 
       var DL_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="download-svg">' +
