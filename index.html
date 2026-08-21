@@ -524,12 +524,6 @@
         position: relative;
         color: var(--gold, #e0b84d) !important;
       }
-      .rail .apk-nav.dl-wrap .Btn,
-      .mobile-nav .apk-nav.dl-wrap .Btn {
-        background: linear-gradient(160deg, rgba(224,184,77,.16), rgba(224,184,77,.05));
-        border: 1px solid rgba(224,184,77,.35);
-        border-radius: 12px;
-      }
       .apk-nav.dl-wrap.off { opacity: .45; }
       .apk-nav.dl-wrap:not(.off)::after {
         content: "";
@@ -749,6 +743,278 @@
         color: #14100a; font-weight: 700; font-family: inherit; font-size: 13px; cursor: pointer;
       }
       .t-ver-save:disabled { opacity: .55; cursor: default; }
+    </style>
+
+    <!-- ===== منوی جمع‌وجور + دکمهٔ دانلود + بک‌گراند چت‌ها ===== -->
+    <style>
+      /* ---------- ۱) منوی پیام: ایموجی‌ها جمع‌وجور و هم‌عرض پنجره ---------- */
+      .bubble > .menu {
+        min-width: 0 !important;
+        padding: 6px !important;
+      }
+      .bubble > .menu .react-dock {
+        width: 100%;
+        box-sizing: border-box;
+        justify-content: space-between !important;
+        gap: 2px !important;
+        padding: 5px 7px !important;
+        margin-bottom: 6px !important;
+        border-radius: 14px !important;
+      }
+      .bubble > .menu .react-dock-btn {
+        padding: 4px 5px !important;
+        font-size: 18px !important;
+        line-height: 1 !important;
+        flex: 0 0 auto;
+      }
+      .bubble > .menu > button { padding: 7px 10px !important; font-size: 12.5px !important; }
+      @media (max-width: 560px) {
+        .bubble > .menu .react-dock-btn { font-size: 17px !important; padding: 4px !important; }
+        .bubble > .menu > button { padding: 6px 9px !important; }
+      }
+
+      /* ---------- ۲) دکمهٔ دانلود (Uiverse by faxriddin20) ---------- */
+      .apk-nav .Btn {
+        width: 50px;
+        height: 50px;
+        border: none;
+        border-radius: 50%;
+        background-color: rgb(27, 27, 27);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        transition-duration: .3s;
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, .11);
+      }
+      .apk-nav .Btn .svgIcon { fill: #2196f3; height: 1em; }
+      .apk-nav .Btn .icon2 {
+        width: 18px;
+        height: 5px;
+        border-bottom: 2px solid #2196f3;
+        border-left: 2px solid #2196f3;
+        border-right: 2px solid #2196f3;
+        border-top: 0;
+        background: none;
+        display: block;
+      }
+      .apk-nav .Btn .tooltip {
+        position: absolute;
+        /* ریل سمت راست صفحه است، پس تولتیپ به چپ باز می‌شود تا بیرون نزند */
+        right: auto;
+        left: -88px;
+        opacity: 0;
+        background-color: rgb(12, 12, 12);
+        color: #fff;
+        padding: 5px 10px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition-duration: .2s;
+        pointer-events: none;
+        letter-spacing: .5px;
+        font-size: 12px;
+        white-space: nowrap;
+        bottom: auto;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+      .apk-nav .Btn .tooltip::before {
+        position: absolute;
+        content: "";
+        width: 10px;
+        height: 10px;
+        background-color: rgb(12, 12, 12);
+        background-size: 1000%;
+        background-position: center;
+        transform: rotate(45deg);
+        right: -5%;
+        left: auto;
+        transition-duration: .3s;
+      }
+      .apk-nav .Btn:hover .tooltip { opacity: 1; transition-duration: .3s; }
+      .apk-nav:hover .Btn { background-color: #2196f3; transition-duration: .3s; }
+      .apk-nav:hover .Btn .icon2 {
+        border-bottom: 2px solid #000;
+        border-left: 2px solid #000;
+        border-right: 2px solid #000;
+      }
+      .apk-nav:hover .Btn .svgIcon {
+        fill: #000;
+        animation: slide-in-top .6s cubic-bezier(.25, .46, .45, .94) both;
+      }
+      @keyframes slide-in-top {
+        0% { transform: translateY(-10px); opacity: 0; }
+        100% { transform: translateY(0px); opacity: 1; }
+      }
+      /* حالت خاموش (فایلی موجود نیست) */
+      .apk-nav.off .Btn { opacity: .5; }
+      .apk-nav.off .Btn .svgIcon { fill: #6f6a5e; }
+      .apk-nav.off .Btn .icon2 {
+        border-bottom-color: #6f6a5e; border-left-color: #6f6a5e; border-right-color: #6f6a5e;
+      }
+      /* نقطهٔ سبزِ قبلی و کادر طلایی دیگر لازم نیست */
+      .apk-nav.dl-wrap:not(.off)::after { display: none; }
+      .rail .apk-nav.dl-wrap .Btn, .mobile-nav .apk-nav.dl-wrap .Btn {
+        background-color: rgb(27, 27, 27); background-image: none; border: none; border-radius: 50%;
+      }
+      .rail .apk-nav.dl-wrap:hover .Btn, .mobile-nav .apk-nav.dl-wrap:hover .Btn {
+        background-color: #2196f3; background-image: none;
+      }
+      .mobile-nav .apk-nav .Btn { width: 38px; height: 38px; }
+      .mobile-nav .apk-nav .Btn .icon2 { width: 14px; height: 4px; }
+      .mobile-nav .apk-nav .Btn .tooltip { display: none; }
+
+      /* ---------- ۳) بک‌گراند گفتگوها ---------- */
+      .chat-pane { position: relative; }
+      .chat-pane > .topbar,
+      .chat-pane > .msgs,
+      .chat-pane > .composer,
+      .chat-pane > .pinbar,
+      .chat-pane > .findbar { position: relative; z-index: 1; }
+
+      .t-chatbg {
+        position: absolute; inset: 0; z-index: 0;
+        overflow: hidden; pointer-events: none;
+        contain: strict;
+      }
+      /* پردهٔ تیره تا متن پیام‌ها خوانا بماند */
+      .t-chatbg::after {
+        content: ""; position: absolute; inset: 0; z-index: 3;
+        background: rgba(5, 5, 6, .45);
+      }
+
+      /* --- گفتگو با آدم‌ها: جزیره (Uiverse by AatreyuShau) --- */
+      .t-chatbg .island {
+        position: absolute;
+        opacity: .65;
+        width: 100%;
+        height: 100%;
+        transform: scale(1);
+        background: rgb(52, 65, 73);
+        filter: url(#octave1) brightness(20) contrast(1);
+      }
+      .t-chatbg .islandt {
+        position: absolute;
+        opacity: .5;
+        width: 100%;
+        height: 100%;
+        transform: scale(1);
+        background: rgb(52, 65, 73);
+        filter: url(#octave2) brightness(20) contrast(1);
+      }
+
+      /* --- گفتگو با بات‌ها: باران (Uiverse by SelfMadeSystem) --- */
+      .t-chatbg .container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        --c: #09f;
+        background-color: #000;
+        background-image:
+          radial-gradient(4px 100px at 0px 235px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 235px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 117.5px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 252px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 252px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 126px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 150px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 150px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 75px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 253px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 253px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 126.5px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 204px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 204px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 102px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 134px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 134px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 67px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 179px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 179px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 89.5px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 299px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 299px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 149.5px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 215px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 215px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 107.5px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 281px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 281px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 140.5px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 158px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 158px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 79px, var(--c) 100%, #0000 150%),
+          radial-gradient(4px 100px at 0px 210px, var(--c), #0000),
+          radial-gradient(4px 100px at 300px 210px, var(--c), #0000),
+          radial-gradient(1.5px 1.5px at 150px 105px, var(--c) 100%, #0000 150%);
+        background-size:
+          300px 235px, 300px 235px, 300px 235px,
+          300px 252px, 300px 252px, 300px 252px,
+          300px 150px, 300px 150px, 300px 150px,
+          300px 253px, 300px 253px, 300px 253px,
+          300px 204px, 300px 204px, 300px 204px,
+          300px 134px, 300px 134px, 300px 134px,
+          300px 179px, 300px 179px, 300px 179px,
+          300px 299px, 300px 299px, 300px 299px,
+          300px 215px, 300px 215px, 300px 215px,
+          300px 281px, 300px 281px, 300px 281px,
+          300px 158px, 300px 158px, 300px 158px,
+          300px 210px, 300px 210px, 300px 210px;
+        animation: t-rain 150s linear infinite;
+      }
+      .t-chatbg .container::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        background-image: radial-gradient(circle at 50% 50%, #0000 0, #0000 2px, hsl(0 0 4%) 2px);
+        background-size: 8px 8px;
+        --f: blur(1em) brightness(6);
+        animation: t-rain-hue 10s linear infinite;
+      }
+      @keyframes t-rain-hue {
+        0% { backdrop-filter: var(--f) hue-rotate(0deg); }
+        to { backdrop-filter: var(--f) hue-rotate(360deg); }
+      }
+      @keyframes t-rain {
+        0% {
+          background-position:
+            0px 220px, 3px 220px, 151.5px 337.5px,
+            25px 24px, 28px 24px, 176.5px 150px,
+            50px 16px, 53px 16px, 201.5px 91px,
+            75px 224px, 78px 224px, 226.5px 350.5px,
+            100px 19px, 103px 19px, 251.5px 121px,
+            125px 120px, 128px 120px, 276.5px 187px,
+            150px 31px, 153px 31px, 301.5px 120.5px,
+            175px 235px, 178px 235px, 326.5px 384.5px,
+            200px 121px, 203px 121px, 351.5px 228.5px,
+            225px 224px, 228px 224px, 376.5px 364.5px,
+            250px 26px, 253px 26px, 401.5px 105px,
+            275px 75px, 278px 75px, 426.5px 180px;
+        }
+        to {
+          background-position:
+            0px 6800px, 3px 6800px, 151.5px 6917.5px,
+            25px 13632px, 28px 13632px, 176.5px 13758px,
+            50px 5416px, 53px 5416px, 201.5px 5491px,
+            75px 17175px, 78px 17175px, 226.5px 17301.5px,
+            100px 5119px, 103px 5119px, 251.5px 5221px,
+            125px 8428px, 128px 8428px, 276.5px 8495px,
+            150px 9876px, 153px 9876px, 301.5px 9965.5px,
+            175px 13391px, 178px 13391px, 326.5px 13540.5px,
+            200px 14741px, 203px 14741px, 351.5px 14848.5px,
+            225px 18770px, 228px 18770px, 376.5px 18910.5px,
+            250px 5082px, 253px 5082px, 401.5px 5161px,
+            275px 6375px, 278px 6375px, 426.5px 6480px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .t-chatbg .container, .t-chatbg .container::after { animation: none; }
+      }
     </style>
     <script type="module" crossorigin src="/assets/index-Bt5upPRT.js"></script>
   </head>
@@ -1728,6 +1994,142 @@
         tick();
         new MutationObserver(tick).observe(document.body, { childList: true, subtree: true });
         window.addEventListener("resize", scanMenus);
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+      else start();
+    })();
+    </script>
+
+    <script>
+    (function () {
+      "use strict";
+      /* بک‌گراند گفتگو + متن تولتیپ دکمهٔ دانلود */
+
+      var FILTERS_ID = "tChatFilters";
+      var convCache = {};   /* id -> "bot" | "human" */
+
+      function ensureFilters() {
+        if (document.getElementById(FILTERS_ID)) return;
+        var wrap = document.createElement("div");
+        wrap.id = FILTERS_ID;
+        wrap.setAttribute("aria-hidden", "true");
+        wrap.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
+        function oct(id, light, az) {
+          return '<filter id="' + id + '">' +
+            '<feTurbulence type="fractalNoise" baseFrequency="0.0032" numOctaves="6" seed="4" result="o1"></feTurbulence>' +
+            '<feTurbulence type="fractalNoise" baseFrequency="0.0064" numOctaves="6" seed="4" result="o2"></feTurbulence>' +
+            '<feTurbulence type="fractalNoise" baseFrequency="0.0008" numOctaves="6" seed="4" result="o3"></feTurbulence>' +
+            '<feTurbulence type="fractalNoise" baseFrequency="0.0144" numOctaves="6" seed="4" result="o4"></feTurbulence>' +
+            '<feMerge result="finalIsland"><feMergeNode in="o1"></feMergeNode><feMergeNode in="o3"></feMergeNode>' +
+            '<feMergeNode in="o1"></feMergeNode><feMergeNode in="o3"></feMergeNode></feMerge>' +
+            '<feGaussianBlur in="finalIsland" stdDeviation="5" result="noiseo"></feGaussianBlur>' +
+            '<feTurbulence type="fractalNoise" baseFrequency="0.0064" numOctaves="6" seed="4" result="o1"></feTurbulence>' +
+            '<feTurbulence type="fractalNoise" baseFrequency="0.0128" numOctaves="6" seed="4" result="o2"></feTurbulence>' +
+            '<feMerge result="noiseo"><feMergeNode in="o2"></feMergeNode><feMergeNode in="o4"></feMergeNode>' +
+            '<feMergeNode in="noiseo"></feMergeNode></feMerge>' +
+            '<feGaussianBlur in="noiseo" stdDeviation="5" result="noiseo"></feGaussianBlur>' +
+            '<feTurbulence type="fractalNoise" baseFrequency="0.0128" numOctaves="6" seed="4" result="o1"></feTurbulence>' +
+            '<feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="6" seed="4" result="o2"></feTurbulence>' +
+            '<feMerge result="noiseo"><feMergeNode in="o1"></feMergeNode><feMergeNode in="o1"></feMergeNode>' +
+            '<feMergeNode in="noiseo"></feMergeNode></feMerge>' +
+            '<feGaussianBlur in="noiseo" stdDeviation="5" result="noiseo"></feGaussianBlur>' +
+            '<feDiffuseLighting in="noiseo" surfaceScale="12" diffuseConstant="1" lighting-color="' + light + '" result="lit">' +
+            '<feDistantLight azimuth="' + az + '" elevation="0"></feDistantLight></feDiffuseLighting>' +
+            '<feBlend in="lit" in2="SourceGraphic" mode="normal"></feBlend>' +
+            '</filter>';
+        }
+        wrap.innerHTML = '<svg height="0" width="0">' + oct("octave1", "#d7bb98", "90") + oct("octave2", "#d1bf96", "-90") + '</svg>';
+        document.body.appendChild(wrap);
+      }
+
+      function convIdFromUrl() {
+        var m = /^\/c\/([^/?#]+)/.exec(location.pathname);
+        return m ? m[1] : null;
+      }
+
+      function applyBg(pane, kind) {
+        var bg = pane.querySelector(":scope > .t-chatbg");
+        if (bg && bg.dataset.kind === kind) return;
+        if (bg) bg.remove();
+        ensureFilters();
+        bg = document.createElement("div");
+        bg.className = "t-chatbg";
+        bg.dataset.kind = kind;
+        bg.innerHTML = kind === "bot"
+          ? '<div class="container"></div>'
+          : '<div class="island"></div><div class="islandt"></div>';
+        pane.insertBefore(bg, pane.firstChild);
+      }
+
+      function decorateChat() {
+        var pane = document.querySelector(".chat-pane");
+        if (!pane) return;
+        var id = convIdFromUrl();
+        if (!id) {
+          var old = pane.querySelector(":scope > .t-chatbg");
+          if (old) old.remove();
+          return;
+        }
+        var kind = convCache[id];
+        if (kind) { applyBg(pane, kind); return; }
+        if (convCache["pending:" + id]) return;
+        convCache["pending:" + id] = 1;
+        fetch("/api/conversations/" + encodeURIComponent(id), { credentials: "include", cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var conv = d && d.conversation;
+            var peer = conv && conv.peer;
+            var isBot = !!(peer && String(peer.id || "").indexOf("bot_") === 0);
+            convCache[id] = isBot ? "bot" : "human";
+            delete convCache["pending:" + id];
+            var pane2 = document.querySelector(".chat-pane");
+            if (pane2 && convIdFromUrl() === id) applyBg(pane2, convCache[id]);
+          })
+          .catch(function () { delete convCache["pending:" + id]; });
+      }
+
+      /* تولتیپ دکمهٔ دانلود = حجم فایل */
+      var sizeTxt = null;
+      function fa(n) { return String(n).replace(/\d/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹"[d]; }); }
+      function loadSize() {
+        if (sizeTxt !== null) return;
+        sizeTxt = "";
+        fetch("/api/site", { credentials: "include", cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var apk = d && d.site && d.site.apk;
+            if (!apk) { sizeTxt = "بدون فایل"; return; }
+            var mb = (apk.bytes || 0) / 1048576;
+            var sz = apk.bytes ? (mb >= 1 ? fa(mb.toFixed(1)) + " MB" : fa(Math.round(apk.bytes / 1024)) + " KB") : "";
+            sizeTxt = apk.version ? (sz ? sz + " · v" + apk.version : "v" + apk.version) : (sz || "دانلود");
+            paintTips();
+          })
+          .catch(function () {});
+      }
+      function paintTips() {
+        if (!sizeTxt) return;
+        var tips = document.querySelectorAll(".apk-nav .Btn .tooltip");
+        for (var i = 0; i < tips.length; i++) {
+          if (tips[i].textContent !== sizeTxt) tips[i].textContent = sizeTxt;
+        }
+      }
+
+      var t = null;
+      function tick() {
+        if (t) return;
+        t = setTimeout(function () {
+          t = null;
+          try { decorateChat(); loadSize(); paintTips(); } catch (e) {}
+        }, 150);
+      }
+      function start() {
+        tick();
+        new MutationObserver(tick).observe(document.body, { childList: true, subtree: true });
+        ["pushState", "replaceState"].forEach(function (m) {
+          var orig = history[m];
+          history[m] = function () { var r = orig.apply(this, arguments); setTimeout(tick, 0); return r; };
+        });
+        window.addEventListener("popstate", tick);
       }
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
       else start();
