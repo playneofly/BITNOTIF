@@ -3287,12 +3287,79 @@
       .tpay-msg.err { color: #ff9d9d; }
       .tpay-done { text-align: center; padding: 10px 0; }
       .tpay-done .ico { font-size: 42px; }
+      /* دکمهٔ خرید — کامپوننت Uiverse (Bodyhc) ، کش‌آمده و فارسی */
       .t-prem-buy {
-        display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%;
-        margin-top: 8px; padding: 9px 12px; border: 0; border-radius: 10px; cursor: pointer;
-        background: linear-gradient(135deg, #5C9BFF, #2A5FC4); color: #f4f8ff;
-        font-family: inherit; font-size: 12.5px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        width: 100%; height: 56px; margin-top: 8px; padding: 10px 14px;
+        background-color: #04264a; border: none; border-radius: 14px; color: #fff;
+        font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; position: relative;
+        box-shadow: 0 4px 14px rgba(0,0,0,.28), inset 0 0 0 1px rgba(120,160,255,.18);
+        transition: background-color .3s ease, box-shadow .3s ease, width .35s ease, height .35s ease, border-radius .35s ease;
+        overflow: hidden;
       }
+      .t-prem-buy:hover { background-color: #04376e; box-shadow: 0 8px 20px rgba(0,0,0,.34), inset 0 0 0 1px rgba(120,160,255,.3); }
+      .t-prem-buy:active { transform: translateY(1px); }
+      .t-prem-buy .icon { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; }
+      .t-prem-buy .icon svg { width: 28px; height: 28px; }
+      .t-prem-buy.busy { width: 56px; height: 56px; border-radius: 50%; margin-inline: auto; }
+      .t-prem-buy.busy > span { display: none; }
+      .t-prem-buy .tpay-fp { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; }
+      .t-prem-buy.busy .tpay-fp { display: flex; }
+      .t-prem-buy .tpay-fp svg { width: 100%; height: 100%; }
+      .t-prem-buy .primary, .t-prem-buy .secondary { stroke-dasharray: 1000; stroke-dashoffset: 2000; }
+      .t-prem-buy.busy .primary, .t-prem-buy.busy .secondary { animation: tPayDraw 1.4s ease-in-out forwards; }
+      .t-prem-buy .checkmark { opacity: 0; }
+      .t-prem-buy.busy .checkmark { animation: tPayCheck .5s ease-in-out forwards; animation-delay: 1.2s; }
+      @keyframes tPayDraw { to { stroke-dashoffset: 0; } }
+      @keyframes tPayCheck { to { opacity: 1; } }
+
+      /* کارت بانکی — کامپوننت Uiverse (Pradeepsaranbishnoi) با نشان T و طرح گل نیلی */
+      .tpay-visual {
+        position: relative; direction: ltr; width: 100%; max-width: 320px; aspect-ratio: 300 / 190;
+        margin: 0 auto 14px; border-radius: 20px; overflow: hidden;
+        background: radial-gradient(circle at 28% 18%, #ffffff 0%, #eaf0fd 52%, #d6e0f7 100%);
+        box-shadow: 0 12px 26px rgba(0,0,0,.45), inset 0 0 0 1px rgba(76,141,255,.28);
+      }
+      .tpay-visual::before {
+        content: ""; position: absolute; inset: 0; opacity: .13; pointer-events: none;
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cg fill='none' stroke='%232A5FC4' stroke-width='1.2'%3E%3Cpath d='M45 18c7 6 7 14 0 20-7-6-7-14 0-20zM45 72c-7-6-7-14 0-20 7 6 7 14 0 20zM18 45c6-7 14-7 20 0-6 7-14 7-20 0zM72 45c-6 7-14 7-20 0 6-7 14-7 20 0z'/%3E%3Ccircle cx='45' cy='45' r='4.5'/%3E%3Cpath d='M26 26c5 0 9 4 9 9M64 26c-5 0-9 4-9 9M26 64c5 0 9-4 9-9M64 64c-5 0-9-4-9-9'/%3E%3C/g%3E%3C/svg%3E");
+        background-size: 82px 82px;
+      }
+      .tpay-visual::after {
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        background: linear-gradient(115deg, rgba(76,141,255,.16) 0%, rgba(76,141,255,0) 42%, rgba(30,79,168,.14) 100%);
+      }
+      .tpay-vlogo { position: absolute; top: 16px; left: 22px; width: 48px; height: 48px; z-index: 2; }
+      .tpay-vlogo svg { width: 100%; height: 100%; display: block; }
+      .tpay-vchip {
+        position: absolute; top: 24px; right: 22px; width: 34px; height: 26px; border-radius: 6px; z-index: 2;
+        background: linear-gradient(135deg, #cfa94a, #f0dfa0 45%, #b8892a);
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,.18);
+      }
+      .tpay-vchip:before, .tpay-vchip:after {
+        content: ""; position: absolute; left: 4px; right: 4px; height: 1px; background: rgba(0,0,0,.22);
+      }
+      .tpay-vchip:before { top: 9px; } .tpay-vchip:after { top: 16px; }
+      .tpay-vnum {
+        position: absolute; bottom: 56px; left: 24px; right: 64px; z-index: 2;
+        font-family: ui-monospace, Menlo, Consolas, monospace; font-size: clamp(12.5px, 3.8vw, 15.5px);
+        letter-spacing: 1.4px; color: #0a1424; white-space: nowrap; overflow: hidden; text-align: left;
+      }
+      .tpay-vowner {
+        position: absolute; bottom: 24px; left: 24px; z-index: 2; direction: rtl;
+        font-size: 13px; letter-spacing: .3px; color: #16233d; font-weight: 600;
+      }
+      .tpay-vbank { position: absolute; bottom: 26px; right: 22px; z-index: 2; font-size: 10.5px; color: #43507055; letter-spacing: 1px; }
+      .tpay-vcopy {
+        position: absolute; bottom: 50px; right: 18px; z-index: 3; width: 34px; height: 30px;
+        display: grid; place-items: center; cursor: pointer;
+        background: rgba(76,141,255,.14); border: 1px solid rgba(42,95,196,.35); border-radius: 9px;
+        color: #1b3f80; transition: background .15s, transform .1s;
+      }
+      .tpay-vcopy:hover { background: rgba(76,141,255,.26); }
+      .tpay-vcopy:active { transform: scale(.94); }
+      .tpay-vcopy.done { background: rgba(126,226,168,.28); border-color: rgba(46,140,90,.45); color: #14603c; }
+      .tpay-vcopy svg { width: 16px; height: 16px; }
     </style>
     <script>
     (function () {
@@ -3380,6 +3447,52 @@
             screenPay();
           }).catch(function (e) { btn.disabled = false; screenMsg(e.message, true); });
       }
+      var T_MARK =
+        '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tcg" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0%" stop-color="#6FA8FF"/><stop offset="45%" stop-color="#2A5FC4"/><stop offset="100%" stop-color="#12326E"/>' +
+        '</linearGradient></defs><g transform="translate(0,512) scale(0.1,-0.1)" fill="url(#tcg)" stroke="none">' +
+        '<path d="M2010 4499 c-706 -406 -825 -475 -1033 -603 -256 -156 -297 -189 -333 -263 l-29 -58 -3 -1013 -2 -1012 21 -50 c29 -68 112 -142 235 -210 54 -30 200 -112 323 -182 123 -70 239 -130 258 -134 41 -8 73 12 107 64 45 69 767 1467 783 1515 41 124 -2 237 -112 292 l-60 30 -330 5 -330 5 -67 33 c-270 133 -272 504 -4 635 96 47 94 47 1543 47 1494 0 1435 -2 1445 54 14 73 -28 106 -443 344 -162 93 -522 300 -801 460 l-507 292 -113 0 -113 -1 -435 -250z"/>' +
+        '<path d="M3719 2860 c-249 -29 -448 -150 -583 -355 -21 -31 -173 -316 -338 -633 -165 -317 -385 -740 -489 -940 -104 -199 -189 -365 -189 -370 0 -4 73 -47 161 -97 l161 -90 102 -6 c125 -7 101 -17 451 186 154 89 521 300 815 469 594 341 623 361 671 483 l24 58 -4 645 c-2 355 -5 648 -8 653 -6 9 -688 7 -774 -3z"/></g></svg>';
+      var COPY_SVG =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="9" y="9" width="11" height="11" rx="2.5"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>';
+      var TICK_SVG =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M4 12.5l5 5L20 6.5"></path></svg>';
+
+      function groupCard(num) {
+        var d = String(num).replace(/\D/g, "");
+        return d.length >= 16 ? d.replace(/(\d{4})(?=\d)/g, "$1 ") : String(num);
+      }
+      function visualCard() {
+        var v = el("div", "tpay-visual");
+        var lg = el("div", "tpay-vlogo"); lg.innerHTML = T_MARK; v.appendChild(lg);
+        v.appendChild(el("div", "tpay-vchip"));
+        v.appendChild(el("div", "tpay-vnum", groupCard(state.card)));
+        if (state.holder) v.appendChild(el("div", "tpay-vowner", state.holder));
+        v.appendChild(el("div", "tpay-vbank", "T PREMIUM"));
+        var cp = el("button", "tpay-vcopy");
+        cp.type = "button"; cp.title = "کپی شمارهٔ کارت";
+        cp.innerHTML = COPY_SVG;
+        cp.addEventListener("click", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          copyRaw(String(state.card).replace(/\D/g, ""));
+          cp.classList.add("done"); cp.innerHTML = TICK_SVG;
+          setTimeout(function () { cp.classList.remove("done"); cp.innerHTML = COPY_SVG; }, 1600);
+        });
+        v.appendChild(cp);
+        return v;
+      }
+      function copyRaw(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).catch(fb); return; }
+        fb();
+        function fb() {
+          var ta = document.createElement("textarea"); ta.value = text;
+          ta.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); } catch (e) {}
+          document.body.removeChild(ta);
+        }
+      }
       function line(k, v, cls) {
         var row = el("div", "tpay-line");
         row.appendChild(el("span", "k", k));
@@ -3395,14 +3508,8 @@
         box.textContent = "";
         box.appendChild(el("h3", null, "پرداخت " + fa(o.amountText) + " تومان"));
         box.appendChild(el("div", "sub", "دقیقاً همین مبلغ را کارت‌به‌کارت کن (رقم‌های آخر شناسهٔ سفارش توست) و بعد عکس رسید را بفرست."));
+        box.appendChild(visualCard());
         var card = el("div", "tpay-card");
-        card.appendChild(line("شمارهٔ کارت", state.card));
-        if (state.holder) {
-          var hr = el("div", "tpay-line");
-          hr.appendChild(el("span", "k", "به نام"));
-          hr.appendChild(el("b", "plain", state.holder));
-          card.appendChild(hr);
-        }
         card.appendChild(line("مبلغ دقیق", fa(o.amountText) + " تومان", "amt"));
         box.appendChild(card);
         if (state.note) box.appendChild(el("div", "sub", state.note));
@@ -3471,17 +3578,46 @@
       }
 
       /* دکمهٔ خرید: هم بالای پنجرهٔ پرمیوم ، هم داخل تنظیمات ، هم کنار کد هدیه */
+      var CARD_SVG =
+        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M3 11V15.8C3 16.92 3 17.48 3.218 17.908C3.41 18.284 3.715 18.59 4.092 18.782C4.519 19 5.079 19 6.197 19H17.803' +
+        'C18.921 19 19.48 19 19.907 18.782C20.284 18.59 20.59 18.284 20.782 17.908C21 17.48 21 16.921 21 15.804V11M3 11V9M3 11H21' +
+        'M3 9V8.2C3 7.08 3 6.52 3.218 6.092C3.41 5.715 3.715 5.41 4.092 5.218C4.52 5 5.08 5 6.2 5H17.8C18.92 5 19.48 5 19.907 5.218' +
+        'C20.284 5.41 20.59 5.715 20.782 6.092C21 6.519 21 7.079 21 8.197V9M3 9H21M7 15H11M21 11V9" ' +
+        'stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      var FP_SVG =
+        '<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 430 430" xmlns="http://www.w3.org/2000/svg"><g>' +
+        '<g transform="matrix(1,0,0,1,215,215)"><path class="primary" d="M0,167.5 C92.5,167.5 167.5,92.5 167.5,0 C167.5,-92.5 92.5,-167.5 0,-167.5 ' +
+        'C-92.5,-167.5 -167.5,-92.5 -167.5,0 C-167.5,92.5 -92.5,167.5 0,167.5z" stroke-width="12" stroke="rgb(255,255,255)" fill-opacity="0" ' +
+        'stroke-linejoin="round" stroke-linecap="round"></path></g>' +
+        '<g transform="matrix(1,0,0,1,215,215)"><path class="secondary" d="M0,-30 C0,-30 0,30 0,30 M-30,0 C-30,0 -30,-30 -30,-30 C-30,-46.57 -16.57,-60 0,-60 ' +
+        'C16.57,-60 30,-46.57 30,-30 M30,0 C30,0 30,30 30,30 C30,46.57 16.57,60 0,60 C-16.57,60 -30,46.57 -30,30 M20,-86.59 C13.74,-88.8 7.01,-90 0,-90 ' +
+        'C-33.14,-90 -60,-63.14 -60,-30 C-60,-30 -60,30 -60,30 C-60,47.77 -52.28,63.74 -40,74.72 M-20,86.59 C-13.74,88.8 -7.01,90 0,90 C33.14,90 60,63.14 60,30 ' +
+        'C60,30 60,-30 60,-30 C60,-47.77 52.28,-63.74 40,-74.72 M-70,-86.57 C-82.51,-71.12 -90,-51.43 -90,-30 C-90,-30 -90,30 -90,30 C-90,79.71 -49.71,120 0,120 ' +
+        'C18.5,120 35.7,114.42 50,104.85 M70,86.57 C82.51,71.12 90,51.43 90,30 C90,30 90,-30 90,-30 C90,-79.71 49.71,-120 0,-120 C-18.5,-120 -35.7,-114.42 -50,-104.85" ' +
+        'stroke-width="12" stroke="rgb(255,255,255)" fill-opacity="0" stroke-linejoin="round" stroke-linecap="round"></path></g>' +
+        '<g class="checkmark" font-size="50" transform="translate(75,75) scale(3)"><path d="M20,50 L40,70 L70,30" stroke-linejoin="round" ' +
+        'stroke-linecap="round" stroke-width="20" stroke="rgb(255,255,255)" fill="none"></path></g></g></svg>';
+
       function buyButton(label) {
-        var b = el("button", "t-prem-buy", label || "خرید پرمیوم (کارت‌به‌کارت)");
+        var b = el("button", "t-prem-buy");
         b.type = "button";
-        b.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); open(); });
+        b.innerHTML = '<span>' + (label || "خرید پرمیوم") + '</span>' +
+          '<span class="icon">' + CARD_SVG + '</span>' +
+          '<span class="tpay-fp">' + FP_SVG + '</span>';
+        b.addEventListener("click", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          b.classList.add("busy");
+          setTimeout(function () { b.classList.remove("busy"); b.blur(); }, 1600);
+          open();
+        });
         return b;
       }
       function injectBuy() {
         /* پنجرهٔ پرمیوم — دکمه اول لیست */
         var tip = document.querySelector(".prem-tip");
         if (tip && !tip.querySelector(".t-prem-buy")) {
-          var b = buyButton("✨ خرید پرمیوم");
+          var b = buyButton("خرید پرمیوم");
           b.style.marginTop = "0";
           b.style.marginBottom = "10px";
           tip.insertBefore(b, tip.firstChild);
@@ -3497,7 +3633,7 @@
             var note = el("div", null, "کد نداری؟ همین‌جا با کارت‌به‌کارت بخر — بعد از تأیید رسید، پرمیوم فوری فعال می‌شود.");
             note.style.cssText = "font-size:11.5px;color:var(--mute,#8d95a8);line-height:1.9;margin-bottom:6px";
             wrapB.appendChild(note);
-            wrapB.appendChild(buyButton("✨ خرید پرمیوم"));
+            wrapB.appendChild(buyButton("خرید پرمیوم"));
             host.insertAdjacentElement("afterend", wrapB);
           }
         }
