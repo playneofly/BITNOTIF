@@ -2445,6 +2445,30 @@ async function run(db, sql, ...params) {
   await db.prepare(sql).bind(...params).run();
 }
 var EXTRA_SQL = [
+  `CREATE TABLE IF NOT EXISTS sec_hits (
+    k TEXT PRIMARY KEY,
+    n INTEGER NOT NULL DEFAULT 0,
+    first_ts INTEGER NOT NULL DEFAULT 0,
+    until_ts INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS transcripts (
+    media_id TEXT PRIMARY KEY,
+    text TEXT NOT NULL DEFAULT '',
+    ms INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS mod_log (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    message_id TEXT,
+    conversation_id TEXT,
+    label TEXT,
+    score REAL,
+    snippet TEXT,
+    action TEXT,
+    created_at INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_mod_user ON mod_log(user_id, created_at)`,
   `CREATE TABLE IF NOT EXISTS ai_usage (
     user_id TEXT PRIMARY KEY,
     day TEXT NOT NULL DEFAULT '',
@@ -2581,7 +2605,7 @@ var EXTRA_SQL = [
   `ALTER TABLE messages ADD COLUMN media_ids TEXT`
 ];
 var booted = false;
-var SCHEMA_V = "t4";
+var SCHEMA_V = "t5";
 async function ensureSchema(db, schema) {
   if (booted) return;
   try {
@@ -2783,19 +2807,351 @@ async function sha256Hex(value) {
   const buf = await crypto.subtle.digest("SHA-256", enc.encode(value));
   return toHex(new Uint8Array(buf));
 }
+// ============ لایهٔ امنیت ، ویس به متن ، ترجمه و ناظر خودکار ============
+var SEC_WRITE_MAX = 300;
+var SEC_LOGIN_MAX = 8;
+var SEC_LOGIN_WINDOW = 15 * 60 * 1e3;
+var SEC_LOGIN_LOCK = 15 * 60 * 1e3;
+var PBKDF2_ITER = 21e4;
+function clientIp(c) {
+  return String(
+    c.req.header("CF-Connecting-IP") || (c.req.header("x-forwarded-for") || "").split(",")[0] || c.req.header("x-real-ip") || "0.0.0.0"
+  ).trim().slice(0, 60);
+}
+async function secTouch(db, key, max, windowMs, lockMs) {
+  const now = Date.now();
+  try {
+    const row = await one(db, `SELECT k, n, first_ts, until_ts FROM sec_hits WHERE k = ?`, key);
+    if (row && Number(row.until_ts || 0) > now) {
+      return { ok: false, retryMs: Number(row.until_ts) - now, n: Number(row.n || 0) };
+    }
+    if (!row || now - Number(row.first_ts || 0) > windowMs) {
+      await soft(
+        db,
+        `INSERT INTO sec_hits (k, n, first_ts, until_ts) VALUES (?, 1, ?, 0)
+         ON CONFLICT(k) DO UPDATE SET n = 1, first_ts = excluded.first_ts, until_ts = 0`,
+        key,
+        now
+      );
+      return { ok: true, n: 1 };
+    }
+    const n = Number(row.n || 0) + 1;
+    const lock = n > max ? now + lockMs : 0;
+    await soft(db, `UPDATE sec_hits SET n = ?, until_ts = ? WHERE k = ?`, n, lock, key);
+    if (n > max) return { ok: false, retryMs: lockMs, n };
+    return { ok: true, n };
+  } catch {
+    return { ok: true, n: 0 };
+  }
+}
+async function secPeek(db, key) {
+  try {
+    const row = await one(db, `SELECT n, until_ts FROM sec_hits WHERE k = ?`, key);
+    const now = Date.now();
+    if (row && Number(row.until_ts || 0) > now) return { ok: false, retryMs: Number(row.until_ts) - now, n: Number(row.n || 0) };
+    return { ok: true, n: Number(row?.n || 0) };
+  } catch {
+    return { ok: true, n: 0 };
+  }
+}
+async function secClear(db, key) {
+  try {
+    await soft(db, `DELETE FROM sec_hits WHERE k = ?`, key);
+  } catch {
+  }
+}
+function hostOf(value) {
+  try {
+    return new URL(value).host.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+function originGuard(c) {
+  const host = String(c.req.header("host") || "").toLowerCase();
+  if (!host) return true;
+  const origin = c.req.header("origin");
+  const referer = c.req.header("referer");
+  if (origin && origin !== "null") return hostOf(origin) === host;
+  if (referer) return hostOf(referer) === host;
+  return true;
+}
+async function pbkdf2Hex(password, saltHex, iter) {
+  const key = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
+  const salt = new Uint8Array((saltHex.match(/../g) || []).map((h) => parseInt(h, 16)));
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" }, key, 256);
+  return toHex(new Uint8Array(bits));
+}
 async function hashPassword(password) {
   const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
-  const digest = await sha256Hex(`${salt}:${password}`);
-  return `${salt}.${digest}`;
+  const digest = await pbkdf2Hex(password, salt, PBKDF2_ITER);
+  return `pbkdf2$${PBKDF2_ITER}$${salt}$${digest}`;
+}
+function sameDigest(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+function legacyHash(stored) {
+  return typeof stored === "string" && stored.indexOf("pbkdf2$") !== 0;
 }
 async function verifyPassword(password, stored) {
+  if (typeof stored !== "string" || !stored) return false;
+  if (stored.indexOf("pbkdf2$") === 0) {
+    const parts = stored.split("$");
+    const iter = Number(parts[1]) || PBKDF2_ITER;
+    const salt = parts[2] || "";
+    const digest = parts[3] || "";
+    if (!salt || !digest) return false;
+    return sameDigest(await pbkdf2Hex(password, salt, iter), digest);
+  }
   const [salt, digest] = stored.split(".");
   if (!salt || !digest) return false;
-  const next = await sha256Hex(`${salt}:${password}`);
-  if (next.length !== digest.length) return false;
-  let diff = 0;
-  for (let i = 0; i < next.length; i++) diff |= next.charCodeAt(i) ^ digest.charCodeAt(i);
-  return diff === 0;
+  return sameDigest(await sha256Hex(`${salt}:${password}`), digest);
+}
+async function upgradeHash(db, user, password) {
+  try {
+    if (!legacyHash(user.password_hash)) return;
+    const fresh = await hashPassword(password);
+    await run(db, `UPDATE users SET password_hash = ? WHERE id = ?`, fresh, user.id);
+  } catch {
+  }
+}
+var MAGIC = [
+  { mime: "image/jpeg", bytes: [255, 216, 255] },
+  { mime: "image/png", bytes: [137, 80, 78, 71] },
+  { mime: "image/gif", bytes: [71, 73, 70, 56] },
+  { mime: "image/webp", bytes: [82, 73, 70, 70] },
+  { mime: "audio/ogg", bytes: [79, 103, 103, 83] },
+  { mime: "audio/mpeg", bytes: [73, 68, 51] },
+  { mime: "audio/wav", bytes: [82, 73, 70, 70] },
+  { mime: "video/webm", bytes: [26, 69, 223, 163] }
+];
+function sniffFamily(bytes) {
+  if (!bytes || bytes.length < 12) return "";
+  for (const m of MAGIC) {
+    let hit = true;
+    for (let i = 0; i < m.bytes.length; i++) if (bytes[i] !== m.bytes[i]) {
+      hit = false;
+      break;
+    }
+    if (hit) return m.mime.split("/")[0];
+  }
+  const ftyp = String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]);
+  if (ftyp === "ftyp") return "video";
+  if (bytes[0] === 255 && (bytes[1] & 224) === 224) return "audio";
+  return "";
+}
+function mediaLooksSafe(mime, bytes) {
+  const fam = sniffFamily(bytes);
+  if (!fam) return false;
+  const want = String(mime || "").split("/")[0];
+  if (want === "video" && (fam === "video" || fam === "image")) return true;
+  if (want === "audio" && (fam === "audio" || fam === "video")) return true;
+  return fam === want;
+}
+async function turnstileOk(c) {
+  try {
+    const db = c.env.DB;
+    if (await setting(db, "turnstile_on", "0") !== "1") return true;
+    const secret = String(c.env.TURNSTILE_SECRET || await setting(db, "turnstile_secret", "")).trim();
+    if (!secret) return true;
+    const body = c.get("jsonBody") || {};
+    const token = String(body.turnstileToken || body["cf-turnstile-response"] || c.req.header("cf-turnstile-response") || "").trim();
+    if (!token) return false;
+    const form = new FormData();
+    form.append("secret", secret);
+    form.append("response", token);
+    form.append("remoteip", clientIp(c));
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({}));
+    return !!data.success;
+  } catch {
+    return true;
+  }
+}
+var SPAM_PATTERNS = [
+  { re: /(t\.me\/|telegram\.me\/|@[a-z0-9_]{5,32}\s*(کانال|چنل|جوین))/i, w: 2, label: "تبلیغ کانال" },
+  { re: /(شماره\s*کارت|کارت\s*به\s*کارت|شبا|IR\d{20,24})/i, w: 3, label: "درخواست پول" },
+  { re: /(رمز\s*(عبور|دوم|یکبار|پویا)|کد\s*تایید|otp|password)\s*(رو|را|ت)?\s*(بفرست|بده|ارسال)/i, w: 4, label: "فیشینگ رمز" },
+  { re: /(سود\s*تضمینی|سرمایه\s*گذاری|ارز\s*دیجیتال|بیت\s*کوین|فارکس|شرط\s*بندی|بت\s*فوروارد|سایت\s*شرط)/i, w: 3, label: "کلاهبرداری مالی" },
+  { re: /(https?:\/\/[^\s]+){3,}/i, w: 2, label: "لینک انبوه" },
+  { re: /(0?9\d{9})/, w: 1, label: "شماره تماس" },
+  { re: /(.)\1{14,}/, w: 2, label: "تکرار بی‌معنی" }
+];
+function spamScore(text) {
+  const t = String(text || "");
+  if (t.length < 6) return { score: 0, labels: [] };
+  let score = 0;
+  const labels = [];
+  for (const p of SPAM_PATTERNS) {
+    if (p.re.test(t)) {
+      score += p.w;
+      labels.push(p.label);
+    }
+  }
+  const caps = t.replace(/[^A-Z]/g, "").length;
+  if (t.length > 40 && caps / t.length > 0.6) {
+    score += 1;
+    labels.push("فریاد");
+  }
+  return { score, labels };
+}
+async function modAiLabel(env, db, text) {
+  try {
+    if (!env.AI) return null;
+    if (await setting(db, "mod_ai", "1") === "0") return null;
+    const out = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+      max_tokens: 60,
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: "تو ناظر محتوای یک پیام‌رسان فارسی هستی. پیام کاربر را بررسی کن و فقط یک JSON بده بدون توضیح: {\"flag\":true|false,\"label\":\"spam|scam|phishing|abuse|sexual|violence|clean\",\"score\":0..10}. اگر پیام عادی است flag=false و label=clean."
+        },
+        { role: "user", content: String(text).slice(0, 700) }
+      ]
+    });
+    const raw = String(out?.response ?? out?.result?.response ?? "");
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const data = JSON.parse(m[0]);
+    return { flag: !!data.flag, label: String(data.label || "").slice(0, 24), score: Number(data.score) || 0 };
+  } catch {
+    return null;
+  }
+}
+async function modScan(env, db, user, conv, msgId, text) {
+  try {
+    if (await setting(db, "mod_on", "1") === "0") return;
+    if (!text || user.badge === "owner" || user.badge === "admin") return;
+    const heur = spamScore(text);
+    let label = heur.labels.join("، ");
+    let score = heur.score;
+    if (score < 3) {
+      const ai = await modAiLabel(env, db, text);
+      if (ai && ai.flag) {
+        score = Math.max(score, Math.min(10, ai.score || 5));
+        label = label ? `${label} · ${ai.label}` : ai.label;
+      }
+    }
+    const threshold = Number(await setting(db, "mod_threshold", "3")) || 3;
+    if (score < threshold) return;
+    const id = randomId();
+    const now = Date.now();
+    await soft(
+      db,
+      `INSERT INTO mod_log (id, user_id, message_id, conversation_id, label, score, snippet, action, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      user.id,
+      msgId,
+      conv?.id || null,
+      label || "مشکوک",
+      score,
+      String(text).slice(0, 180),
+      "flag",
+      now
+    );
+    await soft(
+      db,
+      `INSERT INTO reports (id, reporter_id, target_user_id, message_id, conversation_id, kind, reason, status, created_at)
+       VALUES (?, ?, ?, ?, ?, 'auto', ?, 'open', ?)`,
+      randomId(),
+      T_BOT_ID,
+      user.id,
+      msgId,
+      conv?.id || null,
+      `ناظر خودکار: ${label || "مشکوک"} (${score})`,
+      now
+    );
+    const action = await setting(db, "mod_action", "report");
+    if (action === "mute") {
+      const recent = await one(
+        db,
+        `SELECT COUNT(*) as n FROM mod_log WHERE user_id = ? AND created_at > ?`,
+        user.id,
+        now - 24 * 3600 * 1e3
+      );
+      const limit = Number(await setting(db, "mod_mute_after", "3")) || 3;
+      if (Number(recent?.n || 0) >= limit) {
+        const mins = Number(await setting(db, "mod_mute_min", "60")) || 60;
+        await soft(db, `UPDATE users SET muted_until = ? WHERE id = ?`, now + mins * 6e4, user.id);
+        await soft(db, `UPDATE mod_log SET action = 'mute' WHERE id = ?`, id);
+      }
+    }
+  } catch {
+  }
+}
+function isFarsi(text) {
+  return /[\u0600-\u06FF]/.test(String(text || ""));
+}
+var TR_LANGS = {
+  fa: "\u0641\u0627\u0631\u0633\u06cc",
+  en: "English",
+  ar: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+  tr: "T\u00fcrk\u00e7e",
+  he: "\u05e2\u05d1\u05e8\u05d9\u05ea",
+  ru: "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+  de: "Deutsch",
+  fr: "Fran\u00e7ais",
+  es: "Espa\u00f1ol",
+  zh: "\u4e2d\u6587",
+  ur: "\u0627\u0631\u062f\u0648",
+  ku: "Kurd\u00ee"
+};
+async function translateText(env, text, to, from) {
+  const src = from || (isFarsi(text) ? "fa" : "en");
+  if (src === to) return String(text);
+  try {
+    const out = await env.AI.run("@cf/meta/m2m100-1.2b", {
+      text: String(text).slice(0, 1800),
+      source_lang: src,
+      target_lang: to
+    });
+    const t = String(out?.translated_text || out?.response || "").trim();
+    if (t) return t;
+  } catch {
+  }
+  const out = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+    max_tokens: 700,
+    temperature: 0.1,
+    messages: [
+      { role: "system", content: `Translate the user text into ${TR_LANGS[to] || to}. Output ONLY the translation, no notes, keep emojis.` },
+      { role: "user", content: String(text).slice(0, 1500) }
+    ]
+  });
+  return String(out?.response ?? out?.result?.response ?? "").trim();
+}
+async function mediaBytes(env, row) {
+  const data = String(row.data || "");
+  if (data.indexOf("r2:") === 0 && env.MEDIA) {
+    const obj = await env.MEDIA.get(data.slice(3));
+    if (!obj) return null;
+    const buf = await obj.arrayBuffer();
+    return new Uint8Array(buf);
+  }
+  const dec = decodeDataUrl(data);
+  return dec ? dec.bytes : null;
+}
+function bytesToBase64(bytes) {
+  let bin = "";
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+async function transcribeBytes(env, bytes) {
+  try {
+    const out = await env.AI.run("@cf/openai/whisper-large-v3-turbo", { audio: bytesToBase64(bytes) });
+    const t = String(out?.text || out?.transcription || "").trim();
+    if (t) return { text: t, model: "whisper-large-v3-turbo" };
+  } catch {
+  }
+  const out = await env.AI.run("@cf/openai/whisper", { audio: [...bytes] });
+  return { text: String(out?.text || out?.transcription || "").trim(), model: "whisper" };
 }
 function hueFrom(input) {
   let h = 0;
@@ -3839,7 +4195,30 @@ app.use("*", async (c, next) => {
     }
   } catch {
   }
+  const method = c.req.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+    if (!originGuard(c)) return jsonError(c, "\u062f\u0631\u062e\u0648\u0627\u0633\u062a \u0627\u0632 \u0645\u0646\u0628\u0639 \u0646\u0627\u0645\u0639\u062a\u0628\u0631 \u0631\u062f \u0634\u062f", 403);
+    const ipGate = await secTouch(c.env.DB, `w:${clientIp(c)}`, SEC_WRITE_MAX, 6e4, 6e4);
+    if (!ipGate.ok) return jsonError(c, "\u062f\u0631\u062e\u0648\u0627\u0633\u062a \u0628\u06cc\u0634 \u0627\u0632 \u062d\u062f\u061b \u06cc\u06a9 \u062f\u0642\u06cc\u0642\u0647 \u0635\u0628\u0631 \u06a9\u0646", 429);
+    try {
+      const ct = String(c.req.header("content-type") || "");
+      if (ct.includes("application/json")) {
+        const raw = await c.req.raw.clone().json().catch(() => null);
+        if (raw && typeof raw === "object") c.set("jsonBody", raw);
+      }
+    } catch {
+    }
+  }
   await next();
+  try {
+    c.res.headers.set("X-Content-Type-Options", "nosniff");
+    c.res.headers.set("Referrer-Policy", "no-referrer");
+    c.res.headers.set("X-Frame-Options", "DENY");
+    c.res.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    c.res.headers.set("Permissions-Policy", "geolocation=(), camera=(), payment=(), usb=()");
+    if (!c.res.headers.has("Cache-Control")) c.res.headers.set("Cache-Control", "no-store");
+  } catch {
+  }
 });
 app.get("/health", async (c) => {
   try {
@@ -4459,7 +4838,19 @@ async function canPost(mem, conv) {
 }
 async function requireOwnerLike(user, db) {
   const owner = await one(db, `SELECT id FROM users WHERE badge = 'owner' LIMIT 1`);
-  if (!owner) return "bootstrap";
+  if (!owner) {
+    const founder = await one(
+      db,
+      `SELECT id FROM users WHERE deleted_at IS NULL AND id NOT LIKE 'bot_%' ORDER BY created_at ASC LIMIT 1`
+    );
+    if (!founder || founder.id !== user.id) return null;
+    try {
+      await run(db, `UPDATE users SET badge = 'owner' WHERE id = ?`, user.id);
+      await logAdmin(db, user.id, "owner_claim", user.id, "\u0627\u0648\u0644\u06cc\u0646 \u062d\u0633\u0627\u0628 \u062e\u0648\u062f\u06a9\u0627\u0631 \u0645\u0627\u0644\u06a9 \u0634\u062f");
+    } catch {
+    }
+    return "owner";
+  }
   if (user.badge === "owner") return "owner";
   if (user.badge === "admin") return "admin";
   return null;
@@ -4605,6 +4996,15 @@ app.post("/auth/register", async (c) => {
   if (avatar === false) return jsonError(c, "\u0639\u06A9\u0633 \u067E\u0631\u0648\u0641\u0627\u06CC\u0644 \u0646\u0627\u0645\u0639\u062A\u0628\u0631 \u0627\u0633\u062A");
   const exists = await one(c.env.DB, `SELECT id FROM users WHERE username_lc = ?`, username.toLowerCase());
   if (exists) return jsonError(c, "\u0627\u06CC\u0646 \u06CC\u0648\u0632\u0631\u0646\u06CC\u0645 \u06AF\u0631\u0641\u062A\u0647 \u0634\u062F\u0647", 409);
+  if (!await turnstileOk(c)) return jsonError(c, "\u062a\u0623\u06cc\u06cc\u062f \u0627\u0645\u0646\u06cc\u062a\u06cc \u0631\u062f \u0634\u062f\u061b \u062f\u0648\u0628\u0627\u0631\u0647 \u062a\u0644\u0627\u0634 \u06a9\u0646", 403);
+  const regIpCap = Number(await setting(c.env.DB, "register_ip_cap", "15")) || 0;
+  const regKey = `reg:${clientIp(c)}`;
+  if (regIpCap > 0) {
+    const regGate = await secPeek(c.env.DB, regKey);
+    if (!regGate.ok || regGate.n >= regIpCap) {
+      return jsonError(c, "\u0627\u0632 \u0627\u06cc\u0646 \u0627\u06cc\u0646\u062a\u0631\u0646\u062a \u0627\u0645\u0631\u0648\u0632 \u062d\u0633\u0627\u0628 \u0632\u06cc\u0627\u062f \u0633\u0627\u062e\u062a\u0647 \u0634\u062f\u0647", 429);
+    }
+  }
   const gate = await registerGate(c, typeof body.invite === "string" ? body.invite : "");
   if (gate) return gate;
   const now = Date.now();
@@ -4623,6 +5023,7 @@ app.post("/auth/register", async (c) => {
     now,
     now
   );
+  if (regIpCap > 0) await secTouch(c.env.DB, regKey, regIpCap, 24 * 3600 * 1e3, 6 * 3600 * 1e3);
   const token = randomToken();
   await run(
     c.env.DB,
@@ -4644,10 +5045,25 @@ app.post("/auth/login", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
+  const ip = clientIp(c);
+  const ipKey = `login-ip:${ip}`;
+  const userKey = `login:${username}`;
+  const ipGate = await secPeek(c.env.DB, ipKey);
+  const userGate = await secPeek(c.env.DB, userKey);
+  if (!ipGate.ok || !userGate.ok) {
+    const mins = Math.ceil((Math.max(ipGate.retryMs || 0, userGate.retryMs || 0)) / 6e4) || 15;
+    return jsonError(c, `\u062a\u0644\u0627\u0634 \u0632\u06cc\u0627\u062f \u0628\u0631\u0627\u06cc \u0648\u0631\u0648\u062f. ${mins} \u062f\u0642\u06cc\u0642\u0647 \u062f\u06cc\u06af\u0631 \u062f\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062a\u062d\u0627\u0646 \u06a9\u0646`, 429);
+  }
+  if (!await turnstileOk(c)) return jsonError(c, "\u062a\u0623\u06cc\u06cc\u062f \u0627\u0645\u0646\u06cc\u062a\u06cc \u0631\u062f \u0634\u062f\u061b \u062f\u0648\u0628\u0627\u0631\u0647 \u062a\u0644\u0627\u0634 \u06a9\u0646", 403);
   const user = await one(c.env.DB, `SELECT * FROM users WHERE username_lc = ?`, username);
   if (!user || isGone(user) || !await verifyPassword(password, user.password_hash)) {
+    await secTouch(c.env.DB, userKey, SEC_LOGIN_MAX, SEC_LOGIN_WINDOW, SEC_LOGIN_LOCK);
+    await secTouch(c.env.DB, ipKey, 60, SEC_LOGIN_WINDOW, SEC_LOGIN_LOCK);
     return jsonError(c, "\u06CC\u0648\u0632\u0631\u0646\u06CC\u0645 \u06CC\u0627 \u0631\u0645\u0632 \u0627\u0634\u062A\u0628\u0627\u0647\u0647", 401);
   }
+  await secClear(c.env.DB, userKey);
+  await secClear(c.env.DB, ipKey);
+  await upgradeHash(c.env.DB, user, password);
   if (isBanned(user)) return jsonError(c, user.ban_reason ? `\u062D\u0633\u0627\u0628 \u0645\u0633\u062F\u0648\u062F \u0627\u0633\u062A: ${user.ban_reason}` : "\u0627\u06CC\u0646 \u062D\u0633\u0627\u0628 \u0645\u0633\u062F\u0648\u062F \u0627\u0633\u062A", 403);
   if (await setting(c.env.DB, "maintenance", "0") === "1" && user.badge !== "owner" && user.badge !== "admin") {
     return jsonError(c, "\u0641\u0639\u0644\u0627 \u0633\u0627\u06CC\u062A \u0628\u0647 \u062E\u0627\u0645\u0648\u0634\u06CC \u0631\u0641\u062A \u0635\u0628\u0648\u0631 \u0628\u0627\u0634\u06CC\u062F", 503);
@@ -5548,6 +5964,13 @@ app.post("/conversations/:id/messages", async (c) => {
     for (const item of items) {
       const parsed = parseMedia(item, kindRaw === "album" ? "photo" : kindRaw, dataMax, durMax);
       if (!parsed) return jsonError(c, "\u0641\u0627\u06CC\u0644 \u0646\u0627\u0645\u0639\u062A\u0628\u0631 \u06CC\u0627 \u062E\u06CC\u0644\u06CC \u0628\u0632\u0631\u06AF \u0627\u0633\u062A");
+      try {
+        const probe = decodeDataUrl(parsed.data);
+        if (!probe || !mediaLooksSafe(parsed.mime, probe.bytes)) {
+          return jsonError(c, "\u0627\u06cc\u0646 \u0641\u0627\u06cc\u0644 \u0633\u0627\u0644\u0645 \u0646\u06cc\u0633\u062a \u06cc\u0627 \u0646\u0648\u0639\u0634 \u062c\u0639\u0644\u06cc \u0627\u0633\u062a", 415);
+        }
+      } catch {
+      }
       const mid = randomId();
       mediaIds.push(mid);
       if (!mediaId) {
@@ -5663,6 +6086,17 @@ app.post("/conversations/:id/messages", async (c) => {
     if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(job.catch(() => {
     }));
   } catch {
+  }
+  if (text && user.id !== T_BOT_ID) {
+    try {
+      const modCtx = c.executionCtx;
+      const modJob = modScan(c.env, c.env.DB, user, conv, id, text);
+      if (modCtx && typeof modCtx.waitUntil === "function") modCtx.waitUntil(modJob.catch(() => {
+      }));
+      else modJob.catch(() => {
+      });
+    } catch {
+    }
   }
   if (isTSupportConv(conv) && user.id !== T_BOT_ID) {
     const willAi = await aiWillReply(c.env, c.env.DB, conv, user.id, text);
@@ -6426,6 +6860,7 @@ app.get("/site", async (c) => {
       maintenanceText: maintText || null,
       panic: await setting(c.env.DB, "panic", "0") === "1",
       apk,
+      turnstile: await setting(c.env.DB, "turnstile_on", "0") === "1" ? (await setting(c.env.DB, "turnstile_site", "")).trim() : "",
       features: {
         voice: await featureOn(c.env.DB, "feature_voice"),
         stories: await featureOn(c.env.DB, "feature_stories"),
@@ -7968,6 +8403,146 @@ function supportMsg(m) {
     createdAt: m.created_at
   };
 }
+app.post("/media/:id/transcribe", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const row = await one(c.env.DB, `SELECT id, conversation_id, mime, data FROM media WHERE id = ?`, c.req.param("id"));
+  if (!row) return jsonError(c, "\u0641\u0627\u06cc\u0644 \u0646\u06cc\u0633\u062a", 404);
+  if (!await memberOf(c.env.DB, row.conversation_id, user.id)) return jsonError(c, "\u0627\u062c\u0627\u0632\u0647 \u0646\u062f\u0627\u0631\u06cc", 403);
+  const cached = await one(c.env.DB, `SELECT text, created_at FROM transcripts WHERE media_id = ?`, row.id).catch(() => null);
+  if (cached && String(cached.text || "").trim()) {
+    return c.json({ text: cached.text, cached: true });
+  }
+  if (!c.env.AI) return jsonError(c, "\u0633\u0631\u0648\u06cc\u0633 \u062a\u0628\u062f\u06cc\u0644 \u0648\u06cc\u0633 \u0641\u0639\u0644\u0627\u064b \u062f\u0631 \u062f\u0633\u062a\u0631\u0633 \u0646\u06cc\u0633\u062a", 503);
+  const gate = await secTouch(c.env.DB, `stt:${user.id}`, Number(await setting(c.env.DB, "stt_daily", "40")) || 40, 24 * 3600 * 1e3, 3600 * 1e3);
+  if (!gate.ok) return jsonError(c, "\u0633\u0642\u0641 \u0631\u0648\u0632\u0627\u0646\u0647\u0654 \u062a\u0628\u062f\u06cc\u0644 \u0648\u06cc\u0633 \u067e\u0631 \u0634\u062f\u0647", 429);
+  const bytes = await mediaBytes(c.env, row);
+  if (!bytes) return jsonError(c, "\u0641\u0627\u06cc\u0644 \u062e\u0631\u0627\u0628 \u0627\u0633\u062a", 500);
+  if (bytes.length > 9e6) return jsonError(c, "\u0641\u0627\u06cc\u0644 \u0635\u0648\u062a\u06cc \u062e\u06cc\u0644\u06cc \u0628\u0632\u0631\u06af \u0627\u0633\u062a", 413);
+  const t0 = Date.now();
+  try {
+    const out = await transcribeBytes(c.env, bytes);
+    const text = String(out.text || "").trim();
+    if (!text) return c.json({ text: "", empty: true });
+    await soft(
+      c.env.DB,
+      `INSERT INTO transcripts (media_id, text, ms, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(media_id) DO UPDATE SET text = excluded.text, ms = excluded.ms`,
+      row.id,
+      text.slice(0, 4e3),
+      Date.now() - t0,
+      Date.now()
+    );
+    return c.json({ text: text.slice(0, 4e3), ms: Date.now() - t0, model: out.model });
+  } catch (e) {
+    return jsonError(c, "\u062a\u0628\u062f\u06cc\u0644 \u0646\u0634\u062f: " + String(e?.message || e).slice(0, 120), 500);
+  }
+});
+app.post("/translate", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  if (!c.env.AI) return jsonError(c, "\u0633\u0631\u0648\u06cc\u0633 \u062a\u0631\u062c\u0645\u0647 \u0641\u0639\u0644\u0627\u064b \u062f\u0631 \u062f\u0633\u062a\u0631\u0633 \u0646\u06cc\u0633\u062a", 503);
+  const body = await c.req.json().catch(() => ({}));
+  const text = String(body.text || "").trim();
+  const to = String(body.to || "fa").toLowerCase();
+  if (!text) return jsonError(c, "\u0645\u062a\u0646 \u062e\u0627\u0644\u06cc \u0627\u0633\u062a");
+  if (text.length > 2e3) return jsonError(c, "\u0645\u062a\u0646 \u062e\u06cc\u0644\u06cc \u0628\u0644\u0646\u062f \u0627\u0633\u062a");
+  if (!TR_LANGS[to]) return jsonError(c, "\u0632\u0628\u0627\u0646 \u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc \u0646\u0645\u06cc\u200c\u0634\u0648\u062f");
+  const gate = await secTouch(c.env.DB, `tr:${user.id}`, Number(await setting(c.env.DB, "tr_hourly", "120")) || 120, 3600 * 1e3, 600 * 1e3);
+  if (!gate.ok) return jsonError(c, "\u062a\u0631\u062c\u0645\u0647\u0654 \u0632\u06cc\u0627\u062f \u062f\u0631 \u06cc\u06a9 \u0633\u0627\u0639\u062a\u061b \u06a9\u0645\u06cc \u0635\u0628\u0631 \u06a9\u0646", 429);
+  try {
+    const out = await translateText(c.env, text, to, body.from ? String(body.from).toLowerCase() : null);
+    if (!out) return jsonError(c, "\u062a\u0631\u062c\u0645\u0647 \u0646\u0634\u062f", 500);
+    return c.json({ text: out, to, langs: TR_LANGS });
+  } catch (e) {
+    return jsonError(c, "\u062a\u0631\u062c\u0645\u0647 \u0646\u0634\u062f: " + String(e?.message || e).slice(0, 120), 500);
+  }
+});
+app.get("/admin/mod", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const rows = await many(
+    c.env.DB,
+    `SELECT m.*, u.username as username, u.display_name as display_name
+     FROM mod_log m LEFT JOIN users u ON u.id = m.user_id
+     ORDER BY m.created_at DESC LIMIT 80`
+  ).catch(() => []);
+  const day = Date.now() - 24 * 3600 * 1e3;
+  const stat = await one(c.env.DB, `SELECT COUNT(*) as n FROM mod_log WHERE created_at > ?`, day).catch(() => null);
+  return c.json({
+    on: await setting(c.env.DB, "mod_on", "1") === "1",
+    ai: await setting(c.env.DB, "mod_ai", "1") === "1",
+    action: await setting(c.env.DB, "mod_action", "report"),
+    threshold: Number(await setting(c.env.DB, "mod_threshold", "3")) || 3,
+    muteAfter: Number(await setting(c.env.DB, "mod_mute_after", "3")) || 3,
+    muteMin: Number(await setting(c.env.DB, "mod_mute_min", "60")) || 60,
+    turnstileOn: await setting(c.env.DB, "turnstile_on", "0") === "1",
+    turnstileSite: await setting(c.env.DB, "turnstile_site", ""),
+    turnstileSecret: !!(c.env.TURNSTILE_SECRET || await setting(c.env.DB, "turnstile_secret", "")),
+    sttDaily: Number(await setting(c.env.DB, "stt_daily", "40")) || 40,
+    today: Number(stat?.n || 0),
+    flags: rows.map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      username: r.username,
+      displayName: r.display_name,
+      label: r.label,
+      score: r.score,
+      snippet: r.snippet,
+      action: r.action,
+      createdAt: r.created_at
+    }))
+  });
+});
+app.patch("/admin/mod", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const b = await c.req.json().catch(() => ({}));
+  const db = c.env.DB;
+  if (b.on !== void 0) await setSetting(db, "mod_on", b.on ? "1" : "0");
+  if (b.ai !== void 0) await setSetting(db, "mod_ai", b.ai ? "1" : "0");
+  if (typeof b.action === "string") await setSetting(db, "mod_action", b.action === "mute" ? "mute" : "report");
+  if (b.threshold !== void 0) await setSetting(db, "mod_threshold", String(Math.max(1, Math.min(10, Number(b.threshold) || 3))));
+  if (b.muteAfter !== void 0) await setSetting(db, "mod_mute_after", String(Math.max(1, Number(b.muteAfter) || 3)));
+  if (b.muteMin !== void 0) await setSetting(db, "mod_mute_min", String(Math.max(1, Number(b.muteMin) || 60)));
+  if (b.turnstileOn !== void 0) await setSetting(db, "turnstile_on", b.turnstileOn ? "1" : "0");
+  if (typeof b.turnstileSite === "string") await setSetting(db, "turnstile_site", b.turnstileSite.trim().slice(0, 120));
+  if (typeof b.turnstileSecret === "string" && b.turnstileSecret && b.turnstileSecret !== "\u2022\u2022\u2022\u2022\u2022\u2022") {
+    await setSetting(db, "turnstile_secret", b.turnstileSecret.trim().slice(0, 200));
+  }
+  if (b.sttDaily !== void 0) await setSetting(db, "stt_daily", String(Math.max(0, Number(b.sttDaily) || 40)));
+  await logAdmin(db, g.user.id, "mod_config", "", JSON.stringify(Object.keys(b)).slice(0, 120));
+  return c.json({ ok: true });
+});
+app.get("/admin/security", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const db = c.env.DB;
+  const now = Date.now();
+  const legacy = await one(db, `SELECT COUNT(*) as n FROM users WHERE password_hash NOT LIKE 'pbkdf2$%'`).catch(() => null);
+  const locks = await many(db, `SELECT k, n, until_ts FROM sec_hits WHERE until_ts > ? LIMIT 40`, now).catch(() => []);
+  const owner = await one(db, `SELECT id, username FROM users WHERE badge = 'owner' LIMIT 1`).catch(() => null);
+  const sess = await one(db, `SELECT COUNT(*) as n FROM sessions WHERE expires_at > ?`, now).catch(() => null);
+  return c.json({
+    ownerSet: !!owner,
+    ownerUsername: owner?.username || null,
+    legacyPasswords: Number(legacy?.n || 0),
+    activeSessions: Number(sess?.n || 0),
+    locked: locks.map((l) => ({ key: l.k, n: l.n, untilMs: Number(l.until_ts) - now })),
+    turnstile: await setting(db, "turnstile_on", "0") === "1",
+    moderation: await setting(db, "mod_on", "1") === "1",
+    aiSupport: await setting(db, "ai_support", "1") === "1",
+    maintenance: await setting(db, "maintenance", "0") === "1"
+  });
+});
+app.post("/admin/security/unlock", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const key = String(c.req.query("key") || "").slice(0, 120);
+  if (key) await secClear(c.env.DB, key);
+  else await soft(c.env.DB, `DELETE FROM sec_hits WHERE until_ts > 0`);
+  return c.json({ ok: true });
+});
 app.get("/admin/ai", async (c) => {
   const g = await supportGate(c);
   if (g.err) return g.err;
