@@ -2445,6 +2445,27 @@ async function run(db, sql, ...params) {
   await db.prepare(sql).bind(...params).run();
 }
 var EXTRA_SQL = [
+  `CREATE TABLE IF NOT EXISTS orders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    plan TEXT NOT NULL,
+    plan_title TEXT,
+    days INTEGER NOT NULL DEFAULT 30,
+    pack TEXT NOT NULL DEFAULT 'all',
+    amount INTEGER NOT NULL,
+    base_amount INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'open',
+    receipt TEXT,
+    receipt_mime TEXT,
+    note TEXT,
+    admin_id TEXT,
+    admin_note TEXT,
+    created_at INTEGER NOT NULL DEFAULT 0,
+    expires_at INTEGER NOT NULL DEFAULT 0,
+    paid_at INTEGER
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, status)`,
+  `CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at)`,
   `CREATE TABLE IF NOT EXISTS sec_hits (
     k TEXT PRIMARY KEY,
     n INTEGER NOT NULL DEFAULT 0,
@@ -2605,7 +2626,7 @@ var EXTRA_SQL = [
   `ALTER TABLE messages ADD COLUMN media_ids TEXT`
 ];
 var booted = false;
-var SCHEMA_V = "t5";
+var SCHEMA_V = "t6";
 async function ensureSchema(db, schema) {
   if (booted) return;
   try {
@@ -3649,6 +3670,97 @@ async function aiHistory(db, conv, cfg) {
     role: m.author_id === T_BOT_ID ? "assistant" : "user",
     content: String(m.body || (m.type && m.type !== "text" ? `[${m.type}]` : "")).slice(0, 700)
   })).filter((m) => m.content);
+}
+// ============ پرداخت کارت‌به‌کارت نیمه‌خودکار ============
+var PAY_DEFAULT_PLANS = [
+  { id: "m1", title: "\u06cc\u06a9 \u0645\u0627\u0647\u0647", days: 30, price: 79e3, pack: "all" },
+  { id: "m3", title: "\u0633\u0647 \u0645\u0627\u0647\u0647", days: 90, price: 199e3, pack: "all" },
+  { id: "y1", title: "\u06cc\u06a9\u200c\u0633\u0627\u0644\u0647", days: 365, price: 599e3, pack: "all" }
+];
+var PAY_RECEIPT_MAX = 45e4;
+async function payPlans(db) {
+  try {
+    const raw = await setting(db, "pay_plans", "");
+    if (!raw) return PAY_DEFAULT_PLANS;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || !arr.length) return PAY_DEFAULT_PLANS;
+    return arr.filter((p) => p && p.id && p.days && p.price).slice(0, 8).map((p) => ({
+      id: String(p.id).slice(0, 16),
+      title: String(p.title || p.id).slice(0, 40),
+      days: Math.max(1, Number(p.days) || 30),
+      price: Math.max(1e3, Number(p.price) || 1e3),
+      pack: String(p.pack || "all").slice(0, 200)
+    }));
+  } catch {
+    return PAY_DEFAULT_PLANS;
+  }
+}
+async function payInfo(db) {
+  return {
+    on: await setting(db, "pay_on", "1") !== "0",
+    card: (await setting(db, "pay_card", "")).trim(),
+    holder: (await setting(db, "pay_holder", "")).trim(),
+    note: (await setting(db, "pay_note", "")).trim(),
+    windowMin: Math.max(5, Number(await setting(db, "pay_window_min", "45")) || 45),
+    maxOpen: Math.max(1, Number(await setting(db, "pay_max_open", "2")) || 2)
+  };
+}
+function payFmt(n) {
+  return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+async function payUniqueAmount(db, base) {
+  const now = Date.now();
+  for (let i = 0; i < 12; i++) {
+    const suffix = 1 + Math.floor(Math.random() * 899);
+    const amount = Math.round(base) + suffix;
+    const clash = await one(
+      db,
+      `SELECT id FROM orders WHERE amount = ? AND status IN ('open','review') AND expires_at > ?`,
+      amount,
+      now
+    ).catch(() => null);
+    if (!clash) return amount;
+  }
+  return Math.round(base) + 1 + Math.floor(Math.random() * 899);
+}
+function payRow(o, extra = {}) {
+  return {
+    id: o.id,
+    plan: o.plan,
+    planTitle: o.plan_title,
+    days: Number(o.days || 0),
+    amount: Number(o.amount || 0),
+    amountText: payFmt(o.amount),
+    status: o.status,
+    hasReceipt: !!o.receipt,
+    note: o.note || "",
+    adminNote: o.admin_note || "",
+    createdAt: Number(o.created_at || 0),
+    expiresAt: Number(o.expires_at || 0),
+    paidAt: Number(o.paid_at || 0),
+    ...extra
+  };
+}
+async function payExpire(db) {
+  try {
+    await soft(db, `UPDATE orders SET status = 'expired' WHERE status = 'open' AND expires_at < ?`, Date.now());
+  } catch {
+  }
+}
+async function payGrant(db, order) {
+  const until0 = await one(db, `SELECT premium, premium_until FROM users WHERE id = ?`, order.user_id);
+  const now = Date.now();
+  const base = Number(until0?.premium_until || 0) > now ? Number(until0.premium_until) : now;
+  const until = base + Number(order.days || 30) * 24 * 3600 * 1e3;
+  await run(
+    db,
+    `UPDATE users SET premium = 1, premium_until = ?, premium_flags = ?, premium_note = ? WHERE id = ?`,
+    until,
+    order.pack || "all",
+    `\u067e\u0631\u062f\u0627\u062e\u062a ${payFmt(order.amount)} \u062a\u0648\u0645\u0627\u0646 \u00b7 ${order.plan_title || order.plan}`,
+    order.user_id
+  );
+  return until;
 }
 async function aiWillReply(env, db, conv, userId, userText) {
   try {
@@ -8541,6 +8653,281 @@ app.post("/admin/security/unlock", async (c) => {
   const key = String(c.req.query("key") || "").slice(0, 120);
   if (key) await secClear(c.env.DB, key);
   else await soft(c.env.DB, `DELETE FROM sec_hits WHERE until_ts > 0`);
+  return c.json({ ok: true });
+});
+app.get("/pay/plans", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  await payExpire(c.env.DB);
+  const info = await payInfo(c.env.DB);
+  const plans = await payPlans(c.env.DB);
+  const open = await many(
+    c.env.DB,
+    `SELECT * FROM orders WHERE user_id = ? AND status IN ('open','review') ORDER BY created_at DESC LIMIT 3`,
+    user.id
+  ).catch(() => []);
+  const last = await one(
+    c.env.DB,
+    `SELECT * FROM orders WHERE user_id = ? AND status IN ('paid','rejected') ORDER BY created_at DESC LIMIT 1`,
+    user.id
+  ).catch(() => null);
+  return c.json({
+    on: info.on && !!info.card,
+    card: info.card,
+    holder: info.holder,
+    note: info.note,
+    windowMin: info.windowMin,
+    plans: plans.map((p) => ({ ...p, priceText: payFmt(p.price) })),
+    open: open.map((o) => payRow(o)),
+    last: last ? payRow(last) : null,
+    premiumUntil: Number(user.premium_until || 0)
+  });
+});
+app.post("/pay/order", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const blocked = await denyWrite(c, user);
+  if (blocked) return blocked;
+  await payExpire(c.env.DB);
+  const info = await payInfo(c.env.DB);
+  if (!info.on || !info.card) return jsonError(c, "\u062e\u0631\u06cc\u062f \u0641\u0639\u0644\u0627\u064b \u0628\u0627\u0632 \u0646\u06cc\u0633\u062a", 503);
+  const body = await c.req.json().catch(() => ({}));
+  const plans = await payPlans(c.env.DB);
+  const plan = plans.find((p) => p.id === String(body.plan || ""));
+  if (!plan) return jsonError(c, "\u0627\u06cc\u0646 \u067e\u0644\u0646 \u0646\u06cc\u0633\u062a", 404);
+  const openCount = await one(
+    c.env.DB,
+    `SELECT COUNT(*) as n FROM orders WHERE user_id = ? AND status IN ('open','review')`,
+    user.id
+  ).catch(() => null);
+  if (Number(openCount?.n || 0) >= info.maxOpen) {
+    return jsonError(c, "\u0633\u0641\u0627\u0631\u0634 \u0628\u0627\u0632 \u062f\u0627\u0631\u06cc\u061b \u0627\u0648\u0644 \u0647\u0645\u0627\u0646 \u0631\u0627 \u06a9\u0627\u0645\u0644 \u06cc\u0627 \u0644\u063a\u0648 \u06a9\u0646", 429);
+  }
+  const gate = await secTouch(c.env.DB, `pay:${user.id}`, 12, 24 * 3600 * 1e3, 3600 * 1e3);
+  if (!gate.ok) return jsonError(c, "\u062a\u0639\u062f\u0627\u062f \u0633\u0641\u0627\u0631\u0634 \u0627\u0645\u0631\u0648\u0632 \u0632\u06cc\u0627\u062f \u0634\u062f", 429);
+  const now = Date.now();
+  const amount = await payUniqueAmount(c.env.DB, plan.price);
+  const id = randomId();
+  await run(
+    c.env.DB,
+    `INSERT INTO orders (id, user_id, plan, plan_title, days, pack, amount, base_amount, status, created_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
+    id,
+    user.id,
+    plan.id,
+    plan.title,
+    plan.days,
+    plan.pack || "all",
+    amount,
+    plan.price,
+    now,
+    now + info.windowMin * 6e4
+  );
+  const row = await one(c.env.DB, `SELECT * FROM orders WHERE id = ?`, id);
+  return c.json({ order: payRow(row), card: info.card, holder: info.holder, note: info.note });
+});
+app.get("/pay/order/:id", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const row = await one(c.env.DB, `SELECT * FROM orders WHERE id = ? AND user_id = ?`, c.req.param("id"), user.id);
+  if (!row) return jsonError(c, "\u0633\u0641\u0627\u0631\u0634 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f", 404);
+  return c.json({ order: payRow(row) });
+});
+app.post("/pay/order/:id/receipt", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const row = await one(c.env.DB, `SELECT * FROM orders WHERE id = ? AND user_id = ?`, c.req.param("id"), user.id);
+  if (!row) return jsonError(c, "\u0633\u0641\u0627\u0631\u0634 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f", 404);
+  if (row.status !== "open" && row.status !== "review") return jsonError(c, "\u0627\u06cc\u0646 \u0633\u0641\u0627\u0631\u0634 \u0628\u0627\u0632 \u0646\u06cc\u0633\u062a", 400);
+  const body = await c.req.json().catch(() => ({}));
+  const data = String(body.image || "");
+  const note = cleanText(body.note, 0, 200) || "";
+  if (!/^data:image\/(jpeg|jpg|png|webp);base64,/.test(data)) return jsonError(c, "\u0641\u0642\u0637 \u0639\u06a9\u0633 \u0631\u0633\u06cc\u062f", 415);
+  if (data.length > PAY_RECEIPT_MAX) return jsonError(c, "\u0639\u06a9\u0633 \u062e\u06cc\u0644\u06cc \u0628\u0632\u0631\u06af \u0627\u0633\u062a", 413);
+  const dec = decodeDataUrl(data);
+  if (!dec || !mediaLooksSafe(dec.mime, dec.bytes)) return jsonError(c, "\u0627\u06cc\u0646 \u0641\u0627\u06cc\u0644 \u0639\u06a9\u0633 \u0633\u0627\u0644\u0645 \u0646\u06cc\u0633\u062a", 415);
+  let stored = data;
+  if (c.env.MEDIA) {
+    try {
+      const key = `r/${row.id}`;
+      await c.env.MEDIA.put(key, dec.bytes, { httpMetadata: { contentType: dec.mime } });
+      stored = "r2:" + key;
+    } catch {
+    }
+  }
+  await run(
+    c.env.DB,
+    `UPDATE orders SET receipt = ?, receipt_mime = ?, note = ?, status = 'review', expires_at = ? WHERE id = ?`,
+    stored,
+    dec.mime,
+    note,
+    Date.now() + 7 * 24 * 3600 * 1e3,
+    row.id
+  );
+  try {
+    const conv = await ensureTConv(c.env.DB, user);
+    await insertBotMessage(
+      c.env.DB,
+      conv.id,
+      T_BOT_ID,
+      `\u0631\u0633\u06cc\u062f \u067e\u0631\u062f\u0627\u062e\u062a\u062a \u0631\u0633\u06cc\u062f \u2705\n\u0645\u0628\u0644\u063a ${payFmt(row.amount)} \u062a\u0648\u0645\u0627\u0646 \u00b7 ${row.plan_title || ""}\n\u062a\u0627 \u0686\u0646\u062f \u062f\u0642\u06cc\u0642\u0647\u0654 \u062f\u06cc\u06af\u0631 \u0628\u0631\u0631\u0633\u06cc \u0648 \u067e\u0631\u0645\u06cc\u0648\u0645\u062a \u0641\u0639\u0627\u0644 \u0645\u06cc\u200c\u0634\u0648\u062f.`
+    );
+  } catch {
+  }
+  const fresh = await one(c.env.DB, `SELECT * FROM orders WHERE id = ?`, row.id);
+  return c.json({ order: payRow(fresh) });
+});
+app.post("/pay/order/:id/cancel", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  await soft(
+    c.env.DB,
+    `UPDATE orders SET status = 'canceled' WHERE id = ? AND user_id = ? AND status IN ('open','review')`,
+    c.req.param("id"),
+    user.id
+  );
+  return c.json({ ok: true });
+});
+app.get("/admin/pay", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const info = await payInfo(c.env.DB);
+  const plans = await payPlans(c.env.DB);
+  const sum = await one(
+    c.env.DB,
+    `SELECT COUNT(*) as n, IFNULL(SUM(amount),0) as s FROM orders WHERE status = 'paid' AND paid_at > ?`,
+    Date.now() - 30 * 24 * 3600 * 1e3
+  ).catch(() => null);
+  return c.json({
+    ...info,
+    plans,
+    plansJson: JSON.stringify(plans, null, 1),
+    month: { count: Number(sum?.n || 0), total: Number(sum?.s || 0), totalText: payFmt(sum?.s || 0) }
+  });
+});
+app.patch("/admin/pay", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const b = await c.req.json().catch(() => ({}));
+  const db = c.env.DB;
+  if (b.on !== void 0) await setSetting(db, "pay_on", b.on ? "1" : "0");
+  if (typeof b.card === "string") await setSetting(db, "pay_card", b.card.replace(/[^0-9\-\s]/g, "").trim().slice(0, 32));
+  if (typeof b.holder === "string") await setSetting(db, "pay_holder", b.holder.trim().slice(0, 60));
+  if (typeof b.note === "string") await setSetting(db, "pay_note", b.note.trim().slice(0, 300));
+  if (b.windowMin !== void 0) await setSetting(db, "pay_window_min", String(Math.max(5, Number(b.windowMin) || 45)));
+  if (b.maxOpen !== void 0) await setSetting(db, "pay_max_open", String(Math.max(1, Number(b.maxOpen) || 2)));
+  if (typeof b.plansJson === "string" && b.plansJson.trim()) {
+    try {
+      const arr = JSON.parse(b.plansJson);
+      if (!Array.isArray(arr) || !arr.length) throw new Error("bad");
+      await setSetting(db, "pay_plans", JSON.stringify(arr));
+    } catch {
+      return jsonError(c, "\u0645\u062a\u0646 \u067e\u0644\u0646\u200c\u0647\u0627 JSON \u0645\u0639\u062a\u0628\u0631 \u0646\u06cc\u0633\u062a");
+    }
+  }
+  await logAdmin(db, g.user.id, "pay_config", "", JSON.stringify(Object.keys(b)).slice(0, 120));
+  return c.json({ ok: true });
+});
+app.get("/admin/orders", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  await payExpire(c.env.DB);
+  const status = String(c.req.query("status") || "review");
+  const where = status === "all" ? "" : "WHERE o.status = ?";
+  const args = status === "all" ? [] : [status];
+  const rows = await many(
+    c.env.DB,
+    `SELECT o.*, u.username as username, u.display_name as display_name, u.avatar as avatar,
+            u.premium_until as premium_until
+     FROM orders o LEFT JOIN users u ON u.id = o.user_id
+     ${where}
+     ORDER BY o.created_at DESC LIMIT 120`,
+    ...args
+  ).catch(() => []);
+  const counts = await many(c.env.DB, `SELECT status, COUNT(*) as n FROM orders GROUP BY status`).catch(() => []);
+  return c.json({
+    orders: rows.map((o) => payRow(o, {
+      userId: o.user_id,
+      username: o.username,
+      displayName: o.display_name,
+      avatar: o.avatar || null,
+      premiumUntil: Number(o.premium_until || 0)
+    })),
+    counts: counts.reduce((m, r) => (m[r.status] = Number(r.n), m), {})
+  });
+});
+app.get("/admin/orders/:id/receipt", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const row = await one(c.env.DB, `SELECT receipt, receipt_mime FROM orders WHERE id = ?`, c.req.param("id"));
+  if (!row || !row.receipt) return jsonError(c, "\u0631\u0633\u06cc\u062f \u0646\u06cc\u0633\u062a", 404);
+  const data = String(row.receipt);
+  if (data.indexOf("r2:") === 0 && c.env.MEDIA) {
+    const obj = await c.env.MEDIA.get(data.slice(3));
+    if (!obj) return jsonError(c, "\u0631\u0633\u06cc\u062f \u0646\u06cc\u0633\u062a", 404);
+    return new Response(obj.body, { headers: { "Content-Type": row.receipt_mime || "image/jpeg", "Cache-Control": "private, max-age=600" } });
+  }
+  const dec = decodeDataUrl(data);
+  if (!dec) return jsonError(c, "\u0631\u0633\u06cc\u062f \u062e\u0631\u0627\u0628 \u0627\u0633\u062a", 500);
+  const copy = new Uint8Array(dec.bytes.byteLength);
+  copy.set(dec.bytes);
+  return new Response(copy, { headers: { "Content-Type": dec.mime || "image/jpeg", "Cache-Control": "private, max-age=600" } });
+});
+app.post("/admin/orders/:id/ok", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const row = await one(c.env.DB, `SELECT * FROM orders WHERE id = ?`, c.req.param("id"));
+  if (!row) return jsonError(c, "\u0633\u0641\u0627\u0631\u0634 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f", 404);
+  if (row.status === "paid") return c.json({ ok: true, already: true });
+  const until = await payGrant(c.env.DB, row);
+  await run(
+    c.env.DB,
+    `UPDATE orders SET status = 'paid', paid_at = ?, admin_id = ? WHERE id = ?`,
+    Date.now(),
+    g.user.id,
+    row.id
+  );
+  try {
+    const target = await one(c.env.DB, `SELECT * FROM users WHERE id = ?`, row.user_id);
+    if (target) {
+      const conv = await ensureTConv(c.env.DB, target);
+      const d = new Date(until).toLocaleDateString("fa-IR-u-ca-persian", { timeZone: "Asia/Tehran", dateStyle: "medium" });
+      await insertBotMessage(
+        c.env.DB,
+        conv.id,
+        T_BOT_ID,
+        `\u067e\u0631\u0645\u06cc\u0648\u0645\u062a \u0641\u0639\u0627\u0644 \u0634\u062f \ud83d\udc51\n\u067e\u0644\u0646: ${row.plan_title || row.plan} \u00b7 ${row.days} \u0631\u0648\u0632\n\u0627\u0639\u062a\u0628\u0627\u0631 \u062a\u0627: ${d}\n\u0645\u0645\u0646\u0648\u0646 \u06a9\u0647 \u0627\u0632 T \u062d\u0645\u0627\u06cc\u062a \u0645\u06cc\u200c\u06a9\u0646\u06cc \u2764\ufe0f`
+      );
+      await pushToUser(c.env.DB, row.user_id).catch(() => {
+      });
+    }
+  } catch {
+  }
+  await logAdmin(c.env.DB, g.user.id, "pay_ok", row.user_id, `${payFmt(row.amount)} \u062a\u0648\u0645\u0627\u0646`);
+  return c.json({ ok: true, premiumUntil: until });
+});
+app.post("/admin/orders/:id/no", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const b = await c.req.json().catch(() => ({}));
+  const reason = cleanText(b.reason, 0, 200) || "\u0631\u0633\u06cc\u062f \u062a\u0623\u06cc\u06cc\u062f \u0646\u0634\u062f";
+  const row = await one(c.env.DB, `SELECT * FROM orders WHERE id = ?`, c.req.param("id"));
+  if (!row) return jsonError(c, "\u0633\u0641\u0627\u0631\u0634 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f", 404);
+  await run(c.env.DB, `UPDATE orders SET status = 'rejected', admin_id = ?, admin_note = ? WHERE id = ?`, g.user.id, reason, row.id);
+  try {
+    const target = await one(c.env.DB, `SELECT * FROM users WHERE id = ?`, row.user_id);
+    if (target) {
+      const conv = await ensureTConv(c.env.DB, target);
+      await insertBotMessage(
+        c.env.DB,
+        conv.id,
+        T_BOT_ID,
+        `\u0633\u0641\u0627\u0631\u0634 ${payFmt(row.amount)} \u062a\u0648\u0645\u0627\u0646 \u062a\u0623\u06cc\u06cc\u062f \u0646\u0634\u062f \u274c\n\u062f\u0644\u06cc\u0644: ${reason}\n\u0627\u06af\u0631 \u0641\u06a9\u0631 \u0645\u06cc\u200c\u06a9\u0646\u06cc \u0627\u0634\u062a\u0628\u0627\u0647 \u0634\u062f\u0647 \u060c \u0647\u0645\u06cc\u0646\u200c\u062c\u0627 \u0628\u0646\u0648\u06cc\u0633.`
+      );
+    }
+  } catch {
+  }
+  await logAdmin(c.env.DB, g.user.id, "pay_no", row.user_id, reason.slice(0, 60));
   return c.json({ ok: true });
 });
 app.get("/admin/ai", async (c) => {

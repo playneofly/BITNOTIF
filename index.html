@@ -1615,6 +1615,13 @@
       .tsup-toast { position: fixed; bottom: 18px; inset-inline-start: 18px; z-index: 100004; background: #2a1b1b; border: 1px solid #d9534f; color: #ffb4b4; padding: 9px 14px; border-radius: 9px; font-size: 12.5px; z-index: 70; display: none; }
 
       /* ---- پنجرهٔ تنظیمات هوش مصنوعی ---- */
+      #tordWrap {
+        position: fixed; inset: 0; z-index: 100003; display: none;
+        background: rgba(4,6,14,.72); backdrop-filter: blur(3px);
+        direction: rtl; font-family: var(--sans, Tahoma, "Segoe UI", sans-serif);
+        align-items: center; justify-content: center; padding: 16px;
+      }
+      #tordWrap.on { display: flex; }
       #tsaiWrap {
         position: fixed; inset: 0; z-index: 100003; display: none;
         background: rgba(4,6,14,.72); backdrop-filter: blur(3px);
@@ -1744,10 +1751,12 @@
         refresh.addEventListener("click", function () { loadList(true); });
         var aiBtn = el("button", "tsup-btn", "🤖 هوش مصنوعی");
         aiBtn.addEventListener("click", openAi);
+        var ordBtn = el("button", "tsup-btn", "💳 سفارش‌ها");
+        ordBtn.addEventListener("click", openPay);
         var close = el("button", "tsup-btn", "بستن ✕");
         close.addEventListener("click", closePanel);
         head.appendChild(back); head.appendChild(h); head.appendChild(sub);
-        head.appendChild(grow); head.appendChild(search); head.appendChild(aiBtn); head.appendChild(refresh); head.appendChild(close);
+        head.appendChild(grow); head.appendChild(search); head.appendChild(ordBtn); head.appendChild(aiBtn); head.appendChild(refresh); head.appendChild(close);
 
         var body = el("div", "tsup-body");
         var list = el("div", "tsup-list"); list.id = "tsupList";
@@ -2219,6 +2228,161 @@
           .then(function () { aiF.testBtn.disabled = false; });
       }
 
+      /* ---------- سفارش‌های پرداخت ---------- */
+      var payWrap = null, payF = {}, payTab = "review";
+
+      function buildPay() {
+        if (payWrap) return payWrap;
+        payWrap = el("div"); payWrap.id = "tordWrap";
+        var box = el("div", "tsai-box");
+        box.style.width = "min(900px, 100%)";
+        box.addEventListener("click", function (e) { e.stopPropagation(); });
+        payWrap.addEventListener("click", function () { payWrap.classList.remove("on"); });
+
+        box.appendChild(el("h3", null, "💳 سفارش‌های پرمیوم (کارت‌به‌کارت)"));
+        payF.stat = el("div", "hint");
+        box.appendChild(payF.stat);
+
+        var tabs = el("div", "tsai-foot");
+        [["review", "در انتظار بررسی"], ["paid", "تأییدشده"], ["rejected", "ردشده"], ["all", "همه"]].forEach(function (t) {
+          var b = el("button", "tsup-btn" + (payTab === t[0] ? " gold" : ""), t[1]);
+          b.dataset.tab = t[0];
+          b.addEventListener("click", function () { payTab = t[0]; loadOrders(); });
+          tabs.appendChild(b);
+        });
+        payF.tabs = tabs;
+        box.appendChild(tabs);
+
+        payF.list = el("div");
+        payF.list.style.cssText = "margin-top:12px;display:grid;gap:10px;max-height:44vh;overflow-y:auto";
+        box.appendChild(payF.list);
+
+        var sec = el("div", "tsai-sec");
+        sec.appendChild(el("b", null, "تنظیم فروش"));
+        var sw = el("label", "tsai-sw");
+        payF.on = el("input"); payF.on.type = "checkbox";
+        sw.appendChild(payF.on); sw.appendChild(el("span", null, "فروش پرمیوم باز باشد"));
+        sec.appendChild(sw);
+        var g = el("div", "tsai-grid3");
+        payF.card = aiField(g, "شمارهٔ کارت", aiInput("text"));
+        payF.card.placeholder = "6037-xxxx-xxxx-xxxx";
+        payF.holder = aiField(g, "به نام", aiInput("text"));
+        payF.windowMin = aiField(g, "مهلت پرداخت (دقیقه)", aiInput("number"));
+        sec.appendChild(g);
+        payF.note = aiField(sec, "یادداشت زیر کارت", aiInput("text"));
+        sec.appendChild(el("div", "hint", "پلن‌ها (JSON): هر پلن id ، title ، days ، price (تومان)"));
+        payF.plans = el("textarea");
+        payF.plans.style.cssText = "min-height:130px;direction:ltr;text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px";
+        sec.appendChild(payF.plans);
+        var foot = el("div", "tsai-foot");
+        payF.save = el("button", "tsup-btn gold", "ذخیرهٔ تنظیم فروش");
+        payF.save.addEventListener("click", savePay);
+        var close = el("button", "tsup-btn", "بستن");
+        close.addEventListener("click", function () { payWrap.classList.remove("on"); });
+        foot.appendChild(payF.save); foot.appendChild(close);
+        foot.appendChild(el("div", "grow"));
+        payF.err = el("span", "hint");
+        foot.appendChild(payF.err);
+        sec.appendChild(foot);
+        box.appendChild(sec);
+
+        payWrap.appendChild(box);
+        document.body.appendChild(payWrap);
+        return payWrap;
+      }
+      function openPay() {
+        buildPay().classList.add("on");
+        loadOrders();
+        api("/admin/pay").then(function (d) {
+          payF.on.checked = !!d.on;
+          payF.card.value = d.card || "";
+          payF.holder.value = d.holder || "";
+          payF.note.value = d.note || "";
+          payF.windowMin.value = d.windowMin;
+          payF.plans.value = d.plansJson || "";
+          payF.stat.innerHTML = '<span class="tsai-pill ' + (d.on && d.card ? "ok" : "no") + '">' +
+            (d.on && d.card ? "فروش باز است" : "فروش بسته یا شمارهٔ کارت خالی است") + "</span> " +
+            "درآمد ۳۰ روز اخیر: " + fa(d.month.totalText) + " تومان از " + fa(d.month.count) + " سفارش";
+        }).catch(function (e) { payF.stat.textContent = "خطا: " + e.message; });
+      }
+      function loadOrders() {
+        if (!payF.list) return;
+        [].forEach.call(payF.tabs.children, function (b) {
+          b.className = "tsup-btn" + (b.dataset.tab === payTab ? " gold" : "");
+        });
+        payF.list.textContent = "در حال گرفتن…";
+        api("/admin/orders?status=" + payTab).then(function (d) {
+          payF.list.textContent = "";
+          if (!(d.orders || []).length) { payF.list.appendChild(el("div", "tsup-empty", "چیزی اینجا نیست.")); return; }
+          d.orders.forEach(function (o) { payF.list.appendChild(orderCard(o)); });
+        }).catch(function (e) { payF.list.textContent = "خطا: " + e.message; });
+      }
+      function orderCard(o) {
+        var card = el("div");
+        card.style.cssText = "display:flex;gap:12px;align-items:flex-start;background:var(--bg2,#111420);" +
+          "border:1px solid var(--line,rgba(120,140,255,.18));border-radius:12px;padding:11px 13px";
+        if (o.hasReceipt) {
+          var a = document.createElement("a");
+          a.href = "/api/admin/orders/" + o.id + "/receipt";
+          a.target = "_blank"; a.rel = "noreferrer";
+          var im = new Image();
+          im.src = "/api/admin/orders/" + o.id + "/receipt";
+          im.style.cssText = "width:86px;height:86px;object-fit:cover;border-radius:10px;display:block;background:#0b1020";
+          a.appendChild(im); card.appendChild(a);
+        }
+        var mid = el("div"); mid.style.cssText = "flex:1;min-width:0";
+        var t = el("div", null, "@" + (o.username || "?") + " · " + (o.displayName || ""));
+        t.style.cssText = "font-size:13.5px;font-weight:600";
+        mid.appendChild(t);
+        var m = el("div", null, fa(o.amountText) + " تومان · " + (o.planTitle || o.plan) + " · " + fa(o.days) + " روز");
+        m.style.cssText = "font-size:12.5px;color:#8fc3ff;margin-top:3px";
+        mid.appendChild(m);
+        var when = el("div", null, new Date(o.createdAt).toLocaleString("fa-IR") + " · وضعیت: " + statusFa(o.status) +
+          (o.adminNote ? " · " + o.adminNote : ""));
+        when.style.cssText = "font-size:11px;color:var(--mute,#8d95a8);margin-top:3px";
+        mid.appendChild(when);
+        card.appendChild(mid);
+        if (o.status === "review" || o.status === "open") {
+          var acts = el("div"); acts.style.cssText = "display:flex;flex-direction:column;gap:6px";
+          var ok = el("button", "tsup-btn gold", "تأیید");
+          ok.addEventListener("click", function () {
+            ok.disabled = true;
+            api("/admin/orders/" + o.id + "/ok", { method: "POST" }).then(function (d) {
+              if (d.error) { toast(d.error); ok.disabled = false; return; }
+              toast("پرمیوم فعال شد ✅"); loadOrders(); loadOrdCount();
+            });
+          });
+          var no = el("button", "tsup-btn", "رد");
+          no.addEventListener("click", function () {
+            var why = prompt("دلیل رد کردن؟", "رسید نامعتبر بود");
+            if (why === null) return;
+            api("/admin/orders/" + o.id + "/no", {
+              method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reason: why })
+            }).then(function () { toast("رد شد"); loadOrders(); loadOrdCount(); });
+          });
+          acts.appendChild(ok); acts.appendChild(no);
+          card.appendChild(acts);
+        }
+        return card;
+      }
+      function statusFa(s) {
+        return { open: "منتظر رسید", review: "در انتظار بررسی", paid: "تأییدشده", rejected: "ردشده", expired: "منقضی", canceled: "لغوشده" }[s] || s;
+      }
+      function savePay() {
+        payF.save.disabled = true; payF.err.textContent = "در حال ذخیره…";
+        api("/admin/pay", {
+          method: "PATCH", headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            on: !!payF.on.checked, card: payF.card.value, holder: payF.holder.value,
+            note: payF.note.value, windowMin: Number(payF.windowMin.value), plansJson: payF.plans.value
+          })
+        }).then(function (d) {
+          payF.save.disabled = false;
+          payF.err.textContent = d.error ? "خطا: " + d.error : "ذخیره شد ✅";
+          if (!d.error) openPay();
+        }).catch(function (e) { payF.save.disabled = false; payF.err.textContent = e.message; });
+      }
+
       /* ---------- تزریق تب داخل ریل پنل ادمین ---------- */
       var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
         '<path d="M4 13v-1a8 8 0 0 1 16 0v1"></path>' +
@@ -2226,10 +2390,44 @@
         '<path d="M20 13h-2.4a1 1 0 0 0-1 1v3.4a1 1 0 0 0 1 1h.8a1.6 1.6 0 0 0 1.6-1.6Z"></path>' +
         '<path d="M18 18.4v.6a2.5 2.5 0 0 1-2.5 2.5H13"></path></svg>';
 
+      var ORD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+        '<rect x="2.5" y="5" width="19" height="14" rx="2.5"></rect>' +
+        '<path d="M2.5 9.5h19"></path><path d="M6 14.5h4"></path></svg>';
+      var ordTabBtn = null, ordBadgeEl = null, ordTimer = null;
+
+      function injectOrdTab(nav) {
+        if (ordTabBtn && nav.contains(ordTabBtn)) return;
+        ordTabBtn = document.createElement("button");
+        ordTabBtn.type = "button";
+        ordTabBtn.className = "admin-tab";
+        ordTabBtn.title = "سفارش‌های پرمیوم";
+        ordTabBtn.setAttribute("data-t-orders", "1");
+        var ico = el("span", "admin-tab-ico");
+        ico.innerHTML = ORD_ICON;
+        ordTabBtn.appendChild(ico);
+        ordTabBtn.appendChild(el("em", null, "سفارش‌ها"));
+        ordBadgeEl = el("span", "tsup-badge");
+        ordTabBtn.appendChild(ordBadgeEl);
+        nav.appendChild(ordTabBtn);
+        loadOrdCount();
+        clearInterval(ordTimer);
+        ordTimer = setInterval(function () { if (onAdmin()) loadOrdCount(); }, 30000);
+      }
+      function loadOrdCount() {
+        api("/admin/orders?status=review").then(function (d) {
+          var n = (d.orders || []).length;
+          if (!ordBadgeEl) return;
+          ordBadgeEl.textContent = n > 99 ? "۹۹+" : fa(n);
+          ordBadgeEl.classList.toggle("on", n > 0);
+        }).catch(function () {});
+      }
+      window.__tOrdRefresh = loadOrdCount;
+
       function injectTab() {
         if (!onAdmin()) return;
         var nav = document.querySelector(".admin-rail nav");
         if (!nav) return;
+        injectOrdTab(nav);
         if (tabBtn && nav.contains(tabBtn)) return;
         tabBtn = document.createElement("button");
         tabBtn.type = "button";
@@ -2249,6 +2447,14 @@
       /* کلیک‌ها به‌صورت delegation — حتی اگر React ریل را دوباره بسازد کار می‌کند */
       document.addEventListener("click", function (e) {
         if (!e.target || !e.target.closest) return;
+        var ord = e.target.closest("[data-t-orders]");
+        if (ord) {
+          e.preventDefault(); e.stopPropagation();
+          ordTabBtn = ord;
+          ordBadgeEl = ord.querySelector(".tsup-badge");
+          openPay();
+          return;
+        }
         var mine = e.target.closest("[data-t-support]");
         if (mine) {
           e.preventDefault(); e.stopPropagation();
@@ -3013,7 +3219,297 @@
     })();
     </script>
 
-        <!-- ===== ویس→متن ، ترجمه و تأیید امنیتی ===== -->
+        <!-- ===== خرید پرمیوم: کارت‌به‌کارت نیمه‌خودکار ===== -->
+    <style>
+      #tpayWrap {
+        position: fixed; inset: 0; z-index: 100006; display: none; direction: rtl;
+        background: rgba(4,6,14,.76); backdrop-filter: blur(4px);
+        align-items: center; justify-content: center; padding: 16px;
+        font-family: var(--sans, Tahoma, sans-serif); color: var(--cream, #e9effa);
+      }
+      #tpayWrap.on { display: flex; }
+      .tpay-box {
+        width: min(460px, 100%); max-height: 92vh; overflow-y: auto;
+        background: linear-gradient(165deg, #111827 0%, #0B1020 100%);
+        border: 1px solid rgba(120,140,255,.22); border-radius: 18px; padding: 20px;
+        box-shadow: 0 26px 70px rgba(0,0,0,.6);
+      }
+      .tpay-box h3 { margin: 0 0 4px; font-size: 18px; color: var(--gold, #8fc3ff); }
+      .tpay-box .sub { font-size: 12px; color: var(--mute, #8d95a8); margin-bottom: 16px; line-height: 1.9; }
+      .tpay-plans { display: grid; gap: 10px; }
+      .tpay-plan {
+        display: flex; align-items: center; gap: 12px; width: 100%; text-align: start; cursor: pointer;
+        background: rgba(120,140,255,.06); border: 1px solid rgba(120,140,255,.18);
+        border-radius: 14px; padding: 13px 15px; color: inherit; font-family: inherit;
+        transition: border-color .15s, background .15s, transform .1s;
+      }
+      .tpay-plan:hover { border-color: #4c8dff; background: rgba(76,141,255,.12); }
+      .tpay-plan:active { transform: scale(.99); }
+      .tpay-plan b { font-size: 15px; }
+      .tpay-plan .d { font-size: 11.5px; color: var(--mute, #8d95a8); display: block; margin-top: 2px; }
+      .tpay-plan .p { margin-inline-start: auto; text-align: center; }
+      .tpay-plan .p i { font-style: normal; font-size: 16px; font-weight: 700; color: #8fc3ff; }
+      .tpay-plan .p s { display: block; font-size: 10.5px; color: var(--mute, #8d95a8); text-decoration: none; }
+      .tpay-card {
+        background: #0d1424; border: 1px dashed rgba(120,140,255,.32); border-radius: 14px;
+        padding: 14px; margin-bottom: 12px;
+      }
+      .tpay-line { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+      .tpay-line:last-child { margin-bottom: 0; }
+      .tpay-line span.k { font-size: 11.5px; color: var(--mute, #8d95a8); min-width: 74px; }
+      .tpay-line b { font-size: 15px; letter-spacing: .5px; direction: ltr; font-family: ui-monospace, monospace; white-space: nowrap; }
+      .tpay-line b.plain { font-family: var(--sans, Tahoma, sans-serif); letter-spacing: 0; direction: rtl; font-size: 14px; white-space: normal; }
+      .tpay-line .amt { color: #7ee2a8; }
+      .tpay-copy {
+        margin-inline-start: auto; background: rgba(76,141,255,.14); border: 1px solid rgba(120,140,255,.28);
+        color: #cfe0ff; border-radius: 9px; padding: 5px 10px; font-size: 11.5px; cursor: pointer; font-family: inherit;
+      }
+      .tpay-copy:hover { background: rgba(76,141,255,.26); }
+      .tpay-timer { font-size: 12px; color: #ffcf9e; text-align: center; margin: 6px 0 12px; }
+      .tpay-drop {
+        border: 1.5px dashed rgba(120,140,255,.35); border-radius: 14px; padding: 18px; text-align: center;
+        cursor: pointer; font-size: 13px; color: var(--mute, #8d95a8); transition: border-color .15s, background .15s;
+      }
+      .tpay-drop:hover { border-color: #4c8dff; background: rgba(76,141,255,.07); }
+      .tpay-drop img { max-width: 100%; max-height: 190px; border-radius: 10px; display: block; margin: 0 auto 8px; }
+      .tpay-btn {
+        width: 100%; margin-top: 12px; border: 0; border-radius: 12px; padding: 12px;
+        background: linear-gradient(135deg, #5C9BFF, #2A5FC4); color: #f4f8ff;
+        font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer;
+      }
+      .tpay-btn:disabled { opacity: .55; cursor: not-allowed; }
+      .tpay-ghost {
+        width: 100%; margin-top: 8px; background: none; border: 1px solid rgba(120,140,255,.22);
+        color: var(--mute, #8d95a8); border-radius: 12px; padding: 10px; font-family: inherit; font-size: 12.5px; cursor: pointer;
+      }
+      .tpay-msg { font-size: 12.5px; margin-top: 10px; text-align: center; line-height: 1.9; }
+      .tpay-msg.ok { color: #7ee2a8; }
+      .tpay-msg.err { color: #ff9d9d; }
+      .tpay-done { text-align: center; padding: 10px 0; }
+      .tpay-done .ico { font-size: 42px; }
+      .t-prem-buy {
+        display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%;
+        margin-top: 8px; padding: 9px 12px; border: 0; border-radius: 10px; cursor: pointer;
+        background: linear-gradient(135deg, #5C9BFF, #2A5FC4); color: #f4f8ff;
+        font-family: inherit; font-size: 12.5px; font-weight: 700;
+      }
+    </style>
+    <script>
+    (function () {
+      "use strict";
+      var wrap = null, box = null, state = { plans: [], order: null, card: "", holder: "", note: "", image: null, timer: null };
+
+      function el(t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
+      function api(path, opt) {
+        return fetch("/api" + path, Object.assign({ credentials: "include", cache: "no-store" }, opt || {}))
+          .then(function (r) { return r.json().catch(function () { return { error: "پاسخ نامعتبر" }; }); });
+      }
+      function fa(n) { return String(n).replace(/\d/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹"[d]; }); }
+      function copy(text, btn) {
+        var done = function () { var o = btn.textContent; btn.textContent = "کپی شد ✓"; setTimeout(function () { btn.textContent = o; }, 1500); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(fallback);
+        else fallback();
+        function fallback() {
+          var ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); done(); } catch (e) {}
+          document.body.removeChild(ta);
+        }
+      }
+      function build() {
+        if (wrap) return wrap;
+        wrap = el("div"); wrap.id = "tpayWrap";
+        box = el("div", "tpay-box");
+        box.addEventListener("click", function (e) { e.stopPropagation(); });
+        wrap.addEventListener("click", close);
+        wrap.appendChild(box);
+        document.body.appendChild(wrap);
+        return wrap;
+      }
+      function close() { if (wrap) wrap.classList.remove("on"); clearInterval(state.timer); }
+      function open() {
+        build().classList.add("on");
+        box.textContent = "";
+        box.appendChild(el("h3", null, "خرید پرمیوم T"));
+        box.appendChild(el("div", "sub", "در حال گرفتن اطلاعات…"));
+        api("/pay/plans").then(function (d) {
+          if (d.error) return screenMsg("خطا: " + d.error, true);
+          state.plans = d.plans || []; state.card = d.card; state.holder = d.holder; state.note = d.note;
+          if (!d.on) return screenMsg("فروش پرمیوم فعلاً بسته است. از کانال تلگرام T پیگیری کن.", true);
+          var open0 = (d.open || [])[0];
+          if (open0) { state.order = open0; screenPay(); return; }
+          screenPlans(d);
+        }).catch(function (e) { screenMsg("خطا: " + e.message, true); });
+      }
+      function screenMsg(text, err) {
+        box.textContent = "";
+        box.appendChild(el("h3", null, "خرید پرمیوم T"));
+        box.appendChild(el("div", "tpay-msg" + (err ? " err" : " ok"), text));
+        var b = el("button", "tpay-ghost", "بستن"); b.addEventListener("click", close); box.appendChild(b);
+      }
+      function screenPlans(d) {
+        box.textContent = "";
+        box.appendChild(el("h3", null, "خرید پرمیوم T"));
+        box.appendChild(el("div", "sub", "پلن را انتخاب کن. پرداخت کارت‌به‌کارت است و بعد از تأیید رسید، پرمیوم بلافاصله فعال می‌شود."));
+        var list = el("div", "tpay-plans");
+        state.plans.forEach(function (p) {
+          var b = el("button", "tpay-plan"); b.type = "button";
+          var left = el("div");
+          left.appendChild(el("b", null, p.title));
+          left.appendChild(el("span", "d", fa(p.days) + " روز"));
+          var right = el("div", "p");
+          right.appendChild(el("i", null, fa(p.priceText)));
+          right.appendChild(el("s", null, "تومان"));
+          b.appendChild(left); b.appendChild(right);
+          b.addEventListener("click", function () { pick(p, b); });
+          list.appendChild(b);
+        });
+        box.appendChild(list);
+        if (d.premiumUntil > Date.now()) {
+          box.appendChild(el("div", "tpay-msg ok", "پرمیوم فعلی‌ات تا " + new Date(d.premiumUntil).toLocaleDateString("fa-IR") + " اعتبار دارد؛ خرید تازه به آن اضافه می‌شود."));
+        }
+        var c = el("button", "tpay-ghost", "بستن"); c.addEventListener("click", close); box.appendChild(c);
+      }
+      function pick(p, btn) {
+        btn.disabled = true;
+        api("/pay/order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: p.id }) })
+          .then(function (d) {
+            btn.disabled = false;
+            if (d.error) return screenMsg(d.error, true);
+            state.order = d.order; state.card = d.card || state.card; state.holder = d.holder || state.holder;
+            screenPay();
+          }).catch(function (e) { btn.disabled = false; screenMsg(e.message, true); });
+      }
+      function line(k, v, cls) {
+        var row = el("div", "tpay-line");
+        row.appendChild(el("span", "k", k));
+        var b = el("b", cls || null, v);
+        row.appendChild(b);
+        var cp = el("button", "tpay-copy", "کپی");
+        cp.addEventListener("click", function () { copy(v.replace(/[^\d]/g, ""), cp); });
+        row.appendChild(cp);
+        return row;
+      }
+      function screenPay() {
+        var o = state.order;
+        box.textContent = "";
+        box.appendChild(el("h3", null, "پرداخت " + fa(o.amountText) + " تومان"));
+        box.appendChild(el("div", "sub", "دقیقاً همین مبلغ را کارت‌به‌کارت کن (رقم‌های آخر شناسهٔ سفارش توست) و بعد عکس رسید را بفرست."));
+        var card = el("div", "tpay-card");
+        card.appendChild(line("شمارهٔ کارت", state.card));
+        if (state.holder) {
+          var hr = el("div", "tpay-line");
+          hr.appendChild(el("span", "k", "به نام"));
+          hr.appendChild(el("b", "plain", state.holder));
+          card.appendChild(hr);
+        }
+        card.appendChild(line("مبلغ دقیق", fa(o.amountText) + " تومان", "amt"));
+        box.appendChild(card);
+        if (state.note) box.appendChild(el("div", "sub", state.note));
+        var timer = el("div", "tpay-timer"); box.appendChild(timer);
+        clearInterval(state.timer);
+        state.timer = setInterval(function () {
+          var left = Math.max(0, o.expiresAt - Date.now());
+          var m = Math.floor(left / 60000), s = Math.floor(left % 60000 / 1000);
+          timer.textContent = left > 0 ? "این مبلغ تا " + fa(m) + ":" + fa(String(s).padStart(2, "0")) + " دیگر رزرو است" : "زمان تمام شد؛ سفارش تازه بساز";
+        }, 500);
+
+        var drop = el("div", "tpay-drop", "عکس رسید را اینجا بگذار یا کلیک کن");
+        var file = document.createElement("input"); file.type = "file"; file.accept = "image/*"; file.style.display = "none";
+        drop.addEventListener("click", function () { file.click(); });
+        file.addEventListener("change", function () { if (file.files && file.files[0]) shrink(file.files[0], drop); });
+        box.appendChild(drop); box.appendChild(file);
+
+        var send = el("button", "tpay-btn", "فرستادن رسید");
+        send.addEventListener("click", function () { submit(send); });
+        box.appendChild(send);
+        var msg = el("div", "tpay-msg"); msg.id = "tpayMsg"; box.appendChild(msg);
+        var cancel = el("button", "tpay-ghost", "لغو سفارش");
+        cancel.addEventListener("click", function () {
+          api("/pay/order/" + o.id + "/cancel", { method: "POST" }).then(function () { state.order = null; open(); });
+        });
+        box.appendChild(cancel);
+        if (o.status === "review") { msg.className = "tpay-msg ok"; msg.textContent = "رسیدت رسیده و در صف بررسی است ✅"; }
+      }
+      function shrink(f, drop) {
+        var r = new FileReader();
+        r.onload = function () {
+          var im = new Image();
+          im.onload = function () {
+            var max = 1100, sc = Math.min(1, max / Math.max(im.width, im.height));
+            var cv = document.createElement("canvas");
+            cv.width = Math.round(im.width * sc); cv.height = Math.round(im.height * sc);
+            cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+            state.image = cv.toDataURL("image/jpeg", 0.72);
+            drop.textContent = "";
+            var pv = new Image(); pv.src = state.image; drop.appendChild(pv);
+            drop.appendChild(document.createTextNode("برای عوض کردن، دوباره کلیک کن"));
+          };
+          im.src = r.result;
+        };
+        r.readAsDataURL(f);
+      }
+      function submit(btn) {
+        var msg = document.getElementById("tpayMsg");
+        if (!state.image) { msg.className = "tpay-msg err"; msg.textContent = "اول عکس رسید را انتخاب کن"; return; }
+        btn.disabled = true; msg.className = "tpay-msg"; msg.textContent = "در حال فرستادن…";
+        api("/pay/order/" + state.order.id + "/receipt", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: state.image })
+        }).then(function (d) {
+          btn.disabled = false;
+          if (d.error) { msg.className = "tpay-msg err"; msg.textContent = d.error; return; }
+          clearInterval(state.timer);
+          box.textContent = "";
+          box.appendChild(el("h3", null, "رسیدت رسید ✅"));
+          var done = el("div", "tpay-done");
+          done.appendChild(el("div", "ico", "🧾"));
+          done.appendChild(el("div", "sub", "تیم T رسید را بررسی می‌کند و پرمیوم‌ات همین‌جا فعال می‌شود. نتیجه را در چت «پشتیبانی اختصاصی T» می‌بینی."));
+          box.appendChild(done);
+          var c = el("button", "tpay-btn", "باشه"); c.addEventListener("click", close); box.appendChild(c);
+        }).catch(function (e) { btn.disabled = false; msg.className = "tpay-msg err"; msg.textContent = e.message; });
+      }
+
+      /* دکمهٔ خرید: هم بالای پنجرهٔ پرمیوم ، هم داخل تنظیمات ، هم کنار کد هدیه */
+      function buyButton(label) {
+        var b = el("button", "t-prem-buy", label || "خرید پرمیوم (کارت‌به‌کارت)");
+        b.type = "button";
+        b.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); open(); });
+        return b;
+      }
+      function injectBuy() {
+        /* پنجرهٔ پرمیوم — دکمه اول لیست */
+        var tip = document.querySelector(".prem-tip");
+        if (tip && !tip.querySelector(".t-prem-buy")) {
+          var b = buyButton("✨ خرید پرمیوم");
+          b.style.marginTop = "0";
+          b.style.marginBottom = "10px";
+          tip.insertBefore(b, tip.firstChild);
+        }
+        /* صفحهٔ تنظیمات — دقیقاً زیر دکمهٔ «اعمال کد» */
+        if (location.pathname.indexOf("/settings") === 0 && !document.querySelector(".t-prem-buy")) {
+          var applyBtn = [].slice.call(document.querySelectorAll("button"))
+            .find(function (x) { return /اعمال\s*کد/.test(x.textContent || ""); });
+          var host = applyBtn || null;
+          if (host) {
+            var wrapB = el("div");
+            wrapB.style.cssText = "margin:10px 0 4px";
+            var note = el("div", null, "کد نداری؟ همین‌جا با کارت‌به‌کارت بخر — بعد از تأیید رسید، پرمیوم فوری فعال می‌شود.");
+            note.style.cssText = "font-size:11.5px;color:var(--mute,#8d95a8);line-height:1.9;margin-bottom:6px";
+            wrapB.appendChild(note);
+            wrapB.appendChild(buyButton("✨ خرید پرمیوم"));
+            host.insertAdjacentElement("afterend", wrapB);
+          }
+        }
+      }
+      window.__tPayOpen = open;
+      setInterval(injectBuy, 800);
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", injectBuy);
+      else injectBuy();
+    })();
+    </script>
+
+    <!-- ===== ویس→متن ، ترجمه و تأیید امنیتی ===== -->
     <style>
       .t-stt-btn, .t-tr-btn {
         border: 1px solid rgba(120,140,255,.32); background: rgba(76,141,255,.12);
