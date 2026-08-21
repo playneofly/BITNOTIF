@@ -2565,8 +2565,17 @@ var EXTRA_SQL = [
   `ALTER TABLE messages ADD COLUMN media_ids TEXT`
 ];
 var booted = false;
+var SCHEMA_V = "t1";
 async function ensureSchema(db, schema) {
   if (booted) return;
+  try {
+    const probe = await db.prepare(`SELECT value FROM site_settings WHERE key = 'schema_v'`).first();
+    if (probe && String(probe.value) === SCHEMA_V) {
+      booted = true;
+      return;
+    }
+  } catch {
+  }
   const parts = schema.split(";").map((s) => s.trim()).filter(Boolean);
   for (const sql of parts) {
     try {
@@ -2579,6 +2588,13 @@ async function ensureSchema(db, schema) {
       await db.prepare(sql).bind().run();
     } catch {
     }
+  }
+  try {
+    await db.prepare(
+      `INSERT INTO site_settings (key, value) VALUES ('schema_v', ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+    ).bind(SCHEMA_V).run();
+  } catch {
   }
   booted = true;
 }
@@ -2619,15 +2635,30 @@ function encodePack(p) {
   if (PACK_KEYS.every((k) => out[k])) return "all";
   return JSON.stringify(out);
 }
+var settingsCache = null;
+var SETTINGS_TTL = 1e4;
+async function allSettings(db) {
+  if (settingsCache && Date.now() - settingsCache.at < SETTINGS_TTL) return settingsCache.map;
+  const map = /* @__PURE__ */ new Map();
+  const rows = await many(db, `SELECT key, value FROM site_settings`);
+  for (const r of rows) map.set(String(r.key), r.value);
+  settingsCache = { at: Date.now(), map };
+  return map;
+}
+function dropSettingsCache() {
+  settingsCache = null;
+}
 async function setting(db, key, fallback = "") {
   try {
-    const row = await one(db, `SELECT value FROM site_settings WHERE key = ?`, key);
-    return row?.value ?? fallback;
+    const map = await allSettings(db);
+    const v = map.get(key);
+    return v == null ? fallback : v;
   } catch {
     return fallback;
   }
 }
 async function setSetting(db, key, value) {
+  dropSettingsCache();
   await run(
     db,
     `INSERT INTO site_settings (key, value) VALUES (?, ?)
@@ -3358,14 +3389,20 @@ app.use("*", async (c, next) => {
   } catch (e) {
     return jsonError(c, `\u0627\u0633\u06A9\u06CC\u0645\u0627 \u0633\u0627\u062E\u062A\u0647 \u0646\u0634\u062F: ${e instanceof Error ? e.message : String(e)}`, 500);
   }
-  try {
-    await purgeExpired(c.env.DB);
-  } catch {
-  }
-  try {
-    await ensureTBotName(c.env.DB);
-  } catch {
-  }
+  const bg = (p) => {
+    try {
+      const ctx = c.executionCtx;
+      if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p.catch(() => {
+      }));
+      else p.catch(() => {
+      });
+    } catch {
+      p.catch(() => {
+      });
+    }
+  };
+  bg(purgeExpired(c.env.DB));
+  bg(ensureTBotName(c.env.DB));
   try {
     const maint = await setting(c.env.DB, "maintenance", "0");
     if (maint === "1") {
@@ -3392,6 +3429,13 @@ function jsonError(c, message, status = 400) {
 }
 function isHttps(c) {
   return new URL(c.req.url).protocol === "https:";
+}
+function hintCookie(c, on) {
+  if (on) {
+    setCookie(c, "t_in", "1", { ...cookieOpts(c, SESSION_MS / 1e3), httpOnly: false });
+  } else {
+    deleteCookie(c, "t_in", { path: "/" });
+  }
 }
 function cookieOpts(c, maxAge) {
   return {
@@ -4165,6 +4209,7 @@ app.post("/auth/register", async (c) => {
     now
   );
   setCookie(c, COOKIE, token, cookieOpts(c, SESSION_MS / 1e3));
+  hintCookie(c, true);
   const cc = countryOf(c);
   if (cc) await run(c.env.DB, `UPDATE users SET last_country = ? WHERE id = ?`, cc, id);
   const user = await one(c.env.DB, `SELECT * FROM users WHERE id = ?`, id);
@@ -4196,6 +4241,7 @@ app.post("/auth/login", async (c) => {
   const cc = countryOf(c);
   await run(c.env.DB, `UPDATE users SET last_seen = ?${cc ? ", last_country = ?" : ""} WHERE id = ?`, ...cc ? [now, cc, user.id] : [now, user.id]);
   setCookie(c, COOKIE, token, cookieOpts(c, SESSION_MS / 1e3));
+  hintCookie(c, true);
   return c.json({ user: pub(user, user.id, true) });
 });
 app.post("/auth/logout", async (c) => {
@@ -4204,11 +4250,15 @@ app.post("/auth/logout", async (c) => {
     await run(c.env.DB, `DELETE FROM sessions WHERE token_hash = ?`, await sha256Hex(token));
   }
   deleteCookie(c, COOKIE, { path: "/" });
+  hintCookie(c, false);
   return c.json({ ok: true });
 });
 app.get("/me", async (c) => {
   const user = await auth(c);
-  if (user instanceof Response) return user;
+  if (user instanceof Response) {
+    hintCookie(c, false);
+    return user;
+  }
   return c.json({ user: pub(user, user.id, true) });
 });
 app.patch("/me", async (c) => {

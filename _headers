@@ -3,12 +3,13 @@
   Referrer-Policy: strict-origin-when-cross-origin
 
 /
-  Cache-Control: no-cache, no-store, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-cache
 
 /index.html
-  Cache-Control: no-cache, no-store, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-cache
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+/T.apk
+  Cache-Control: public, max-age=86400
