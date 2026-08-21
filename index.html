@@ -2322,7 +2322,21 @@
           .catch(function () { return usersById || {}; });
       }
 
-      /* عکس را کوچک و فشرده می‌کند تا زیر سقف سرور بماند */
+      /* عکس را آماده می‌کند: لوگوی شفاف ⇦ WebP شفاف و «کامل جا شده»
+         عکس معمولی ⇦ JPEG مربعِ برش‌خورده. هر دو زیر سقف سرور. */
+      function hasTransparency(img) {
+        try {
+          var t = document.createElement("canvas");
+          t.width = t.height = 64;
+          var tx = t.getContext("2d");
+          tx.clearRect(0, 0, 64, 64);
+          tx.drawImage(img, 0, 0, 64, 64);
+          var d = tx.getImageData(0, 0, 64, 64).data;
+          for (var i = 3; i < d.length; i += 4) if (d[i] < 245) return true;
+        } catch (e) {}
+        return false;
+      }
+
       function shrink(file) {
         return new Promise(function (resolve, reject) {
           var fr = new FileReader();
@@ -2331,20 +2345,50 @@
             var img = new Image();
             img.onerror = function () { reject(new Error("این فایل عکس نیست")); };
             img.onload = function () {
-              var size = 256;
-              var cv = document.createElement("canvas");
-              cv.width = size; cv.height = size;
-              var ctx = cv.getContext("2d");
-              var s = Math.min(img.width, img.height);
-              ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
-              var q = 0.85, out = cv.toDataURL("image/jpeg", q);
-              while (out.length > AV_MAX && q > 0.35) { q -= 0.1; out = cv.toDataURL("image/jpeg", q); }
-              if (out.length > AV_MAX) {
-                cv.width = cv.height = 168;
-                cv.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 168, 168);
-                out = cv.toDataURL("image/jpeg", 0.7);
+              var alpha = hasTransparency(img);
+
+              function render(size) {
+                var cv = document.createElement("canvas");
+                cv.width = cv.height = size;
+                var ctx = cv.getContext("2d");
+                ctx.clearRect(0, 0, size, size);
+                if (alpha) {
+                  /* لوگو: کل تصویر داخل کادر جا می‌شود و شفافیت حفظ می‌گردد */
+                  var k = Math.min(size / img.width, size / img.height) * 0.94;
+                  var dw = img.width * k, dh = img.height * k;
+                  ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+                } else {
+                  /* عکس معمولی: مربعِ وسط برش می‌خورد */
+                  var sq = Math.min(img.width, img.height);
+                  ctx.drawImage(img, (img.width - sq) / 2, (img.height - sq) / 2, sq, sq, 0, 0, size, size);
+                }
+                return cv;
               }
-              if (out.length > AV_MAX) return reject(new Error("عکس خیلی سنگین است"));
+
+              var out = null;
+              if (alpha) {
+                var sizes = [256, 224, 192, 160, 128];
+                for (var i = 0; i < sizes.length && !out; i++) {
+                  var cv = render(sizes[i]);
+                  var qs = [0.92, 0.8, 0.65, 0.5];
+                  for (var q = 0; q < qs.length; q++) {
+                    var d = cv.toDataURL("image/webp", qs[q]);
+                    if (d.indexOf("data:image/webp") !== 0) break;   /* مرورگر webp ندارد */
+                    if (d.length <= AV_MAX) { out = d; break; }
+                  }
+                  if (!out) {
+                    var png = cv.toDataURL("image/png");
+                    if (png.length <= AV_MAX) out = png;
+                  }
+                }
+              } else {
+                var cv2 = render(256), qq = 0.85;
+                out = cv2.toDataURL("image/jpeg", qq);
+                while (out.length > AV_MAX && qq > 0.35) { qq -= 0.1; out = cv2.toDataURL("image/jpeg", qq); }
+                if (out.length > AV_MAX) out = render(168).toDataURL("image/jpeg", 0.7);
+              }
+
+              if (!out || out.length > AV_MAX) return reject(new Error("عکس خیلی سنگین است"));
               resolve(out);
             };
             img.src = fr.result;
