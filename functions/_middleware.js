@@ -5940,6 +5940,7 @@ app.get("/site", async (c) => {
     } catch {
     }
   }
+  if (apk) apk.version = await setting(c.env.DB, "apk_version", "");
   return c.json({
     site: {
       maintenance: await setting(c.env.DB, "maintenance", "0") === "1",
@@ -7131,7 +7132,13 @@ async function apkMeta(db) {
       db,
       `SELECT name, bytes, created_at FROM site_files WHERE id = 'apk'`
     );
-    return file ? { name: file.name, bytes: file.bytes, uploadedAt: file.created_at } : null;
+    if (!file) return null;
+    return {
+      name: file.name,
+      bytes: file.bytes,
+      uploadedAt: file.created_at,
+      version: await setting(db, "apk_version", "")
+    };
   } catch {
     return null;
   }
@@ -7216,6 +7223,23 @@ app.delete("/admin/file", async (c) => {
   await run(c.env.DB, `DELETE FROM site_files WHERE id = 'apk'`);
   await logAdmin(c.env.DB, user.id, "del_apk", null, "");
   return c.json({ ok: true });
+});
+app.get("/apk-version", async (c) => {
+  return c.json({ version: await setting(c.env.DB, "apk_version", "") });
+});
+app.post("/admin/apk-version", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const gate = await requireOwnerLike(user, c.env.DB);
+  if (!gate) return jsonError(c, "\u0627\u06CC\u0646 \u067E\u0646\u0644 \u0628\u0631\u0627\u06CC \u062A\u0648 \u0646\u06CC\u0633\u062A", 403);
+  const limited = denyReportsOnly(c, user, gate);
+  if (limited) return limited;
+  const body = await c.req.json().catch(() => ({}));
+  const raw2 = String(body.version ?? "").trim().slice(0, 24);
+  const version = raw2.replace(/[^\w.\-\u060C\u06F0-\u06F9 ]+/g, "");
+  await setSetting(c.env.DB, "apk_version", version);
+  await logAdmin(c.env.DB, user.id, "apk_version", null, version);
+  return c.json({ ok: true, version });
 });
 app.post("/bot/tap", async (c) => {
   const user = await auth(c);
