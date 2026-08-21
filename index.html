@@ -277,6 +277,216 @@
       /* اگر کوکی نشانهٔ ورود هست، اپ بدون منتظر ماندن به شبکه نشان داده می‌شود */
       window.__hint = document.cookie.indexOf("t_in=1") > -1;
     </script>
+
+    <!-- ===== کامپوننت‌های Uiverse: ورودی درخشان + دکمهٔ آپلود پوشه‌ای ===== -->
+    <style>
+      /* ---------- ۱) ورودی‌های ساده → استایل Search درخشان (Uiverse by Lakshay-art) ---------- */
+      @property --t-ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+      @keyframes t-spin { to { --t-ang: 360deg; } }
+
+      .settings > input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+      .settings > textarea.field,
+      .admin input.search,
+      #tsupPanel .tsup-search {
+        --t-ang: 0deg;
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 340px;
+        height: 46px;
+        border-radius: 11px;
+        border: 1.5px solid transparent;
+        background-color: #010201;
+        background-image:
+          linear-gradient(#010201, #010201),
+          conic-gradient(from var(--t-ang),
+            #1c191c, #402fb5 5%, #1c191c 14%, #1c191c 50%, #cf30aa 60%, #1c191c 64%);
+        background-origin: padding-box, border-box;
+        background-clip: padding-box, border-box;
+        color: #fff;
+        font-family: inherit;
+        font-size: 15px;
+        padding-inline: 15px;
+        outline: none;
+        box-shadow: 0 0 18px rgba(64, 47, 181, .14);
+        transition: box-shadow .3s ease;
+      }
+      .settings > input::placeholder,
+      .settings > textarea.field::placeholder,
+      .admin input.search::placeholder,
+      #tsupPanel .tsup-search::placeholder { color: #c0b9c0; }
+
+      .settings > input:not([type="file"]):not([type="checkbox"]):hover,
+      .settings > textarea.field:hover,
+      .admin input.search:hover,
+      #tsupPanel .tsup-search:hover { animation: t-spin 6s linear infinite; }
+
+      .settings > input:not([type="file"]):not([type="checkbox"]):focus,
+      .settings > textarea.field:focus,
+      .admin input.search:focus,
+      #tsupPanel .tsup-search:focus {
+        animation: t-spin 3s linear infinite;
+        box-shadow: 0 0 26px rgba(207, 48, 170, .26), 0 0 10px rgba(64, 47, 181, .32);
+      }
+
+      /* بایو: چند خطی */
+      .settings > textarea.field {
+        height: auto; min-height: 92px; max-width: 520px;
+        padding-block: 12px; resize: vertical; line-height: 1.9;
+      }
+
+      /* فقط فیلدهای جستجو ذره‌بین می‌گیرند (آیکن کاردکِ سمت راست حذف شد) */
+      .admin input.search,
+      #tsupPanel .tsup-search {
+        max-width: 520px;
+        background-image:
+          url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23b6a9b7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='22' y1='22' x2='16.65' y2='16.65'/%3E%3C/svg%3E"),
+          linear-gradient(#010201, #010201),
+          conic-gradient(from var(--t-ang),
+            #1c191c, #402fb5 5%, #1c191c 14%, #1c191c 50%, #cf30aa 60%, #1c191c 64%);
+        background-repeat: no-repeat, no-repeat, no-repeat;
+        background-position: right 14px center, 0 0, 0 0;
+        background-size: 18px 18px, auto, auto;
+        background-origin: padding-box, padding-box, border-box;
+        background-clip: padding-box, padding-box, border-box;
+        padding-inline-start: 44px;
+      }
+      #tsupPanel .tsup-search { max-width: 240px; height: 40px; font-size: 13.5px; }
+      @media (max-width: 900px) {
+        .settings > input:not([type="file"]):not([type="checkbox"]),
+        .admin input.search { max-width: 100%; }
+      }
+
+      /* ---------- ۲) گیرهٔ چت → پوشهٔ کوچک (Uiverse by jamrockjones) ---------- */
+      @keyframes t-float {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+        100% { transform: translateY(0); }
+      }
+      .composer .tool.t-clip {
+        position: relative;
+        width: 40px; height: 40px;
+        border-radius: 11px;
+      }
+      .composer .tool.t-clip svg { display: none !important; }
+      .composer .tool.t-clip::before,
+      .composer .tool.t-clip::after {
+        content: ""; position: absolute; pointer-events: none;
+        transition: transform .3s ease;
+      }
+      .composer .tool.t-clip::before {          /* بدنهٔ پوشه */
+        inset-inline-start: 5px; bottom: 7px;
+        width: 30px; height: 21px; border-radius: 5px;
+        background: linear-gradient(135deg, #ffe563, #ffc663);
+        box-shadow: 0 4px 9px rgba(0, 0, 0, .35);
+      }
+      .composer .tool.t-clip::after {           /* زبانهٔ پوشه */
+        inset-inline-start: 5px; bottom: 26px;
+        width: 16px; height: 6px; border-radius: 3px 3px 0 0;
+        background: linear-gradient(135deg, #ff9a56, #ff6f56);
+      }
+      .composer .tool.t-clip:hover::before,
+      .composer .tool.t-clip:hover::after { animation: t-float 2.2s ease-in-out infinite; }
+      .composer .tool.t-clip:hover::before { box-shadow: 0 7px 14px rgba(0, 0, 0, .45); }
+
+      /* ---------- ۳) آپلود فایل پنل ادمین → کارت پوشه‌دار کامل ---------- */
+      input.t-file-native { display: none !important; }
+
+      .t-upload {
+        --transition: 350ms;
+        --folder-W: 90px;
+        --folder-H: 60px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 9px;
+        background: linear-gradient(135deg, #f162ba, #ed45ae);
+        border-radius: 14px;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, .2);
+        height: calc(var(--folder-H) * 1.7);
+        width: 240px;
+        max-width: 100%;
+        position: relative;
+        margin: 52px 0 12px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .t-upload .folder {
+        position: absolute;
+        top: -16px;
+        inset-inline-start: calc(50% - (var(--folder-W) / 2));
+        animation: t-folder-float 2.5s infinite ease-in-out;
+        transition: transform var(--transition) ease;
+        width: var(--folder-W);
+        height: var(--folder-H);
+      }
+      .t-upload .folder:hover { transform: scale(1.05); }
+      .t-upload .front-side,
+      .t-upload .back-side {
+        position: absolute;
+        transition: transform var(--transition);
+        transform-origin: bottom center;
+      }
+      .t-upload .back-side::before,
+      .t-upload .back-side::after {
+        content: "";
+        display: block;
+        background-color: #fff;
+        opacity: .5;
+        width: var(--folder-W);
+        height: var(--folder-H);
+        position: absolute;
+        transform-origin: bottom center;
+        border-radius: 13px;
+        transition: transform 350ms;
+        z-index: 0;
+      }
+      .t-upload:hover .back-side::before { transform: rotateX(-5deg) skewX(5deg); }
+      .t-upload:hover .back-side::after { transform: rotateX(-15deg) skewX(12deg); }
+      .t-upload .front-side { z-index: 1; }
+      .t-upload:hover .front-side { transform: rotateX(-40deg) skewX(15deg); }
+      .t-upload .tip {
+        background: linear-gradient(135deg, #ff9a56, #ff6f56);
+        width: 60px; height: 15px;
+        border-radius: 10px 10px 0 0;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, .2);
+        position: absolute;
+        top: -8px;
+        z-index: 2;
+      }
+      .t-upload .cover {
+        background: linear-gradient(135deg, #ffe563, #ffc663);
+        width: var(--folder-W);
+        height: var(--folder-H);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, .3);
+        border-radius: 9px;
+      }
+      .t-upload .custom-file-upload {
+        font-size: 14px;
+        font-family: inherit;
+        color: #fff;
+        text-align: center;
+        background: rgba(255, 255, 255, .2);
+        border: none;
+        border-radius: 9px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, .1);
+        cursor: pointer;
+        transition: background var(--transition) ease;
+        display: block;
+        width: 100%;
+        padding: 9px 14px;
+        position: relative;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .t-upload:hover .custom-file-upload { background: rgba(255, 255, 255, .4); }
+      @keyframes t-folder-float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-14px); }
+        100% { transform: translateY(0px); }
+      }
+    </style>
     <script type="module" crossorigin src="/assets/index-Bt5upPRT.js"></script>
   </head>
   <body style="margin:0;background:#050506">
@@ -928,6 +1138,84 @@
         pollTimer = setInterval(function () {
           if (onAdmin() && !open) loadList(false);
         }, 30000);
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+      else start();
+    })();
+    </script>
+
+    <script>
+    (function () {
+      "use strict";
+      /* دکمه‌های آپلود و ورودی‌ها را بدون دست‌زدن به ساختار React بهبود می‌دهد */
+
+      var FOLDER =
+        '<div class="folder">' +
+          '<div class="front-side"><div class="tip"></div><div class="cover"></div></div>' +
+          '<div class="back-side cover"></div>' +
+        '</div>';
+
+      function label(inp) {
+        var f = inp.files && inp.files[0];
+        if (f) return f.name.length > 26 ? f.name.slice(0, 23) + "…" : f.name;
+        var acc = (inp.getAttribute("accept") || "");
+        if (acc.indexOf("apk") > -1) return "انتخاب فایل APK";
+        if (acc.indexOf("image") > -1) return "انتخاب عکس";
+        return "انتخاب فایل";
+      }
+
+      function makeCard(inp) {
+        var card = document.createElement("div");
+        card.className = "t-upload";
+        card.setAttribute("data-t-upload", "1");
+        card.innerHTML = FOLDER + '<span class="custom-file-upload"></span>';
+        card.querySelector(".custom-file-upload").textContent = label(inp);
+        card.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          inp.click();
+        });
+        inp.addEventListener("change", function () {
+          var t = card.querySelector(".custom-file-upload");
+          if (t) t.textContent = label(inp);
+        });
+        return card;
+      }
+
+      function enhance() {
+        /* ۱) فایل‌های پنل ادمین */
+        var files = document.querySelectorAll('.admin input[type="file"]');
+        for (var i = 0; i < files.length; i++) {
+          var inp = files[i];
+          var next = inp.nextElementSibling;
+          if (next && next.getAttribute && next.getAttribute("data-t-upload")) {
+            if (!inp.classList.contains("t-file-native")) inp.classList.add("t-file-native");
+            continue;
+          }
+          inp.classList.add("t-file-native");
+          inp.insertAdjacentElement("afterend", makeCard(inp));
+        }
+        /* کارت‌های یتیم (اگر React ورودی را برداشت) پاک شوند */
+        var cards = document.querySelectorAll("[data-t-upload]");
+        for (var k = 0; k < cards.length; k++) {
+          var prev = cards[k].previousElementSibling;
+          if (!prev || prev.tagName !== "INPUT" || prev.type !== "file") cards[k].remove();
+        }
+        /* ۲) گیرهٔ کاغذ چت → پوشه */
+        var clips = document.querySelectorAll('.composer .tool[title="عکس یا فیلم"]');
+        for (var j = 0; j < clips.length; j++) {
+          if (!clips[j].classList.contains("t-clip")) clips[j].classList.add("t-clip");
+        }
+      }
+
+      var t = null;
+      function schedule() {
+        if (t) return;
+        t = setTimeout(function () { t = null; try { enhance(); } catch (e) {} }, 200);
+      }
+      function start() {
+        enhance();
+        new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
       }
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
       else start();
