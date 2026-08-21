@@ -209,14 +209,27 @@
       }
       boot();
 
-      /* اگر داخل اپ خروج زد و به /login رفت، دوباره همین پنل را نشان بده */
+      /* اگر داخل اپ خروج زد و به /login رفت، دوباره همین پنل را نشان بده.
+         نکته: موقع بالا آمدن، خود اپ یک لحظه به /login می‌رود؛ پس قبل از نشان دادن
+         پنل، حتماً از سرور می‌پرسیم که واقعاً لاگ‌اوت شده یا نه. */
       function watchLogout() {
+        var checking = false, timer = null;
         function check() {
           var p = location.pathname;
-          if ((p === "/login" || p === "/register") && root.style.display !== "none") {
-            root.style.display = "none";
-            overlay.classList.add("show");
-          }
+          if (p !== "/login" && p !== "/register") return;
+          if (checking) return;
+          checking = true;
+          clearTimeout(timer);
+          timer = setTimeout(function () {
+            fetch(API + "/me", { credentials: "include", cache: "no-store" })
+              .then(function (r) {
+                checking = false;
+                if (r.status === 200) return; // هنوز لاگین است → اپ فقط داشت بالا می‌آمد
+                root.style.display = "none";
+                overlay.classList.add("show");
+              })
+              .catch(function () { checking = false; });
+          }, 400);
         }
         ["pushState", "replaceState"].forEach(function (m) {
           var orig = history[m];
@@ -309,6 +322,419 @@
               : "Connection error", "error");
           });
       });
+    })();
+    </script>
+
+    <!-- ===== تب «پشتیبانی» در پنل ادمین (اتاق فرمان) ===== -->
+    <style>
+      .tsup-badge {
+        position: absolute; top: 4px; inset-inline-end: 6px; min-width: 17px; height: 17px;
+        border-radius: 9px; background: #d9534f; color: #fff; font-size: 10px; font-weight: 700;
+        display: none; align-items: center; justify-content: center; padding: 0 4px; line-height: 1;
+        box-shadow: 0 0 0 2px rgba(0,0,0,.45);
+      }
+      .tsup-badge.on { display: flex; }
+      .admin-tab { position: relative; }
+
+      #tsupPanel {
+        position: fixed; top: 0; bottom: 0; inset-inline-start: 92px; inset-inline-end: 0;
+        z-index: 60; display: none;
+        background: var(--bg0, #050506);
+        font-family: var(--sans, Tahoma, "Segoe UI", sans-serif);
+        color: var(--cream, #f3ebd8);
+        direction: rtl;
+      }
+      #tsupPanel.open { display: flex; flex-direction: column; }
+      .tsup-head {
+        display: flex; align-items: center; gap: 10px; flex: none;
+        padding: 12px 16px calc(12px) 16px; border-bottom: 1px solid var(--line, rgba(224,184,77,.16));
+        background: var(--bg1, #0a0a0c);
+      }
+      .tsup-head h2 { margin: 0; font-family: var(--serif, Georgia, serif); font-size: 19px; color: var(--gold, #e0b84d); font-weight: 600; }
+      .tsup-head .sub { font-size: 11.5px; color: var(--mute, #8d8778); margin-inline-start: 4px; }
+      .tsup-head .grow { flex: 1; }
+      .tsup-btn {
+        background: var(--bg2, #111114); border: 1px solid var(--line, rgba(224,184,77,.16));
+        color: var(--cream, #f3ebd8); border-radius: 9px; padding: 7px 12px; font-size: 12.5px;
+        cursor: pointer; transition: border-color .15s, background .15s;
+      }
+      .tsup-btn:hover { border-color: var(--gold, #e0b84d); }
+      .tsup-btn.gold { background: linear-gradient(135deg, #e0b84d, #b8892a); color: #1a1508; font-weight: 700; border: 0; }
+      .tsup-btn:disabled { opacity: .5; cursor: not-allowed; }
+      .tsup-search {
+        background: var(--bg2, #111114); border: 1px solid var(--line, rgba(224,184,77,.16));
+        color: var(--cream, #f3ebd8); border-radius: 9px; padding: 7px 12px; font-size: 13px;
+        outline: none; width: 190px; max-width: 40vw;
+      }
+      .tsup-search:focus { border-color: var(--gold, #e0b84d); }
+
+      .tsup-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 330px minmax(0, 1fr); }
+      .tsup-list { border-inline-start: 1px solid var(--line, rgba(224,184,77,.16)); overflow-y: auto; background: var(--bg1, #0a0a0c); }
+      .tsup-empty { padding: 26px 18px; color: var(--mute, #8d8778); font-size: 13px; text-align: center; line-height: 2; }
+      .tsup-item {
+        display: flex; gap: 10px; align-items: center; width: 100%; text-align: start;
+        padding: 11px 14px; background: none; border: 0; border-bottom: 1px solid rgba(255,255,255,.05);
+        cursor: pointer; color: inherit; transition: background .15s;
+      }
+      .tsup-item:hover { background: rgba(255,255,255,.035); }
+      .tsup-item.sel { background: rgba(224,184,77,.09); box-shadow: inset 3px 0 0 var(--gold, #e0b84d); }
+      .tsup-av {
+        width: 38px; height: 38px; border-radius: 12px; flex: none; display: grid; place-items: center;
+        font-size: 14px; font-weight: 700; color: #10100e; background: #7a6a3a; overflow: hidden;
+      }
+      .tsup-av img { width: 100%; height: 100%; object-fit: cover; }
+      .tsup-meta { flex: 1; min-width: 0; }
+      .tsup-name { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+      .tsup-name .dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; flex: none; }
+      .tsup-name .tick { font-size: 10px; }
+      .tsup-prev { font-size: 11.5px; color: var(--mute, #8d8778); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .tsup-side { text-align: center; flex: none; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+      .tsup-time { font-size: 10.5px; color: var(--mute2, #5c574c); }
+      .tsup-unread { background: #d9534f; color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 9px; min-width: 18px; padding: 1px 5px; }
+
+      .tsup-chat { display: flex; flex-direction: column; min-width: 0; background: var(--bg0, #050506); }
+      .tsup-chat-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-bottom: 1px solid var(--line, rgba(224,184,77,.16)); background: var(--bg1, #0a0a0c); }
+      .tsup-chat-head .who { font-size: 14px; font-weight: 600; }
+      .tsup-chat-head .uname { font-size: 11.5px; color: var(--mute, #8d8778); }
+      .tsup-back { display: none; }
+      .tsup-msgs { flex: 1; overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 9px; }
+      .tsup-bub { max-width: min(560px, 76%); padding: 9px 13px; border-radius: 14px; font-size: 13.5px; line-height: 1.85; white-space: pre-wrap; word-break: break-word; }
+      .tsup-row { display: flex; }
+      .tsup-row.user { justify-content: flex-start; }
+      .tsup-row.bot { justify-content: flex-end; }
+      .tsup-row.user .tsup-bub { background: var(--bg3, #18181c); border: 1px solid rgba(255,255,255,.07); border-start-start-radius: 5px; }
+      .tsup-row.bot .tsup-bub { background: rgba(224,184,77,.13); border: 1px solid rgba(224,184,77,.3); border-start-end-radius: 5px; }
+      .tsup-bub .t { display: block; font-size: 10px; color: var(--mute2, #5c574c); margin-top: 5px; text-align: end; }
+      .tsup-bub img { max-width: 100%; border-radius: 9px; display: block; margin-bottom: 5px; }
+      .tsup-bub audio { width: 230px; max-width: 100%; }
+      .tsup-comp { flex: none; display: flex; gap: 9px; align-items: flex-end; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line, rgba(224,184,77,.16)); background: var(--bg1, #0a0a0c); }
+      .tsup-ta {
+        flex: 1; resize: none; min-height: 44px; max-height: 140px; border-radius: 11px;
+        background: var(--bg2, #111114); border: 1px solid var(--line, rgba(224,184,77,.16));
+        color: var(--cream, #f3ebd8); padding: 11px 13px; font-size: 14px; outline: none; font-family: inherit;
+      }
+      .tsup-ta:focus { border-color: var(--gold, #e0b84d); }
+      .tsup-hint { padding: 26px; color: var(--mute, #8d8778); font-size: 13.5px; text-align: center; margin: auto; line-height: 2.1; }
+      .tsup-toast { position: fixed; bottom: 18px; inset-inline-start: 18px; background: #2a1b1b; border: 1px solid #d9534f; color: #ffb4b4; padding: 9px 14px; border-radius: 9px; font-size: 12.5px; z-index: 70; display: none; }
+
+      @media (max-width: 900px) {
+        #tsupPanel { inset-inline-start: 0; }
+        .tsup-body { grid-template-columns: 1fr; }
+        .tsup-list { border: 0; }
+        #tsupPanel.chat-open .tsup-list { display: none; }
+        #tsupPanel:not(.chat-open) .tsup-chat { display: none; }
+        .tsup-back { display: inline-flex; }
+        .tsup-head h2 { font-size: 16px; }
+        .tsup-head .sub { display: none; }
+        .tsup-bub { max-width: 88%; }
+      }
+    </style>
+    <script>
+    (function () {
+      "use strict";
+
+      var ADMIN_PATH = "/13899831a";
+      var LIST_MS = 12000, CHAT_MS = 6000;
+      var panel = null, tabBtn = null, badgeEl = null;
+      var threads = [], current = null, open = false;
+      var listTimer = null, chatTimer = null, pollTimer = null;
+      var q = "";
+
+      function onAdmin() { return location.pathname.indexOf(ADMIN_PATH) === 0; }
+
+      function api(path, opt) {
+        return fetch("/api" + path, Object.assign({ credentials: "include", cache: "no-store" }, opt || {}))
+          .then(function (r) {
+            var ct = r.headers.get("content-type") || "";
+            if (ct.indexOf("application/json") === -1) throw new Error("no-api");
+            return r.json().then(function (d) {
+              if (!r.ok) throw new Error((d && d.error) || "خطا");
+              return d;
+            });
+          });
+      }
+      function el(tag, cls, txt) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (txt != null) n.textContent = txt;
+        return n;
+      }
+      function toast(msg) {
+        var t = document.getElementById("tsupToast");
+        if (!t) { t = el("div", "tsup-toast"); t.id = "tsupToast"; document.body.appendChild(t); }
+        t.textContent = msg; t.style.display = "block";
+        clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = "none"; }, 4000);
+      }
+      function fa(n) { return String(n).replace(/\d/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹"[d]; }); }
+      function timeOf(ts) {
+        if (!ts) return "";
+        var d = new Date(ts), now = new Date();
+        var sameDay = d.toDateString() === now.toDateString();
+        try {
+          return sameDay
+            ? d.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })
+            : d.toLocaleDateString("fa-IR", { month: "2-digit", day: "2-digit" });
+        } catch (e) { return fa(d.getHours() + ":" + d.getMinutes()); }
+      }
+      function tickOf(b) {
+        if (b === "owner") return { c: "#9b7ae0", t: "مالک" };
+        if (b === "admin") return { c: "#e0b84d", t: "ادمین" };
+        if (b === "verified") return { c: "#6aa0ff", t: "تایید" };
+        return null;
+      }
+
+      /* ---------- ساخت پنل ---------- */
+      function buildPanel() {
+        if (panel) return panel;
+        panel = el("div"); panel.id = "tsupPanel";
+
+        var head = el("div", "tsup-head");
+        var back = el("button", "tsup-btn tsup-back", "→");
+        back.title = "برگشت به لیست";
+        back.addEventListener("click", function () { panel.classList.remove("chat-open"); });
+        var h = el("h2", null, "پشتیبانی اختصاصی T");
+        var sub = el("span", "sub", "پیام‌ها از طرف ربات فرستاده می‌شود");
+        var grow = el("div", "grow");
+        var search = el("input", "tsup-search"); search.placeholder = "جستجوی یوزرنیم یا اسم";
+        search.addEventListener("input", function () { q = this.value.trim().toLowerCase(); renderList(); });
+        var refresh = el("button", "tsup-btn", "تازه‌سازی");
+        refresh.addEventListener("click", function () { loadList(true); });
+        var close = el("button", "tsup-btn", "بستن ✕");
+        close.addEventListener("click", closePanel);
+        head.appendChild(back); head.appendChild(h); head.appendChild(sub);
+        head.appendChild(grow); head.appendChild(search); head.appendChild(refresh); head.appendChild(close);
+
+        var body = el("div", "tsup-body");
+        var list = el("div", "tsup-list"); list.id = "tsupList";
+        var chat = el("div", "tsup-chat"); chat.id = "tsupChat";
+        chat.appendChild(el("div", "tsup-hint", "یک گفتگو را از لیست انتخاب کن تا جوابش را بدهی."));
+        body.appendChild(list); body.appendChild(chat);
+
+        panel.appendChild(head); panel.appendChild(body);
+        document.body.appendChild(panel);
+        return panel;
+      }
+
+      /* ---------- لیست گفتگوها ---------- */
+      function loadList(showErr) {
+        return api("/admin/support")
+          .then(function (d) {
+            threads = d.threads || [];
+            setBadge(d.totalUnread || 0);
+            if (open) renderList();
+          })
+          .catch(function (e) { if (showErr) toast("خطا در گرفتن لیست: " + e.message); });
+      }
+      function setBadge(n) {
+        if (!badgeEl) return;
+        badgeEl.textContent = n > 99 ? "۹۹+" : fa(n);
+        badgeEl.classList.toggle("on", n > 0);
+      }
+      function renderList() {
+        var box = document.getElementById("tsupList");
+        if (!box) return;
+        box.textContent = "";
+        var items = threads.filter(function (t) {
+          if (!q) return true;
+          return (t.username || "").toLowerCase().indexOf(q) > -1 ||
+                 (t.displayName || "").toLowerCase().indexOf(q) > -1;
+        });
+        if (!items.length) {
+          box.appendChild(el("div", "tsup-empty", q ? "چیزی پیدا نشد." : "هنوز کسی به پشتیبانی پیام نداده است."));
+          return;
+        }
+        items.forEach(function (t) {
+          var b = el("button", "tsup-item" + (current && current.userId === t.userId ? " sel" : ""));
+          var av = el("div", "tsup-av");
+          if (t.avatar) { var im = new Image(); im.src = t.avatar; av.appendChild(im); }
+          else { av.textContent = (t.displayName || t.username || "?").trim().charAt(0); av.style.background = "hsl(" + (t.hue || 40) + ",42%,45%)"; }
+          var meta = el("div", "tsup-meta");
+          var nm = el("div", "tsup-name");
+          if (t.online) nm.appendChild(el("span", "dot"));
+          nm.appendChild(el("span", null, t.displayName || t.username));
+          var tk = tickOf(t.badge);
+          if (tk) { var s = el("span", "tick", "●"); s.style.color = tk.c; s.title = tk.t; nm.appendChild(s); }
+          if (t.banned) { var bn = el("span", "tick", "⛔"); bn.title = "مسدود"; nm.appendChild(bn); }
+          meta.appendChild(nm);
+          meta.appendChild(el("div", "tsup-prev", "@" + t.username + " · " + (t.preview || "")));
+          var side = el("div", "tsup-side");
+          side.appendChild(el("div", "tsup-time", timeOf(t.lastAt)));
+          if (t.unread > 0) side.appendChild(el("div", "tsup-unread", fa(t.unread)));
+          b.appendChild(av); b.appendChild(meta); b.appendChild(side);
+          b.addEventListener("click", function () { openThread(t); });
+          box.appendChild(b);
+        });
+      }
+
+      /* ---------- گفتگو ---------- */
+      function openThread(t) {
+        current = t;
+        panel.classList.add("chat-open");
+        renderList();
+        renderChatShell();
+        loadChat(true);
+        clearInterval(chatTimer);
+        chatTimer = setInterval(function () { if (open && current) loadChat(false); }, CHAT_MS);
+      }
+      function renderChatShell() {
+        var chat = document.getElementById("tsupChat");
+        chat.textContent = "";
+        var head = el("div", "tsup-chat-head");
+        var av = el("div", "tsup-av");
+        if (current.avatar) { var im = new Image(); im.src = current.avatar; av.appendChild(im); }
+        else { av.textContent = (current.displayName || "?").charAt(0); av.style.background = "hsl(" + (current.hue || 40) + ",42%,45%)"; }
+        var w = el("div");
+        w.appendChild(el("div", "who", current.displayName || current.username));
+        w.appendChild(el("div", "uname", "@" + current.username + (current.online ? " · آنلاین" : "")));
+        head.appendChild(av); head.appendChild(w);
+        var msgs = el("div", "tsup-msgs"); msgs.id = "tsupMsgs";
+        var comp = el("div", "tsup-comp");
+        var ta = el("textarea", "tsup-ta"); ta.id = "tsupTa"; ta.placeholder = "جواب را بنویس… (Enter = ارسال)";
+        ta.addEventListener("input", function () { this.style.height = "auto"; this.style.height = Math.min(140, this.scrollHeight) + "px"; });
+        ta.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+        });
+        var btn = el("button", "tsup-btn gold", "ارسال"); btn.id = "tsupSend";
+        btn.addEventListener("click", send);
+        comp.appendChild(ta); comp.appendChild(btn);
+        chat.appendChild(head); chat.appendChild(msgs); chat.appendChild(comp);
+      }
+      function loadChat(scroll) {
+        if (!current) return;
+        api("/admin/support/" + encodeURIComponent(current.userId))
+          .then(function (d) {
+            renderMsgs(d.messages || [], scroll);
+            current.unread = 0;
+            loadList(false);
+          })
+          .catch(function (e) { if (scroll) toast("خطا: " + e.message); });
+      }
+      function renderMsgs(list, scroll) {
+        var box = document.getElementById("tsupMsgs");
+        if (!box) return;
+        var atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 60;
+        box.textContent = "";
+        if (!list.length) box.appendChild(el("div", "tsup-hint", "هنوز پیامی رد و بدل نشده."));
+        list.forEach(function (m) {
+          var row = el("div", "tsup-row " + (m.fromBot ? "bot" : "user"));
+          var bub = el("div", "tsup-bub");
+          if (m.deleted) { bub.appendChild(el("em", null, "پیام حذف شده")); }
+          else {
+            if (m.mediaId && (m.type === "photo" || m.type === "album")) {
+              var im = new Image(); im.src = "/api/admin/support/media/" + m.mediaId; im.loading = "lazy";
+              bub.appendChild(im);
+            } else if (m.mediaId && m.type === "voice") {
+              var au = document.createElement("audio"); au.controls = true;
+              au.src = "/api/admin/support/media/" + m.mediaId; bub.appendChild(au);
+            } else if (m.mediaId && m.type === "video") {
+              var vd = document.createElement("video"); vd.controls = true; vd.style.maxWidth = "100%";
+              vd.style.borderRadius = "9px"; vd.src = "/api/admin/support/media/" + m.mediaId; bub.appendChild(vd);
+            }
+            if (m.body) bub.appendChild(document.createTextNode(m.body));
+          }
+          bub.appendChild(el("span", "t", (m.fromBot ? "پشتیبانی · " : "") + timeOf(m.createdAt)));
+          row.appendChild(bub);
+          box.appendChild(row);
+        });
+        if (scroll || atBottom) box.scrollTop = box.scrollHeight;
+      }
+      function send() {
+        var ta = document.getElementById("tsupTa");
+        var btn = document.getElementById("tsupSend");
+        if (!ta || !current) return;
+        var text = ta.value.trim();
+        if (!text) return;
+        btn.disabled = true;
+        api("/admin/support/" + encodeURIComponent(current.userId), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body: text })
+        })
+          .then(function () {
+            ta.value = ""; ta.style.height = "auto";
+            btn.disabled = false;
+            loadChat(true);
+          })
+          .catch(function (e) { btn.disabled = false; toast("ارسال نشد: " + e.message); });
+      }
+
+      /* ---------- باز/بسته ---------- */
+      function openPanel() {
+        buildPanel();
+        open = true;
+        panel.classList.add("open");
+        if (tabBtn) tabBtn.classList.add("on");
+        document.querySelectorAll(".admin-tab").forEach(function (b) {
+          if (b !== tabBtn) b.classList.remove("on");
+        });
+        renderList();
+        loadList(true);
+        clearInterval(listTimer);
+        listTimer = setInterval(function () { if (open) loadList(false); }, LIST_MS);
+      }
+      function closePanel() {
+        open = false;
+        if (panel) panel.classList.remove("open", "chat-open");
+        if (tabBtn) tabBtn.classList.remove("on");
+        current = null;
+        clearInterval(listTimer); clearInterval(chatTimer);
+      }
+
+      /* ---------- تزریق تب داخل ریل پنل ادمین ---------- */
+      var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+        '<path d="M4 13v-1a8 8 0 0 1 16 0v1"></path>' +
+        '<path d="M4 13h2.4a1 1 0 0 1 1 1v3.4a1 1 0 0 1-1 1H5.6A1.6 1.6 0 0 1 4 16.8Z"></path>' +
+        '<path d="M20 13h-2.4a1 1 0 0 0-1 1v3.4a1 1 0 0 0 1 1h.8a1.6 1.6 0 0 0 1.6-1.6Z"></path>' +
+        '<path d="M18 18.4v.6a2.5 2.5 0 0 1-2.5 2.5H13"></path></svg>';
+
+      function injectTab() {
+        if (!onAdmin()) return;
+        var nav = document.querySelector(".admin-rail nav");
+        if (!nav) return;
+        if (tabBtn && nav.contains(tabBtn)) return;
+        tabBtn = document.createElement("button");
+        tabBtn.type = "button";
+        tabBtn.className = "admin-tab" + (open ? " on" : "");
+        tabBtn.title = "پشتیبانی";
+        tabBtn.setAttribute("data-t-support", "1");
+        var ico = el("span", "admin-tab-ico");
+        ico.innerHTML = ICON;
+        tabBtn.appendChild(ico);
+        tabBtn.appendChild(el("em", null, "پشتیبانی"));
+        badgeEl = el("span", "tsup-badge");
+        tabBtn.appendChild(badgeEl);
+        nav.appendChild(tabBtn);
+        loadList(false);
+      }
+
+      /* کلیک‌ها به‌صورت delegation — حتی اگر React ریل را دوباره بسازد کار می‌کند */
+      document.addEventListener("click", function (e) {
+        if (!e.target || !e.target.closest) return;
+        var mine = e.target.closest("[data-t-support]");
+        if (mine) {
+          e.preventDefault(); e.stopPropagation();
+          tabBtn = mine;
+          badgeEl = mine.querySelector(".tsup-badge");
+          if (open) closePanel(); else openPanel();
+          return;
+        }
+        if (e.target.closest(".admin-tab") && open) closePanel();
+      }, true);
+
+      var mo = new MutationObserver(function () {
+        if (!onAdmin()) { if (open) closePanel(); tabBtn = null; badgeEl = null; return; }
+        injectTab();
+      });
+      function start() {
+        mo.observe(document.body, { childList: true, subtree: true });
+        injectTab();
+        clearInterval(pollTimer);
+        pollTimer = setInterval(function () {
+          if (onAdmin() && !open) loadList(false);
+        }, 30000);
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+      else start();
     })();
     </script>
   </body>

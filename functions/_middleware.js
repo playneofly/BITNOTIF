@@ -2762,7 +2762,7 @@ var BARGH_BOT_USERNAME = "bargh";
 var BARGH_BOT_NAME = "\u0628\u0631\u0642";
 var T_BOT_ID = "bot_t";
 var T_BOT_USERNAME = "tbot";
-var T_BOT_NAME = "\u0631\u0628\u0627\u062a \u0627\u062e\u062a\u0635\u0627\u0635\u06cc T";
+var T_BOT_NAME = "\u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc \u0627\u062e\u062a\u0635\u0627\u0635\u06cc T";
 var TEHRAN_OFFSET = 3.5 * 3600 * 1e3;
 var WINDOW_START = 6 * 3600 * 1e3;
 var WINDOW_MS = 18 * 3600 * 1e3;
@@ -2800,19 +2800,32 @@ function parseBotBody(raw2) {
 function isOfficialBot(id) {
   return String(id || "").startsWith("bot_");
 }
+var T_BOT_BIO = "\u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc \u0631\u0633\u0645\u06cc T \u00b7 \u0647\u0631 \u0633\u0648\u0627\u0644\u06cc \u062f\u0627\u0631\u06cc \u0647\u0645\u06cc\u0646\u200c\u062c\u0627 \u0628\u0646\u0648\u06cc\u0633";
+var T_DM_PREFIX = "bot:t:";
+var SUPPORT_ACK_MS = 6 * 3600 * 1e3;
+var SUPPORT_ACK_TEXT = "\u067e\u06cc\u0627\u0645\u062a \u0631\u0633\u06cc\u062f \u2705\n\u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc \u0627\u062e\u062a\u0635\u0627\u0635\u06cc T \u062f\u0631 \u0627\u0648\u0644\u06cc\u0646 \u0641\u0631\u0635\u062a \u0647\u0645\u06cc\u0646\u200c\u062c\u0627 \u062c\u0648\u0627\u0628 \u0645\u06cc\u200c\u062f\u0647\u062f.";
+function isTSupportConv(conv) {
+  return String(conv?.dm_key || "").startsWith(T_DM_PREFIX);
+}
+function supportUserIdOf(conv) {
+  return String(conv?.dm_key || "").slice(T_DM_PREFIX.length);
+}
 
 // src/api/bot.ts
 function dmKey(userId) {
   return `bot:bargh:${userId}`;
 }
 async function isBarghConv(db, conv, userId) {
-  if (conv.dm_key && String(conv.dm_key).startsWith("bot:")) return true;
+  const key = String(conv.dm_key || "");
+  if (key.startsWith(T_DM_PREFIX)) return false;
+  if (key.startsWith("bot:")) return true;
   const other = await one(
     db,
     `SELECT user_id FROM members WHERE conversation_id = ? AND user_id != ? LIMIT 1`,
     conv.id,
     userId
   );
+  if (other?.user_id === T_BOT_ID) return false;
   return isOfficialBot(other?.user_id);
 }
 async function emit(db, kind, conversationId, actorId, payload = {}) {
@@ -2928,7 +2941,7 @@ async function ensureTUser(db) {
     T_BOT_USERNAME,
     await hashPassword(randomToken()),
     T_BOT_NAME,
-    "\u0631\u0628\u0627\u062a \u0627\u062e\u062a\u0635\u0627\u0635\u06cc T",
+    T_BOT_BIO,
     now,
     now
   );
@@ -2978,6 +2991,27 @@ async function ensureTConv(db, user) {
   }
   if (!conv) throw new Error("\u06af\u0641\u062a\u06af\u0648\u06cc \u0631\u0628\u0627\u062a T \u0633\u0627\u062e\u062a\u0647 \u0646\u0634\u062f");
   return conv;
+}
+var tBotChecked = false;
+async function ensureTBotName(db) {
+  if (tBotChecked) return;
+  tBotChecked = true;
+  const row = await one(db, `SELECT id, display_name FROM users WHERE id = ?`, T_BOT_ID);
+  if (!row) return;
+  if (String(row.display_name || "") !== T_BOT_NAME) {
+    await run(db, `UPDATE users SET display_name = ?, bio = ? WHERE id = ?`, T_BOT_NAME, T_BOT_BIO, T_BOT_ID);
+    await run(db, `UPDATE conversations SET title = ? WHERE dm_key LIKE 'bot:t:%'`, T_BOT_NAME);
+  }
+}
+async function supportAutoAck(db, conv, now = Date.now()) {
+  const last = await one(
+    db,
+    `SELECT created_at FROM messages WHERE conversation_id = ? AND author_id = ? ORDER BY created_at DESC LIMIT 1`,
+    conv.id,
+    T_BOT_ID
+  );
+  if (last && now - Number(last.created_at || 0) < SUPPORT_ACK_MS) return;
+  await insertBotMessage(db, conv.id, T_BOT_ID, SUPPORT_ACK_TEXT);
 }
 async function insertBotMessage(db, convId, botId, text) {
   const id = randomId();
@@ -3326,6 +3360,10 @@ app.use("*", async (c, next) => {
   }
   try {
     await purgeExpired(c.env.DB);
+  } catch {
+  }
+  try {
+    await ensureTBotName(c.env.DB);
   } catch {
   }
   try {
@@ -5132,6 +5170,12 @@ app.post("/conversations/:id/messages", async (c) => {
     await emit2(c.env.DB, "conversation", conv.id, user.id, { unhide: true });
   }
   await emit2(c.env.DB, "message", conv.id, user.id, { id });
+  if (isTSupportConv(conv) && user.id !== T_BOT_ID) {
+    try {
+      await supportAutoAck(c.env.DB, conv, now);
+    } catch {
+    }
+  }
   const msg = await one(c.env.DB, `SELECT * FROM messages WHERE id = ?`, id);
   const [full] = await messagesWithExtras(c.env.DB, [msg], user.id);
   return c.json({ message: full });
@@ -5839,6 +5883,12 @@ app.get("/site", async (c) => {
     if (file) apk = { name: file.name, bytes: file.bytes, uploadedAt: file.created_at };
   } catch {
     apk = null;
+  }
+  if (!apk) {
+    try {
+      apk = await staticApk(c);
+    } catch {
+    }
   }
   return c.json({
     site: {
@@ -6995,6 +7045,36 @@ function parseApk(raw2, nameRaw) {
   if (bytes < 32) return null;
   return { name, mime, data, bytes };
 }
+var staticApkCache = null;
+async function staticApk(c) {
+  if (staticApkCache && Date.now() - staticApkCache.at < 6e4) return staticApkCache.v;
+  let v = null;
+  try {
+    const url = new URL(c.req.url);
+    url.pathname = "/T.apk";
+    url.search = "";
+    let res = await fetch(url.toString(), { method: "HEAD" });
+    let ct = (res.headers.get("content-type") || "").toLowerCase();
+    let total = Number(res.headers.get("content-length") || 0);
+    if (!res.ok || ct.indexOf("text/html") > -1) {
+      res = await fetch(url.toString(), { headers: { Range: "bytes=0-1" } });
+      ct = (res.headers.get("content-type") || "").toLowerCase();
+      const cr = res.headers.get("content-range") || "";
+      total = cr.indexOf("/") > -1 ? Number(cr.split("/")[1]) : Number(res.headers.get("content-length") || 0);
+      try {
+        await res.body?.cancel();
+      } catch {
+      }
+    }
+    if (res.ok && ct.indexOf("text/html") === -1) {
+      v = { name: "T.apk", bytes: total || 0, uploadedAt: null, url: "/T.apk" };
+    }
+  } catch {
+    v = null;
+  }
+  staticApkCache = { at: Date.now(), v };
+  return v;
+}
 async function apkMeta(db) {
   try {
     const file = await one(
@@ -7011,7 +7091,27 @@ app.get("/download/apk", async (c) => {
     c.env.DB,
     `SELECT name, mime, data FROM site_files WHERE id = 'apk'`
   );
-  if (!row) return jsonError(c, "\u0641\u0627\u06CC\u0644\u06CC \u0646\u06CC\u0633\u062A", 404);
+  if (!row) {
+    try {
+      const url = new URL(c.req.url);
+      url.pathname = "/T.apk";
+      url.search = "";
+      const res = await fetch(url.toString());
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      if (res.ok && ct.indexOf("text/html") === -1) {
+        return new Response(res.body, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/vnd.android.package-archive",
+            "Content-Disposition": 'attachment; filename="T.apk"',
+            "Cache-Control": "public, max-age=3600"
+          }
+        });
+      }
+    } catch {
+    }
+    return jsonError(c, "\u0641\u0627\u06CC\u0644\u06CC \u0646\u06CC\u0633\u062A", 404);
+  }
   const decoded = decodeDataUrl(row.data);
   if (!decoded) return jsonError(c, "\u0641\u0627\u06CC\u0644 \u062E\u0631\u0627\u0628 \u0627\u0633\u062A", 500);
   const copy = new Uint8Array(decoded.bytes.byteLength);
@@ -7196,6 +7296,179 @@ app.get("/notices", async (c) => {
     me: user.id,
     now: Date.now(),
     notices
+  });
+});
+
+// ===== \u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc \u0627\u062e\u062a\u0635\u0627\u0635\u06cc T (\u067e\u0646\u0644 \u0627\u062f\u0645\u06cc\u0646) =====
+async function supportGate(c) {
+  const user = await auth(c);
+  if (user instanceof Response) return { err: user };
+  const gate = await requireOwnerLike(user, c.env.DB);
+  if (!gate) return { err: jsonError(c, "\u0627\u06cc\u0646 \u067e\u0646\u0644 \u0628\u0631\u0627\u06cc \u062a\u0648 \u0646\u06cc\u0633\u062a", 403) };
+  const limited = denyReportsOnly(c, user, gate);
+  if (limited) return { err: limited };
+  return { user, gate };
+}
+async function supportConvOf(db, userId) {
+  const target = await one(db, `SELECT * FROM users WHERE id = ?`, userId);
+  if (!target) return null;
+  return await ensureTConv(db, target);
+}
+function supportMsg(m) {
+  return {
+    id: m.id,
+    fromBot: m.author_id === T_BOT_ID,
+    authorId: m.author_id,
+    type: m.type || "text",
+    body: m.deleted_at ? "" : m.body || "",
+    deleted: !!m.deleted_at,
+    mediaId: m.media_id || null,
+    durationMs: m.duration_ms || null,
+    createdAt: m.created_at
+  };
+}
+app.get("/admin/support", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  await ensureTUser(c.env.DB);
+  const q = String(c.req.query("q") || "").trim().toLowerCase();
+  const all = c.req.query("all") === "1";
+  const rows = await many(
+    c.env.DB,
+    `SELECT c.id as conv_id, c.dm_key as dm_key, c.last_message_at as last_at, c.last_message_preview as preview,
+            u.id as uid, u.username as username, u.display_name as display_name, u.avatar as avatar,
+            u.hue as hue, u.badge as badge, u.premium as premium, u.last_seen as last_seen,
+            u.banned_at as banned_at, u.deleted_at as deleted_at, u.muted_until as muted_until,
+            IFNULL(bm.last_read_at, 0) as bot_read,
+            (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id AND m.author_id = u.id AND m.deleted_at IS NULL) as user_msgs,
+            (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id AND m.author_id = u.id AND m.deleted_at IS NULL AND m.created_at > IFNULL(bm.last_read_at, 0)) as unread,
+            (SELECT MAX(m.created_at) FROM messages m WHERE m.conversation_id = c.id AND m.author_id = u.id AND m.deleted_at IS NULL) as last_user_at
+     FROM conversations c
+     JOIN users u ON u.id = SUBSTR(c.dm_key, 7)
+     LEFT JOIN members bm ON bm.conversation_id = c.id AND bm.user_id = ?
+     WHERE c.dm_key LIKE 'bot:t:%'
+     ORDER BY c.last_message_at DESC
+     LIMIT 400`,
+    T_BOT_ID
+  );
+  const now = Date.now();
+  let threads = rows.map((r) => ({
+    convId: r.conv_id,
+    userId: r.uid,
+    username: r.username,
+    displayName: r.display_name,
+    avatar: r.avatar || null,
+    hue: r.hue,
+    badge: r.badge || null,
+    premium: !!r.premium,
+    online: now - Number(r.last_seen || 0) < 35e3,
+    banned: Number(r.banned_at || 0) > 0,
+    deleted: Number(r.deleted_at || 0) > 0,
+    muted: Number(r.muted_until || 0) > now,
+    preview: r.preview || "",
+    lastAt: Number(r.last_at || 0),
+    lastUserAt: Number(r.last_user_at || 0),
+    userMsgs: Number(r.user_msgs || 0),
+    unread: Number(r.unread || 0)
+  }));
+  if (!all) threads = threads.filter((t) => t.userMsgs > 0);
+  if (q) {
+    threads = threads.filter(
+      (t) =>
+        String(t.username || "").toLowerCase().includes(q) ||
+        String(t.displayName || "").toLowerCase().includes(q)
+    );
+  }
+  threads.sort((a, b) => (b.unread > 0 ? 1 : 0) - (a.unread > 0 ? 1 : 0) || b.lastAt - a.lastAt);
+  return c.json({
+    threads: threads.slice(0, 200),
+    totalUnread: threads.reduce((n, t) => n + t.unread, 0),
+    open: threads.filter((t) => t.unread > 0).length,
+    botName: T_BOT_NAME,
+    botUsername: T_BOT_USERNAME
+  });
+});
+app.get("/admin/support/:userId", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const target = await one(c.env.DB, `SELECT * FROM users WHERE id = ?`, c.req.param("userId"));
+  if (!target) return jsonError(c, "\u06a9\u0627\u0631\u0628\u0631 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f", 404);
+  const conv = await ensureTConv(c.env.DB, target);
+  const rows = await many(
+    c.env.DB,
+    `SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 150`,
+    conv.id
+  );
+  if (c.req.query("read") !== "0") {
+    await run(
+      c.env.DB,
+      `UPDATE members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?`,
+      Date.now(),
+      conv.id,
+      T_BOT_ID
+    );
+  }
+  return c.json({
+    convId: conv.id,
+    user: pub(target, null, false),
+    messages: rows.reverse().map(supportMsg)
+  });
+});
+app.post("/admin/support/:userId", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const body = await c.req.json().catch(() => ({}));
+  const text = cleanText(body.body ?? body.text, 1, 2000);
+  if (!text) return jsonError(c, "\u0645\u062a\u0646 \u067e\u06cc\u0627\u0645 \u062e\u0627\u0644\u06cc \u0627\u0633\u062a");
+  const conv = await supportConvOf(c.env.DB, c.req.param("userId"));
+  if (!conv) return jsonError(c, "\u06a9\u0627\u0631\u0628\u0631 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f", 404);
+  const msg = await insertBotMessage(c.env.DB, conv.id, T_BOT_ID, text);
+  await run(
+    c.env.DB,
+    `UPDATE members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?`,
+    Date.now(),
+    conv.id,
+    T_BOT_ID
+  );
+  await logAdmin(c.env.DB, g.user.id, "support_reply", c.req.param("userId"), text.slice(0, 80));
+  return c.json({ ok: true, message: msg ? supportMsg(msg) : null });
+});
+app.post("/admin/support/:userId/read", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const conv = await supportConvOf(c.env.DB, c.req.param("userId"));
+  if (!conv) return jsonError(c, "\u06a9\u0627\u0631\u0628\u0631 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f", 404);
+  await run(
+    c.env.DB,
+    `UPDATE members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?`,
+    Date.now(),
+    conv.id,
+    T_BOT_ID
+  );
+  return c.json({ ok: true });
+});
+app.get("/admin/support/media/:mid", async (c) => {
+  const g = await supportGate(c);
+  if (g.err) return g.err;
+  const row = await one(
+    c.env.DB,
+    `SELECT id, conversation_id, mime, data FROM media WHERE id = ?`,
+    c.req.param("mid")
+  );
+  if (!row) return jsonError(c, "\u0641\u0627\u06cc\u0644 \u0646\u06cc\u0633\u062a", 404);
+  const conv = await one(c.env.DB, `SELECT dm_key FROM conversations WHERE id = ?`, row.conversation_id);
+  if (!isTSupportConv(conv)) return jsonError(c, "\u0627\u062c\u0627\u0632\u0647 \u0646\u062f\u0627\u0631\u06cc", 403);
+  const decoded = decodeDataUrl(row.data);
+  if (!decoded) return jsonError(c, "\u0641\u0627\u06cc\u0644 \u062e\u0631\u0627\u0628 \u0627\u0633\u062a", 500);
+  const copy = new Uint8Array(decoded.bytes.byteLength);
+  copy.set(decoded.bytes);
+  return new Response(new Blob([copy], { type: decoded.mime || row.mime || "application/octet-stream" }), {
+    status: 200,
+    headers: {
+      "Content-Type": decoded.mime || row.mime || "application/octet-stream",
+      "Cache-Control": "private, max-age=604800, immutable",
+      "Content-Disposition": "inline"
+    }
   });
 });
 app.all("*", (c) => jsonError(c, "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u062F\u0627 \u0646\u0634\u062F", 404));
