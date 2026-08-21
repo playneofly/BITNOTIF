@@ -2445,6 +2445,15 @@ async function run(db, sql, ...params) {
   await db.prepare(sql).bind(...params).run();
 }
 var EXTRA_SQL = [
+  `CREATE TABLE IF NOT EXISTS push_subs (
+     id TEXT PRIMARY KEY,
+     user_id TEXT NOT NULL,
+     endpoint TEXT NOT NULL UNIQUE,
+     p256dh TEXT,
+     auth TEXT,
+     created_at INTEGER NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_id)`,
   "ALTER TABLE users ADD COLUMN avatar TEXT",
   "ALTER TABLE messages ADD COLUMN media_id TEXT",
   "ALTER TABLE messages ADD COLUMN duration_ms INTEGER",
@@ -2565,7 +2574,7 @@ var EXTRA_SQL = [
   `ALTER TABLE messages ADD COLUMN media_ids TEXT`
 ];
 var booted = false;
-var SCHEMA_V = "t1";
+var SCHEMA_V = "t3";
 async function ensureSchema(db, schema) {
   if (booted) return;
   try {
@@ -3034,6 +3043,33 @@ async function ensureTBotName(db) {
     await run(db, `UPDATE conversations SET title = ? WHERE dm_key LIKE 'bot:t:%'`, T_BOT_NAME);
   }
 }
+async function aiSupportReply(env, db, conv, userText) {
+  try {
+    if (!env.AI) return false;
+    if (await setting(db, "ai_support", "1") === "0") return false;
+    const hist = await many(
+      db,
+      `SELECT author_id, body FROM messages WHERE conversation_id = ? AND deleted_at IS NULL
+       ORDER BY created_at DESC LIMIT 6`,
+      conv.id
+    );
+    const msgs = [{
+      role: "system",
+      content: "تو دستیار پشتیبانی پیام‌رسان فارسی «T» هستی. کوتاه، مودب و کاملاً فارسی جواب بده (حداکثر ۳ جمله). اگر جواب را نمی‌دانی بگو که همکاران پشتیبانی به‌زودی پاسخ می‌دهند. دربارهٔ سیاست‌های داخلی یا اطلاعات حساب دیگران چیزی نگو."
+    }];
+    hist.reverse().forEach((m) => {
+      msgs.push({ role: m.author_id === T_BOT_ID ? "assistant" : "user", content: String(m.body || "").slice(0, 500) });
+    });
+    if (userText) msgs.push({ role: "user", content: String(userText).slice(0, 500) });
+    const out = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", { messages: msgs, max_tokens: 220 });
+    const text = String((out && (out.response || out.result || "")) || "").trim();
+    if (!text) return false;
+    await insertBotMessage(db, conv.id, T_BOT_ID, text.slice(0, 900));
+    return true;
+  } catch {
+    return false;
+  }
+}
 async function supportAutoAck(db, conv, now = Date.now()) {
   const last = await one(
     db,
@@ -3045,6 +3081,12 @@ async function supportAutoAck(db, conv, now = Date.now()) {
   await insertBotMessage(db, conv.id, T_BOT_ID, SUPPORT_ACK_TEXT);
 }
 async function insertBotMessage(db, convId, botId, text) {
+  try {
+    const mem = await many(db, `SELECT user_id FROM members WHERE conversation_id = ? AND user_id != ?`, convId, botId);
+    for (const m of mem) if (!isOfficialBot(m.user_id)) pushToUser(db, m.user_id).catch(() => {
+    });
+  } catch {
+  }
   const id = randomId();
   const now = Date.now();
   await run(
@@ -3371,6 +3413,79 @@ async function botStats(db) {
   const cities = await one(db, `SELECT COUNT(*) as n FROM bot_cities`);
   const subs = await one(db, `SELECT COUNT(*) as n FROM bot_subs WHERE times BETWEEN 1 AND 18 AND city_id IS NOT NULL`);
   return { cities: cities?.n ?? 0, subs: subs?.n ?? 0 };
+}
+
+// ===== Web Push (VAPID, بدون payload) =====
+var VAPID_PUB = "BOAflujQiqp7W2a7YAWW-mChizOo_AWSgIUpI1AhWxh8cXvLRpX-dTorpxJ_P4Sc26thjbjDK4yDwpcDKtFx-BA";
+var VAPID_JWK = { kty: "EC", crv: "P-256", d: "lHsfFy498VJzuDilO9IuO38DFPu43o8lvHZ8FNCAcbk", x: "4B-W6NCKqntbZrtgBZb6YKGLM6j8BZKAhSkjUCFbGHw", y: "cXvLRpX-dTorpxJ_P4Sc26thjbjDK4yDwpcDKtFx-BA", ext: true };
+var vapidKey = null;
+
+function b64url(bytes) {
+  var bin = "";
+  var arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  for (var i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64urlStr(str) {
+  return b64url(new TextEncoder().encode(str));
+}
+async function vapidToken(audience) {
+  if (!vapidKey) {
+    vapidKey = await crypto.subtle.importKey(
+      "jwk", VAPID_JWK, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]
+    );
+  }
+  const head = b64urlStr(JSON.stringify({ typ: "JWT", alg: "ES256" }));
+  const body = b64urlStr(JSON.stringify({
+    aud: audience,
+    exp: Math.floor(Date.now() / 1e3) + 12 * 3600,
+    sub: "mailto:admin@playneofly.ir"
+  }));
+  const data = new TextEncoder().encode(head + "." + body);
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, vapidKey, data);
+  return head + "." + body + "." + b64url(sig);
+}
+async function pushToUser(db, userId, exceptEndpoint) {
+  let subs = [];
+  try {
+    subs = await many(db, `SELECT * FROM push_subs WHERE user_id = ? LIMIT 8`, userId);
+  } catch {
+    return;
+  }
+  for (const sub of subs) {
+    try {
+      const u = new URL(sub.endpoint);
+      if (exceptEndpoint && sub.endpoint === exceptEndpoint) continue;
+      const jwt = await vapidToken(u.origin);
+      const res = await fetch(sub.endpoint, {
+        method: "POST",
+        headers: {
+          TTL: "120",
+          Urgency: "high",
+          "Content-Length": "0",
+          Authorization: `vapid t=${jwt}, k=${VAPID_PUB}`
+        }
+      });
+      if (res.status === 404 || res.status === 410) {
+        await soft(db, `DELETE FROM push_subs WHERE endpoint = ?`, sub.endpoint);
+      }
+    } catch {
+    }
+  }
+}
+async function pushConversation(db, convId, actorId) {
+  try {
+    const rows = await many(
+      db,
+      `SELECT user_id FROM members WHERE conversation_id = ? AND user_id != ? AND IFNULL(muted,0) = 0`,
+      convId, actorId
+    );
+    for (const r of rows) {
+      if (isOfficialBot(r.user_id)) continue;
+      await pushToUser(db, r.user_id);
+    }
+  } catch {
+  }
 }
 
 // src/api/app.ts
@@ -5129,6 +5244,18 @@ app.post("/conversations/:id/messages", async (c) => {
         mediaId = mid;
         durationMs = parsed.durationMs || null;
       }
+      let stored = parsed.data;
+      if (c.env.MEDIA) {
+        try {
+          const dec = decodeDataUrl(parsed.data);
+          if (dec) {
+            const key = `m/${mid}`;
+            await c.env.MEDIA.put(key, dec.bytes, { httpMetadata: { contentType: dec.mime || parsed.mime } });
+            stored = "r2:" + key;
+          }
+        } catch {
+        }
+      }
       await run(
         c.env.DB,
         `INSERT INTO media (id, conversation_id, kind, mime, data, bytes, duration_ms, created_at)
@@ -5137,7 +5264,7 @@ app.post("/conversations/:id/messages", async (c) => {
         conv.id,
         kindRaw === "album" ? "photo" : kindRaw,
         parsed.mime,
-        parsed.data,
+        stored,
         parsed.bytes,
         parsed.durationMs || null,
         Date.now()
@@ -5220,9 +5347,17 @@ app.post("/conversations/:id/messages", async (c) => {
     await emit2(c.env.DB, "conversation", conv.id, user.id, { unhide: true });
   }
   await emit2(c.env.DB, "message", conv.id, user.id, { id });
+  try {
+    const ctx = c.executionCtx;
+    const job = pushConversation(c.env.DB, conv.id, user.id);
+    if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(job.catch(() => {
+    }));
+  } catch {
+  }
   if (isTSupportConv(conv) && user.id !== T_BOT_ID) {
     try {
-      await supportAutoAck(c.env.DB, conv, now);
+      const answered = await aiSupportReply(c.env, c.env.DB, conv, text);
+      if (!answered) await supportAutoAck(c.env.DB, conv, now);
     } catch {
     }
   }
@@ -5379,6 +5514,19 @@ app.get("/media/:id", async (c) => {
   const row = await one(c.env.DB, `SELECT id, conversation_id, mime, data FROM media WHERE id = ?`, c.req.param("id"));
   if (!row) return jsonError(c, "\u0641\u0627\u06CC\u0644 \u0646\u06CC\u0633\u062A", 404);
   if (!await memberOf(c.env.DB, row.conversation_id, user.id)) return jsonError(c, "\u0627\u062C\u0627\u0632\u0647 \u0646\u062F\u0627\u0631\u06CC", 403);
+  /* اگر فایل روی R2 است، مستقیم از آنجا استریم شود */
+  if (String(row.data || "").indexOf("r2:") === 0 && c.env.MEDIA) {
+    const obj = await c.env.MEDIA.get(String(row.data).slice(3));
+    if (obj) {
+      return new Response(obj.body, {
+        headers: {
+          "Content-Type": row.mime || "application/octet-stream",
+          "Cache-Control": "private, max-age=604800, immutable"
+        }
+      });
+    }
+    return jsonError(c, "\u0641\u0627\u06CC\u0644 \u0646\u06CC\u0633\u062A", 404);
+  }
   const decoded = decodeDataUrl(row.data);
   if (!decoded) return jsonError(c, "\u0641\u0627\u06CC\u0644 \u062E\u0631\u0627\u0628 \u0627\u0633\u062A", 500);
   const copy = new Uint8Array(decoded.bytes.byteLength);
@@ -6896,6 +7044,38 @@ app.get("/admin/health", async (c) => {
     }
   });
 });
+app.get("/admin/export/db", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const gate = await requireOwnerLike(user, c.env.DB);
+  if (!isOwnerGate(gate)) return jsonError(c, "\u0641\u0642\u0637 \u0645\u0627\u0644\u06A9", 403);
+  const tables = [
+    "users", "conversations", "members", "messages", "reactions", "stories",
+    "blocks", "site_settings", "admin_log", "bot_cities", "bot_subs", "site_files"
+  ];
+  const dump = { at: Date.now(), version: SCHEMA_V, tables: {} };
+  for (const t of tables) {
+    try {
+      const rows = await many(c.env.DB, `SELECT * FROM ${t}`);
+      if (t === "media" || t === "site_files") {
+        dump.tables[t] = rows.map((r) => ({ ...r, data: "(skipped)" }));
+      } else {
+        dump.tables[t] = rows;
+      }
+    } catch {
+      dump.tables[t] = [];
+    }
+  }
+  const body = JSON.stringify(dump);
+  await logAdmin(c.env.DB, user.id, "export_db", null, String(body.length));
+  return new Response(body, {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": `attachment; filename="t-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+      "Cache-Control": "no-store"
+    }
+  });
+});
 app.get("/admin/export/log", async (c) => {
   const user = await auth(c);
   if (user instanceof Response) return user;
@@ -7231,6 +7411,58 @@ app.delete("/admin/file", async (c) => {
   await run(c.env.DB, `DELETE FROM site_files WHERE id = 'apk'`);
   await logAdmin(c.env.DB, user.id, "del_apk", null, "");
   return c.json({ ok: true });
+});
+app.get("/push/key", (c) => c.json({ key: VAPID_PUB }));
+app.post("/push/subscribe", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const body = await c.req.json().catch(() => ({}));
+  const sub = body.subscription || body;
+  const endpoint = String(sub.endpoint || "");
+  if (!/^https:\/\//.test(endpoint)) return jsonError(c, "endpoint نامعتبر");
+  const keys = sub.keys || {};
+  await run(
+    c.env.DB,
+    `INSERT INTO push_subs (id, user_id, endpoint, p256dh, auth, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, created_at = excluded.created_at`,
+    randomId(), user.id, endpoint, String(keys.p256dh || ""), String(keys.auth || ""), Date.now()
+  );
+  return c.json({ ok: true });
+});
+app.post("/push/unsubscribe", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const body = await c.req.json().catch(() => ({}));
+  const endpoint = String(body.endpoint || "");
+  if (endpoint) await soft(c.env.DB, `DELETE FROM push_subs WHERE endpoint = ? AND user_id = ?`, endpoint, user.id);
+  return c.json({ ok: true });
+});
+/* خلاصهٔ آخرین پیام نخوانده — service worker از این برای متن نوتیف استفاده می‌کند */
+app.get("/push/latest", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const row = await one(
+    c.env.DB,
+    `SELECT m.body, m.type, m.conversation_id as cid, m.created_at,
+            u.display_name as who, c.type as ctype, c.title as ctitle
+     FROM members mem
+     JOIN messages m ON m.conversation_id = mem.conversation_id
+     LEFT JOIN users u ON u.id = m.author_id
+     LEFT JOIN conversations c ON c.id = m.conversation_id
+     WHERE mem.user_id = ? AND m.author_id != ? AND m.deleted_at IS NULL
+       AND m.created_at > IFNULL(mem.last_read_at, 0)
+     ORDER BY m.created_at DESC LIMIT 1`,
+    user.id, user.id
+  );
+  if (!row) return c.json({ empty: true });
+  const title = row.ctype === "dm" ? (row.who || "T") : (row.ctitle || "T");
+  return c.json({
+    title,
+    body: previewFor(row.type || "text", row.body || ""),
+    convId: row.cid,
+    at: row.created_at
+  });
 });
 app.get("/apk-version", async (c) => {
   return c.json({ version: await setting(c.env.DB, "apk_version", "") });

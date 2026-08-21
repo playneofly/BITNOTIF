@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
-    <meta name="theme-color" content="#0B0B12" />
+    <meta name="theme-color" content="#070C18" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="T" />
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
     <meta name="description" content="پیام‌رسان T" />
     <title>T</title>
     <link rel="icon" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g1%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23BFD8FF%22%2F%3E%3Cstop%20offset%3D%2245%25%22%20stop-color%3D%22%234C8DFF%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%231E4FA8%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22translate(0%2C512)%20scale(0.1%2C-0.1)%22%20fill%3D%22url(%23g1)%22%20stroke%3D%22none%22%3E%3Cpath%20d%3D%22M2010%204499%20c-706%20-406%20-825%20-475%20-1033%20-603%20-256%20-156%20-297%20-189%20-333%20-263%20l-29%20-58%20-3%20-1013%20-2%20-1012%2021%20-50%20c29%20-68%20112%20-142%20235%20-210%2054%20-30%20200%20-112%20323%20-182%20123%20-70%20239%20-130%20258%20-134%2041%20-8%2073%2012%20107%2064%2045%2069%20767%201467%20783%201515%2041%20124%20-2%20237%20-112%20292%20l-60%2030%20-330%205%20-330%205%20-67%2033%20c-270%20133%20-272%20504%20-4%20635%2096%2047%2094%2047%201543%2047%201494%200%201435%20-2%201445%2054%2014%2073%20-28%20106%20-443%20344%20-162%2093%20-522%20300%20-801%20460%20l-507%20292%20-113%200%20-113%20-1%20-435%20-250z%22%2F%3E%3Cpath%20d%3D%22M3719%202860%20c-249%20-29%20-448%20-150%20-583%20-355%20-21%20-31%20-173%20-316%20-338%20-633%20-165%20-317%20-385%20-740%20-489%20-940%20-104%20-199%20-189%20-365%20-189%20-370%200%20-4%2073%20-47%20161%20-97%20l161%20-90%20102%20-6%20c125%20-7%20101%20-17%20451%20186%20154%2089%20521%20300%20815%20469%20594%20341%20623%20361%20671%20483%20l24%2058%20-4%20645%20c-2%20355%20-5%20648%20-8%20653%20-6%209%20-688%207%20-774%20-3z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E" />
@@ -1181,6 +1186,48 @@
       .t-avup-rm { font-size: 11px !important; opacity: .75; }
       .t-avup-rm:hover { opacity: 1; }
     </style>
+
+    <!-- ===== نصب اپ + نوتیفیکیشن ===== -->
+    <style>
+      .t-nudge {
+        position: fixed; z-index: 100003; inset-inline: 14px; bottom: 14px;
+        max-width: 420px; margin-inline: auto;
+        display: none; align-items: center; gap: 10px;
+        padding: 12px 14px; border-radius: 14px;
+        background: linear-gradient(160deg, #111B33, #0B1324);
+        border: 1px solid rgba(76, 141, 255, .3);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+        color: var(--cream, #E9EFFA);
+        font-family: var(--sans, Tahoma, sans-serif); font-size: 13px;
+        direction: rtl;
+      }
+      .t-nudge.show { display: flex; animation: t-nudge-in .3s cubic-bezier(.22,1,.36,1) both; }
+      @keyframes t-nudge-in { from { opacity: 0; transform: translateY(16px); } }
+      .t-nudge .ico { width: 34px; height: 34px; flex: none; border-radius: 10px;
+        background: url("/assets/icon-192.png") center/cover no-repeat; }
+      .t-nudge p { margin: 0; flex: 1; line-height: 1.7; }
+      .t-nudge b { color: #8FC3FF; }
+      .t-nudge button {
+        border: 0; border-radius: 10px; padding: 8px 13px; cursor: pointer;
+        font-family: inherit; font-size: 12.5px; font-weight: 700;
+        background: linear-gradient(160deg, #4C8DFF, #1E4FA8); color: #04101f;
+      }
+      .t-nudge .no {
+        background: none; color: var(--mute, #8B96AE); font-weight: 500; padding: 8px 6px;
+      }
+      /* آیتم‌های تازه در پنجرهٔ دانلود */
+      #tDl .tdl-extra {
+        margin: 10px 0 0; display: flex; flex-direction: column; gap: 7px;
+      }
+      #tDl .tdl-extra button {
+        width: 100%; padding: 9px; border-radius: 9px; cursor: pointer;
+        font-family: inherit; font-size: 12.5px; font-weight: 700;
+        background: rgba(76, 141, 255, .14); color: #BFD8FF;
+        border: 1px solid rgba(76, 141, 255, .32);
+      }
+      #tDl .tdl-extra button:hover { background: rgba(76, 141, 255, .26); }
+      #tDl .tdl-extra button[disabled] { opacity: .5; cursor: default; }
+    </style>
     <script type="module" crossorigin src="/assets/index-Bt5upPRT.js"></script>
   </head>
   <body style="margin:0;background:#0B0B12">
@@ -1980,6 +2027,62 @@
       document.addEventListener("touchcancel", clearLp, { passive: true });
       document.addEventListener("contextmenu", function () { setTimeout(scanMenus, 30); }, true);
 
+      /* ================= سوایپ برای پاسخ (موبایل) ================= */
+      (function () {
+        var sx = 0, sy = 0, el = null, dragging = false, moved = 0;
+        function reset(animate) {
+          if (!el) return;
+          var b = el;
+          b.style.transition = animate ? "transform .18s ease" : "";
+          b.style.transform = "";
+          setTimeout(function () { if (b) b.style.transition = ""; }, 200);
+          el = null; dragging = false; moved = 0;
+        }
+        document.addEventListener("touchstart", function (e) {
+          var t = e.target && e.target.closest ? e.target.closest(".msgs .bubble") : null;
+          if (!t || e.touches.length !== 1) return;
+          el = t; sx = e.touches[0].clientX; sy = e.touches[0].clientY; dragging = false; moved = 0;
+        }, { passive: true });
+
+        document.addEventListener("touchmove", function (e) {
+          if (!el || e.touches.length !== 1) return;
+          var dx = e.touches[0].clientX - sx;
+          var dy = e.touches[0].clientY - sy;
+          if (!dragging) {
+            if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.6) dragging = true;
+            else if (Math.abs(dy) > 14) { el = null; return; }
+          }
+          if (dragging) {
+            moved = Math.max(-90, Math.min(90, dx));
+            el.style.transform = "translateX(" + (moved * 0.55) + "px)";
+            if (e.cancelable) e.preventDefault();
+          }
+        }, { passive: false });
+
+        document.addEventListener("touchend", function () {
+          if (!el) return;
+          var far = Math.abs(moved) >= 52;
+          var target = el;
+          reset(true);
+          if (!far) return;
+          try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {}
+          var r = target.getBoundingClientRect();
+          target.dispatchEvent(new MouseEvent("contextmenu", {
+            bubbles: true, cancelable: true, clientX: r.left + 12, clientY: r.top + 12
+          }));
+          setTimeout(function () {
+            var menu = target.querySelector(":scope > .menu") || document.querySelector(".bubble > .menu");
+            if (!menu) return;
+            var btn = [].slice.call(menu.querySelectorAll("button"))
+              .find(function (b) { return b.textContent.trim() === "پاسخ"; });
+            if (btn) btn.click();
+            else document.body.click();
+          }, 90);
+        }, { passive: true });
+
+        document.addEventListener("touchcancel", function () { reset(true); }, { passive: true });
+      })();
+
       /* ================= ۳) پنجرهٔ دانلود ================= */
       /* آیکن برنامه = لوگوی رسمی T */
       var APP_ICON = '<svg class="image" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tlgm" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#C4B5FD"/><stop offset="45%" stop-color="#4C8DFF"/><stop offset="100%" stop-color="#1E4FA8"/></linearGradient></defs><g transform="translate(0,512) scale(0.1,-0.1)" fill="url(#tlgm)" stroke="none"><path d="M2010 4499 c-706 -406 -825 -475 -1033 -603 -256 -156 -297 -189 -333 -263 l-29 -58 -3 -1013 -2 -1012 21 -50 c29 -68 112 -142 235 -210 54 -30 200 -112 323 -182 123 -70 239 -130 258 -134 41 -8 73 12 107 64 45 69 767 1467 783 1515 41 124 -2 237 -112 292 l-60 30 -330 5 -330 5 -67 33 c-270 133 -272 504 -4 635 96 47 94 47 1543 47 1494 0 1435 -2 1445 54 14 73 -28 106 -443 344 -162 93 -522 300 -801 460 l-507 292 -113 0 -113 -1 -435 -250z"/><path d="M3719 2860 c-249 -29 -448 -150 -583 -355 -21 -31 -173 -316 -338 -633 -165 -317 -385 -740 -489 -940 -104 -199 -189 -365 -189 -370 0 -4 73 -47 161 -97 l161 -90 102 -6 c125 -7 101 -17 451 186 154 89 521 300 815 469 594 341 623 361 671 483 l24 58 -4 645 c-2 355 -5 648 -8 653 -6 9 -688 7 -774 -3z"/></g></svg>';
@@ -2021,7 +2124,25 @@
               '</a>' +
             '</div>' +
             '<p class="tdl-note"></p>' +
+            '<div class="tdl-extra">' +
+              '<button type="button" class="tdl-install">نصب وب‌اپ روی گوشی</button>' +
+              '<button type="button" class="tdl-push">روشن کردن نوتیفیکیشن</button>' +
+            '</div>' +
           '</div>';
+        dl.querySelector(".tdl-install").addEventListener("click", function (e) {
+          e.stopPropagation();
+          var btn = e.currentTarget;
+          if (window.__tInstall && window.__tInstall()) return;
+          btn.textContent = "از منوی مرورگر: «افزودن به صفحهٔ اصلی»";
+          btn.disabled = true;
+        });
+        dl.querySelector(".tdl-push").addEventListener("click", function (e) {
+          e.stopPropagation();
+          var btn = e.currentTarget;
+          if (window.__tPushAsk) window.__tPushAsk();
+          btn.textContent = "درخواست فرستاده شد ✓";
+          btn.disabled = true;
+        });
         dl.addEventListener("click", function (e) { if (e.target === dl) closeDl(); });
         dl.querySelector(".tdl-x").addEventListener("click", closeDl);
         document.body.appendChild(dl);
@@ -2501,6 +2622,158 @@
       }
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
       else start();
+    })();
+    </script>
+
+    <script>
+    (function () {
+      "use strict";
+      /* ------- PWA: service worker + دکمهٔ نصب + نوتیفیکیشن وب ------- */
+
+      var VAPID = "BOAflujQiqp7W2a7YAWW-mChizOo_AWSgIUpI1AhWxh8cXvLRpX-dTorpxJ_P4Sc26thjbjDK4yDwpcDKtFx-BA";
+      var swReg = null;
+      var deferredInstall = null;
+
+      function urlB64ToUint8(base64String) {
+        var padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        var base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        var raw = atob(base64);
+        var out = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+        return out;
+      }
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/sw.js", { scope: "/" })
+            .then(function (reg) { swReg = reg; maybeAskPush(); })
+            .catch(function () {});
+        });
+      }
+
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        deferredInstall = e;
+        if (!localStorage.getItem("t_install_dismissed")) showNudge("install");
+      });
+      window.addEventListener("appinstalled", function () {
+        deferredInstall = null;
+        hideNudge();
+        localStorage.setItem("t_install_dismissed", "1");
+      });
+
+      /* ---------- نوار پیشنهاد ---------- */
+      var nudge = null;
+      function buildNudge() {
+        if (nudge) return nudge;
+        nudge = document.createElement("div");
+        nudge.className = "t-nudge";
+        nudge.innerHTML =
+          '<span class="ico"></span><p></p>' +
+          '<button class="yes" type="button"></button>' +
+          '<button class="no" type="button">بعداً</button>';
+        nudge.querySelector(".no").addEventListener("click", function () {
+          localStorage.setItem(nudge.dataset.kind === "push" ? "t_push_dismissed" : "t_install_dismissed", "1");
+          hideNudge();
+        });
+        nudge.querySelector(".yes").addEventListener("click", function () {
+          var kind = nudge.dataset.kind;
+          hideNudge();
+          if (kind === "install" && deferredInstall) {
+            deferredInstall.prompt();
+            deferredInstall.userChoice.finally(function () { deferredInstall = null; });
+          } else if (kind === "push") {
+            askPush();
+          }
+        });
+        document.body.appendChild(nudge);
+        return nudge;
+      }
+      function showNudge(kind) {
+        var n = buildNudge();
+        n.dataset.kind = kind;
+        n.querySelector("p").innerHTML = kind === "install"
+          ? "<b>T</b> را روی گوشی‌ات نصب کن — سریع‌تر باز می‌شود و نوتیف می‌دهد."
+          : "روشن کردن <b>نوتیفیکیشن</b> تا پیام‌های تازه را از دست ندهی.";
+        n.querySelector(".yes").textContent = kind === "install" ? "نصب" : "روشن کن";
+        n.classList.add("show");
+      }
+      function hideNudge() { if (nudge) nudge.classList.remove("show"); }
+
+      /* ---------- نوتیفیکیشن ---------- */
+      function loggedIn() { return document.cookie.indexOf("t_in=1") > -1; }
+
+      function maybeAskPush() {
+        if (!("Notification" in window) || !swReg || !swReg.pushManager) return;
+        if (!loggedIn()) return;
+        if (Notification.permission === "granted") { subscribePush(); return; }
+        if (Notification.permission === "denied") return;
+        if (localStorage.getItem("t_push_dismissed")) return;
+        setTimeout(function () { if (loggedIn()) showNudge("push"); }, 6000);
+      }
+
+      function askPush() {
+        if (!("Notification" in window)) return;
+        Notification.requestPermission().then(function (p) {
+          if (p === "granted") subscribePush();
+        });
+      }
+
+      function subscribePush() {
+        if (!swReg || !swReg.pushManager || !loggedIn()) return;
+        swReg.pushManager.getSubscription().then(function (sub) {
+          if (sub) return sub;
+          return swReg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlB64ToUint8(VAPID)
+          });
+        }).then(function (sub) {
+          if (!sub) return;
+          var raw = sub.toJSON();
+          return fetch("/api/push/subscribe", {
+            method: "POST", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: raw.endpoint, keys: raw.keys })
+          });
+        }).catch(function () {});
+      }
+      window.__tPushSubscribe = subscribePush;
+      window.__tPushAsk = askPush;
+      window.__tInstall = function () {
+        if (deferredInstall) { deferredInstall.prompt(); return true; }
+        return false;
+      };
+
+      /* بعد از ورود، اشتراک را بساز */
+      var seen = loggedIn();
+      setInterval(function () {
+        var now = loggedIn();
+        if (now && !seen) { seen = true; maybeAskPush(); }
+        if (!now) seen = false;
+      }, 4000);
+
+      /* ------- سرعت: پولینگ هوشمند /api/sync ------- */
+      (function () {
+        var origFetch = window.fetch;
+        var lastSync = 0;
+        window.fetch = function (input, init) {
+          try {
+            var url = typeof input === "string" ? input : (input && input.url) || "";
+            if (url.indexOf("/api/sync") > -1) {
+              var now = Date.now();
+              /* وقتی تب پنهان است، حداکثر هر ۱۵ ثانیه؛ وقتی فعال است عادی */
+              var gap = document.hidden ? 15000 : 900;
+              if (now - lastSync < gap) {
+                return Promise.resolve(new Response(JSON.stringify({ events: [], now: now, skipped: true }), {
+                  status: 200, headers: { "Content-Type": "application/json" }
+                }));
+              }
+              lastSync = now;
+            }
+          } catch (e) {}
+          return origFetch.apply(this, arguments);
+        };
+      })();
     })();
     </script>
   </body>
