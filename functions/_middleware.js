@@ -3139,7 +3139,7 @@ async function aiCfg(db) {
     temp: Math.min(1.5, Math.max(0, Number(await setting(db, "ai_temp", "0.3")) || 0.3)),
     maxTokens: Math.min(2048, Math.max(64, Number(await setting(db, "ai_max_tokens", "640")) || 640)),
     hist: Math.min(20, Math.max(0, Number(await setting(db, "ai_hist", "8")) || 8)),
-    daily: Math.max(0, Number(await setting(db, "ai_daily", "60")) || 0),
+    daily: Math.max(0, Number(await setting(db, "ai_daily", "100")) || 0),
     pauseMin: Math.max(0, Number(await setting(db, "ai_pause_min", "45")) || 0),
     base: (await setting(db, "ai_base", "")).trim(),
     key: (await setting(db, "ai_key", "")).trim(),
@@ -3247,7 +3247,7 @@ async function aiCallExternal(cfg, sys, msgs) {
 async function aiGenerate(env, cfg, sys, msgs) {
   const t0 = Date.now();
   if (cfg.base && cfg.key) {
-    const text2 = aiClean(await aiCallExternal(cfg, sys, msgs));
+    const text2 = aiClean(await aiWithTimeout(aiCallExternal(cfg, sys, msgs), 25e3));
     aiStat.lastMs = Date.now() - t0;
     aiStat.lastModel = cfg.extModel || "external";
     return { text: text2, model: aiStat.lastModel, ms: aiStat.lastMs };
@@ -3257,7 +3257,7 @@ async function aiGenerate(env, cfg, sys, msgs) {
   let lastErr = null;
   for (const model of chain) {
     try {
-      const raw = await aiCallWorkers(env, model, sys, msgs, cfg);
+      const raw = await aiWithTimeout(aiCallWorkers(env, model, sys, msgs, cfg), 22e3);
       const text2 = aiClean(raw);
       if (!text2) throw new Error("\u062c\u0648\u0627\u0628 \u062e\u0627\u0644\u06cc \u0628\u0648\u062f");
       aiStat.lastMs = Date.now() - t0;
@@ -3293,6 +3293,45 @@ async function aiHistory(db, conv, cfg) {
     role: m.author_id === T_BOT_ID ? "assistant" : "user",
     content: String(m.body || (m.type && m.type !== "text" ? `[${m.type}]` : "")).slice(0, 700)
   })).filter((m) => m.content);
+}
+async function aiWillReply(env, db, conv, userId, userText) {
+  try {
+    if (!String(userText || "").trim()) return false;
+    const cfg = await aiCfg(db);
+    if (!cfg.on) return false;
+    if (!env.AI && !(cfg.base && cfg.key)) return false;
+    if (userId) {
+      const q = await aiQuota(db, userId, cfg.daily);
+      if (q.pausedUntil > Date.now()) return false;
+      if (cfg.daily > 0 && q.left <= 0) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function aiTyping(db, convId, on) {
+  try {
+    if (on) {
+      await soft(
+        db,
+        `INSERT INTO typing (conversation_id, user_id, until_ts) VALUES (?, ?, ?)
+         ON CONFLICT(conversation_id, user_id) DO UPDATE SET until_ts = excluded.until_ts`,
+        convId,
+        T_BOT_ID,
+        Date.now() + 25e3
+      );
+    } else {
+      await soft(db, `DELETE FROM typing WHERE conversation_id = ? AND user_id = ?`, convId, T_BOT_ID);
+    }
+  } catch {
+  }
+}
+function aiWithTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error("\u0645\u062f\u0644 \u062f\u06cc\u0631 \u062c\u0648\u0627\u0628 \u062f\u0627\u062f (timeout)")), ms))
+  ]);
 }
 async function aiSupportReply(env, db, conv, userText, user) {
   const text = String(userText || "").trim();
@@ -3369,6 +3408,7 @@ async function insertBotMessage(db, convId, botId, text) {
     now
   );
   await touchConv(db, convId, text.slice(0, 80), now);
+  await soft(db, `DELETE FROM typing WHERE conversation_id = ? AND user_id = ?`, convId, botId);
   await run(db, `UPDATE members SET hidden = 0 WHERE conversation_id = ? AND user_id != ?`, convId, botId);
   await emit(db, "conversation", convId, botId, { unhide: true });
   await emit(db, "message", convId, botId, { id });
@@ -5625,11 +5665,27 @@ app.post("/conversations/:id/messages", async (c) => {
   } catch {
   }
   if (isTSupportConv(conv) && user.id !== T_BOT_ID) {
+    const willAi = await aiWillReply(c.env, c.env.DB, conv, user.id, text);
+    if (willAi) await aiTyping(c.env.DB, conv.id, true);
+    const aiJob = (async () => {
+      try {
+        const answered = await aiSupportReply(c.env, c.env.DB, conv, text, user);
+        if (!answered) await supportAutoAck(c.env.DB, conv, now);
+      } catch {
+      } finally {
+        if (willAi) await aiTyping(c.env.DB, conv.id, false);
+      }
+    })();
+    let aiCtx = null;
     try {
-      const answered = await aiSupportReply(c.env, c.env.DB, conv, text, user);
-      if (!answered) await supportAutoAck(c.env.DB, conv, now);
+      const x = c.executionCtx;
+      if (x && typeof x.waitUntil === "function") aiCtx = x;
     } catch {
     }
+    if (aiCtx) aiCtx.waitUntil(aiJob.catch(() => {
+    }));
+    else await aiJob.catch(() => {
+    });
   }
   const msg = await one(c.env.DB, `SELECT * FROM messages WHERE id = ?`, id);
   const [full] = await messagesWithExtras(c.env.DB, [msg], user.id);
@@ -5854,11 +5910,12 @@ app.get("/sync", async (c) => {
   } catch {
   }
   const lite = c.req.query("lite") === "1";
-  const after = Number(c.req.query("after") || 0);
+  const afterRaw = Number(c.req.query("after"));
+  const after = Number.isFinite(afterRaw) && afterRaw >= 0 ? afterRaw : 0;
   if (!lite) {
     await run(c.env.DB, `UPDATE users SET last_seen = ? WHERE id = ?`, Date.now(), user.id);
   }
-  const events = await many(
+  const events = (await many(
     c.env.DB,
     `SELECT e.* FROM events e
      WHERE e.id > ?
@@ -5867,10 +5924,10 @@ app.get("/sync", async (c) => {
          OR e.conversation_id IN (SELECT conversation_id FROM members WHERE user_id = ?)
          OR e.kind IN ('story', 'badge', 'gone')
        )
-     ORDER BY e.id ASC LIMIT 80`,
+     ORDER BY e.id DESC LIMIT 80`,
     after,
     user.id
-  );
+  )).reverse();
   const messageIds = events.filter((e) => e.kind === "message").map((e) => {
     try {
       return JSON.parse(e.payload).id;
@@ -8177,7 +8234,7 @@ async function onRequest(context) {
       );
     }
     try {
-      return await app_default.fetch(context.request, context.env);
+      return await app_default.fetch(context.request, context.env, context);
     } catch (e) {
       return Response.json(
         { error: e instanceof Error ? e.message : String(e) },

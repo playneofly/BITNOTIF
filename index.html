@@ -2997,23 +2997,105 @@
         if (!now) seen = false;
       }, 4000);
 
-      /* ------- سرعت: پولینگ هوشمند /api/sync ------- */
+      /* ------- حباب «در حال نوشتن» برای ربات پشتیبانی ------- */
+      (function () {
+        var TYPING = [];
+        window.__tSetTyping = function (list) { TYPING = Array.isArray(list) ? list : []; };
+
+        var css = document.createElement("style");
+        css.textContent =
+          ".t-typing-row{display:flex;direction:ltr;justify-content:flex-start;padding:2px 4px 8px;}" +
+          ".t-typing-bub{display:inline-flex;gap:5px;align-items:center;padding:11px 14px;border-radius:16px;" +
+            "border-start-start-radius:6px;background:var(--bg2,#111420);border:1px solid var(--line,rgba(120,140,255,.18));}" +
+          ".t-typing-bub span{width:7px;height:7px;border-radius:50%;background:var(--gold2,#4c8dff);opacity:.35;" +
+            "animation:tTypingDot 1.1s infinite ease-in-out;}" +
+          ".t-typing-bub span:nth-child(2){animation-delay:.16s}" +
+          ".t-typing-bub span:nth-child(3){animation-delay:.32s}" +
+          "@keyframes tTypingDot{0%,60%,100%{opacity:.28;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}";
+        (document.head || document.documentElement).appendChild(css);
+
+        function openConv() {
+          var m = location.pathname.match(/^\/c\/([^/?#]+)/);
+          return m ? m[1] : "";
+        }
+        function tick() {
+          var id = openConv();
+          var box = document.querySelector(".msgs");
+          var node = document.getElementById("tTypingRow");
+          var on = !!(id && box && TYPING.some(function (t) {
+            return String(t.conversationId || t.conversation_id || "") === id;
+          }));
+          if (!on) { if (node) node.parentNode.removeChild(node); return; }
+          if (!node) {
+            node = document.createElement("div");
+            node.id = "tTypingRow";
+            node.className = "t-typing-row";
+            node.innerHTML = "<div class='t-typing-bub'><span></span><span></span><span></span></div>";
+          }
+          if (node.parentElement !== box) {
+            box.appendChild(node);
+            try { box.scrollTop = box.scrollHeight; } catch (e) {}
+          } else if (box.lastElementChild !== node) {
+            box.appendChild(node);
+          }
+        }
+        setInterval(tick, 300);
+      })();
+
+      /* ------- سرعت: پولینگ هوشمند /api/sync + حالت داغ بعد از ارسال پیام ------- */
       (function () {
         var origFetch = window.fetch;
-        var lastSync = 0;
+        var lastSync = 0, hotUntil = 0;
+        var lastCursor = null, lastTyping = [];
+        var HOT_MS = 30000;      /* تا ۳۰ ثانیه بعد از ارسال، هیچ خفه‌کنندهٔ سرعتی نداریم */
+
+        window.__tHot = function (ms) { hotUntil = Date.now() + (ms || HOT_MS); };
+
+        function skipRes() {
+          /* 🔴 مهم: باید همان cursor قبلی برگردد؛ وگرنه اپ نشانگرش را گم می‌کند
+             و تا رفرش‌شدن صفحه دیگر پیام تازه نمی‌گیرد */
+          return new Response(JSON.stringify({
+            cursor: lastCursor,
+            events: [], messages: [], conversations: [],
+            typing: lastTyping, presence: [], blasts: [], gone: [],
+            serverTime: Date.now(), skipped: true
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
         window.fetch = function (input, init) {
           try {
             var url = typeof input === "string" ? input : (input && input.url) || "";
+            var m = ((init && init.method) || (input && input.method) || "GET").toUpperCase();
+
+            /* ارسال پیام/ری‌اکشن/تایپ → یعنی کاربر منتظر جواب است */
+            if (m !== "GET" && /\/api\/(conversations\/[^/]+\/messages|messages\/|typing)/.test(url)) {
+              hotUntil = Date.now() + HOT_MS;
+            }
+
             if (url.indexOf("/api/sync") > -1) {
               var now = Date.now();
-              /* وقتی تب پنهان است، حداکثر هر ۱۵ ثانیه؛ وقتی فعال است عادی */
-              var gap = document.hidden ? 15000 : 900;
-              if (now - lastSync < gap) {
-                return Promise.resolve(new Response(JSON.stringify({ events: [], now: now, skipped: true }), {
-                  status: 200, headers: { "Content-Type": "application/json" }
-                }));
+              var hot = now < hotUntil;
+              /* پنهان: ۱۵ ثانیه · داغ: بدون محدودیت (۴۰۰ms خود اپ) · عادی: ۹۰۰ms */
+              var gap = document.hidden ? (hot ? 3000 : 15000) : (hot ? 0 : 900);
+              if (gap && lastCursor !== null && now - lastSync < gap) {
+                return Promise.resolve(skipRes());
               }
               lastSync = now;
+              return origFetch.apply(this, arguments).then(function (r) {
+                try {
+                  r.clone().json().then(function (d) {
+                    if (!d) return;
+                    if (d.cursor !== undefined && d.cursor !== null) lastCursor = d.cursor;
+                    if (Array.isArray(d.typing)) lastTyping = d.typing;
+                    if (window.__tSetTyping) window.__tSetTyping(lastTyping);
+                    /* پیام یا «در حال نوشتن» تازه → چند ثانیه سریع بمان */
+                    if ((d.messages && d.messages.length) || (d.typing && d.typing.length)) {
+                      hotUntil = Date.now() + 12000;
+                    }
+                  }).catch(function () {});
+                } catch (e) {}
+                return r;
+              });
             }
           } catch (e) {}
           return origFetch.apply(this, arguments);
