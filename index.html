@@ -1510,7 +1510,7 @@
         cursor: pointer; transition: border-color .15s, background .15s;
       }
       .tsup-btn:hover { border-color: var(--gold, #e0b84d); }
-      .tsup-btn.gold { background: linear-gradient(135deg, #e0b84d, #b8892a); color: #1a1508; font-weight: 700; border: 0; }
+      .tsup-btn.gold { background: linear-gradient(135deg, var(--gold2, #4c8dff), var(--gold3, #1e4fa8)); color: #f2f7ff; font-weight: 700; border: 0; }
       .tsup-btn:disabled { opacity: .5; cursor: not-allowed; }
       .tsup-search {
         background: var(--bg2, #111114); border: 1px solid var(--line, rgba(224,184,77,.16));
@@ -1568,8 +1568,48 @@
       .tsup-hint { padding: 26px; color: var(--mute, #8d8778); font-size: 13.5px; text-align: center; margin: auto; line-height: 2.1; }
       .tsup-toast { position: fixed; bottom: 18px; inset-inline-start: 18px; background: #2a1b1b; border: 1px solid #d9534f; color: #ffb4b4; padding: 9px 14px; border-radius: 9px; font-size: 12.5px; z-index: 70; display: none; }
 
+      /* ---- پنجرهٔ تنظیمات هوش مصنوعی ---- */
+      #tsaiWrap {
+        position: fixed; inset: 0; z-index: 100003; display: none;
+        background: rgba(4,6,14,.72); backdrop-filter: blur(3px);
+        direction: rtl; font-family: var(--sans, Tahoma, "Segoe UI", sans-serif);
+        align-items: center; justify-content: center; padding: 16px;
+      }
+      #tsaiWrap.on { display: flex; }
+      .tsai-box {
+        width: min(860px, 100%); max-height: min(92vh, 900px); overflow-y: auto;
+        background: var(--bg1, #0a0a0c); border: 1px solid var(--line, rgba(120,140,255,.18));
+        border-radius: 16px; padding: 18px 20px 22px; color: var(--cream, #e9effa);
+        box-shadow: 0 24px 70px rgba(0,0,0,.6);
+      }
+      .tsai-box h3 { margin: 0 0 4px; font-size: 17px; color: var(--gold, #8fc3ff); font-weight: 700; }
+      .tsai-box .hint { font-size: 11.5px; color: var(--mute, #8d95a8); line-height: 1.9; margin-bottom: 12px; }
+      .tsai-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 10px; }
+      .tsai-row > label { font-size: 12.5px; color: var(--mute, #8d95a8); }
+      .tsai-in, .tsai-box select, .tsai-box textarea {
+        width: 100%; background: var(--bg2, #111420); color: var(--cream, #e9effa);
+        border: 1px solid var(--line, rgba(120,140,255,.18)); border-radius: 10px;
+        padding: 9px 11px; font-size: 13px; font-family: inherit; outline: none;
+      }
+      .tsai-box textarea { resize: vertical; min-height: 96px; line-height: 1.9; font-size: 12.5px; }
+      .tsai-in:focus, .tsai-box select:focus, .tsai-box textarea:focus { border-color: var(--gold2, #4c8dff); }
+      .tsai-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+      .tsai-grid3 .tsai-row { grid-template-columns: 1fr; gap: 4px; margin: 0; }
+      .tsai-sec { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.07); }
+      .tsai-sec > b { font-size: 13px; display: block; margin-bottom: 8px; }
+      .tsai-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
+      .tsai-pill.ok { color: #7ee2a8; border-color: rgba(126,226,168,.4); background: rgba(126,226,168,.08); }
+      .tsai-pill.no { color: #ff9d9d; border-color: rgba(255,157,157,.4); background: rgba(255,157,157,.08); }
+      .tsai-out { background: var(--bg2, #111420); border: 1px dashed var(--line, rgba(120,140,255,.25)); border-radius: 11px; padding: 11px 13px; font-size: 13px; line-height: 2; white-space: pre-wrap; min-height: 46px; }
+      .tsai-foot { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+      .tsai-foot .grow { flex: 1; }
+      .tsai-sw { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+      .tsai-sw input { width: 17px; height: 17px; accent-color: var(--gold2, #4c8dff); }
+
       @media (max-width: 900px) {
         #tsupPanel { inset-inline-start: 0; }
+        .tsai-row { grid-template-columns: 1fr; gap: 4px; }
+        .tsai-grid3 { grid-template-columns: 1fr; }
         .tsup-body { grid-template-columns: 1fr; }
         .tsup-list { border: 0; }
         #tsupPanel.chat-open .tsup-list { display: none; }
@@ -1650,10 +1690,12 @@
         search.addEventListener("input", function () { q = this.value.trim().toLowerCase(); renderList(); });
         var refresh = el("button", "tsup-btn", "تازه‌سازی");
         refresh.addEventListener("click", function () { loadList(true); });
+        var aiBtn = el("button", "tsup-btn", "🤖 هوش مصنوعی");
+        aiBtn.addEventListener("click", openAi);
         var close = el("button", "tsup-btn", "بستن ✕");
         close.addEventListener("click", closePanel);
         head.appendChild(back); head.appendChild(h); head.appendChild(sub);
-        head.appendChild(grow); head.appendChild(search); head.appendChild(refresh); head.appendChild(close);
+        head.appendChild(grow); head.appendChild(search); head.appendChild(aiBtn); head.appendChild(refresh); head.appendChild(close);
 
         var body = el("div", "tsup-body");
         var list = el("div", "tsup-list"); list.id = "tsupList";
@@ -1829,6 +1871,209 @@
         if (tabBtn) tabBtn.classList.remove("on");
         current = null;
         clearInterval(listTimer); clearInterval(chatTimer);
+      }
+
+      /* ---------- تنظیمات هوش مصنوعی پشتیبانی ---------- */
+      var aiWrap = null, aiF = {}, aiCfgData = null;
+
+      function aiField(parent, label, node) {
+        var row = el("div", "tsai-row");
+        row.appendChild(el("label", null, label));
+        row.appendChild(node);
+        parent.appendChild(row);
+        return node;
+      }
+      function aiInput(type, val) {
+        var i = el("input", "tsai-in");
+        i.type = type || "text";
+        if (val != null) i.value = val;
+        return i;
+      }
+      function buildAi() {
+        if (aiWrap) return aiWrap;
+        aiWrap = el("div"); aiWrap.id = "tsaiWrap";
+        var box = el("div", "tsai-box");
+        box.addEventListener("click", function (e) { e.stopPropagation(); });
+        aiWrap.addEventListener("click", function () { aiWrap.classList.remove("on"); });
+
+        box.appendChild(el("h3", null, "هوش مصنوعی پشتیبانی (Cloudflare Workers AI)"));
+        aiF.state = el("div", "hint");
+        box.appendChild(aiF.state);
+
+        var swWrap = el("div", "tsai-row");
+        var swLab = el("label", null, "وضعیت");
+        var sw = el("label", "tsai-sw");
+        aiF.on = el("input"); aiF.on.type = "checkbox";
+        sw.appendChild(aiF.on);
+        sw.appendChild(el("span", null, "جواب خودکار هوش مصنوعی روشن باشد"));
+        swWrap.appendChild(swLab); swWrap.appendChild(sw);
+        box.appendChild(swWrap);
+
+        aiF.model = el("select");
+        aiField(box, "مدل", aiF.model);
+
+        var g3 = el("div", "tsai-grid3");
+        aiF.temp = aiField(g3, "خلاقیت (۰ تا ۱)", aiInput("number"));
+        aiF.temp.step = "0.05"; aiF.temp.min = "0"; aiF.temp.max = "1.5";
+        aiF.maxTokens = aiField(g3, "حداکثر طول جواب", aiInput("number"));
+        aiF.hist = aiField(g3, "تعداد پیام حافظه", aiInput("number"));
+        box.appendChild(g3);
+        var g3b = el("div", "tsai-grid3");
+        aiF.daily = aiField(g3b, "سقف روزانهٔ هر کاربر", aiInput("number"));
+        aiF.pauseMin = aiField(g3b, "سکوت بعد از جواب ادمین (دقیقه)", aiInput("number"));
+        aiF.todayBox = aiField(g3b, "مصرف امروز", aiInput("text"));
+        aiF.todayBox.readOnly = true;
+        box.appendChild(g3b);
+
+        var s1 = el("div", "tsai-sec");
+        s1.appendChild(el("b", null, "شخصیت و قوانین ربات"));
+        aiF.prompt = el("textarea");
+        s1.appendChild(aiF.prompt);
+        var r1 = el("div", "tsai-foot");
+        var rp = el("button", "tsup-btn", "بازگرداندن متن پیش‌فرض");
+        rp.addEventListener("click", function () { aiReset("prompt"); });
+        r1.appendChild(rp);
+        s1.appendChild(r1);
+        box.appendChild(s1);
+
+        var s2 = el("div", "tsai-sec");
+        s2.appendChild(el("b", null, "دانشنامه — ربات فقط از روی این متن جواب می‌دهد"));
+        aiF.kb = el("textarea");
+        aiF.kb.style.minHeight = "190px";
+        s2.appendChild(aiF.kb);
+        var r2 = el("div", "tsai-foot");
+        var rk = el("button", "tsup-btn", "بازگرداندن دانشنامهٔ پیش‌فرض");
+        rk.addEventListener("click", function () { aiReset("kb"); });
+        r2.appendChild(rk);
+        s2.appendChild(r2);
+        box.appendChild(s2);
+
+        var s3 = el("div", "tsai-sec");
+        s3.appendChild(el("b", null, "سرویس بیرونی (اختیاری — مثلاً Claude یا هر API سازگار با OpenAI)"));
+        aiF.base = aiField(s3, "آدرس سرویس", aiInput("text"));
+        aiF.base.placeholder = "خالی = همان هوش مصنوعی کلادفلر";
+        aiF.extModel = aiField(s3, "نام مدل بیرونی", aiInput("text"));
+        aiF.extModel.placeholder = "claude-haiku-4-5";
+        aiF.key = aiField(s3, "کلید API", aiInput("password"));
+        aiF.key.placeholder = "دست‌نخورده بماند یعنی تغییری نمی‌کند";
+        box.appendChild(s3);
+
+        var s4 = el("div", "tsai-sec");
+        s4.appendChild(el("b", null, "تست زنده"));
+        aiF.q = aiInput("text", "رمزم را فراموش کرده‌ام ، چه کار کنم؟");
+        s4.appendChild(aiF.q);
+        var tf = el("div", "tsai-foot");
+        aiF.testBtn = el("button", "tsup-btn gold", "بپرس");
+        aiF.testBtn.addEventListener("click", aiTest);
+        tf.appendChild(aiF.testBtn);
+        aiF.meta = el("span", "hint");
+        aiF.meta.style.margin = "0";
+        tf.appendChild(aiF.meta);
+        s4.appendChild(tf);
+        aiF.out = el("div", "tsai-out", "—");
+        s4.appendChild(aiF.out);
+        box.appendChild(s4);
+
+        var foot = el("div", "tsai-foot");
+        aiF.saveBtn = el("button", "tsup-btn gold", "ذخیره");
+        aiF.saveBtn.addEventListener("click", aiSave);
+        var cancel = el("button", "tsup-btn", "بستن");
+        cancel.addEventListener("click", function () { aiWrap.classList.remove("on"); });
+        foot.appendChild(aiF.saveBtn);
+        foot.appendChild(cancel);
+        foot.appendChild(el("div", "grow"));
+        aiF.err = el("span", "hint");
+        aiF.err.style.margin = "0";
+        foot.appendChild(aiF.err);
+        box.appendChild(foot);
+
+        aiWrap.appendChild(box);
+        document.body.appendChild(aiWrap);
+        return aiWrap;
+      }
+      function openAi() {
+        buildAi().classList.add("on");
+        aiF.out.textContent = "—"; aiF.meta.textContent = "";
+        api("/admin/ai").then(function (d) {
+          aiCfgData = d;
+          aiF.on.checked = !!d.on;
+          aiF.model.textContent = "";
+          (d.models || []).forEach(function (m) {
+            var o = el("option", null, m.label + "  —  " + m.id);
+            o.value = m.id;
+            aiF.model.appendChild(o);
+          });
+          if (d.model && !(d.models || []).some(function (m) { return m.id === d.model; })) {
+            var o2 = el("option", null, d.model); o2.value = d.model; aiF.model.appendChild(o2);
+          }
+          aiF.model.value = d.model || "";
+          aiF.temp.value = d.temp; aiF.maxTokens.value = d.maxTokens; aiF.hist.value = d.hist;
+          aiF.daily.value = d.daily; aiF.pauseMin.value = d.pauseMin;
+          aiF.prompt.value = d.prompt || ""; aiF.kb.value = d.kb || "";
+          aiF.base.value = d.base || ""; aiF.extModel.value = d.extModel || "";
+          aiF.key.value = d.hasKey ? "••••••" : "";
+          var st = d.stat || {};
+          aiF.todayBox.value = fa(st.today || 0) + " جواب / " + fa(st.users || 0) + " کاربر";
+          var pill = d.bound
+            ? '<span class="tsai-pill ok">بایندینگ AI وصل است</span>'
+            : '<span class="tsai-pill no">بایندینگ AI در داشبورد کلادفلر وصل نیست</span>';
+          var extra = st.lastModel ? " · آخرین مدل: " + st.lastModel + " · " + fa(st.lastMs || 0) + "ms" : "";
+          aiF.state.innerHTML = pill + " " + extra +
+            (st.lastErr ? '<br><span style="color:#ff9d9d">آخرین خطا: ' + String(st.lastErr).replace(/</g, "&lt;") + "</span>" : "");
+        }).catch(function (e) { aiF.state.textContent = "خطا در گرفتن تنظیمات: " + e.message; });
+      }
+      function aiPayload() {
+        var p = {
+          on: !!aiF.on.checked,
+          model: aiF.model.value,
+          temp: Number(aiF.temp.value),
+          maxTokens: Number(aiF.maxTokens.value),
+          hist: Number(aiF.hist.value),
+          daily: Number(aiF.daily.value),
+          pauseMin: Number(aiF.pauseMin.value),
+          prompt: aiF.prompt.value,
+          kb: aiF.kb.value,
+          base: aiF.base.value,
+          extModel: aiF.extModel.value
+        };
+        if (aiF.key.value && aiF.key.value !== "••••••") p.key = aiF.key.value;
+        return p;
+      }
+      function aiSave() {
+        aiF.saveBtn.disabled = true; aiF.err.textContent = "در حال ذخیره…";
+        api("/admin/ai", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(aiPayload())
+        }).then(function () {
+          aiF.err.textContent = "ذخیره شد ✅";
+          toast("تنظیمات هوش مصنوعی ذخیره شد");
+        }).catch(function (e) { aiF.err.textContent = "خطا: " + e.message; })
+          .then(function () { aiF.saveBtn.disabled = false; });
+      }
+      function aiReset(what) {
+        api("/admin/ai/reset?what=" + what, { method: "POST" }).then(function (d) {
+          if (what === "kb") aiF.kb.value = d.kb; else aiF.prompt.value = d.prompt;
+          toast("متن پیش‌فرض برگشت (برای اعمال، ذخیره را بزن)");
+        }).catch(function (e) { toast("خطا: " + e.message); });
+      }
+      function aiTest() {
+        aiF.testBtn.disabled = true;
+        aiF.out.textContent = "…"; aiF.meta.textContent = "در حال پرسیدن";
+        api("/admin/ai/test", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ q: aiF.q.value, model: aiF.model.value, prompt: aiF.prompt.value, kb: aiF.kb.value })
+        }).then(function (d) {
+          if (d.ok) {
+            aiF.out.textContent = d.answer || "(خالی)";
+            aiF.meta.textContent = d.model + " · " + fa(d.ms) + "ms" + (d.handoff ? " · ارجاع به ادمین" : "");
+          } else {
+            aiF.out.textContent = "خطا: " + d.error;
+            aiF.meta.textContent = "";
+          }
+        }).catch(function (e) { aiF.out.textContent = "خطا: " + e.message; })
+          .then(function () { aiF.testBtn.disabled = false; });
       }
 
       /* ---------- تزریق تب داخل ریل پنل ادمین ---------- */
