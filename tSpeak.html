@@ -83,6 +83,11 @@
     display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;
     background: linear-gradient(160deg, hsl(var(--h,220) 85% 70%), hsl(var(--h,220) 70% 46%));
   }
+  .codebar { display: flex; gap: 7px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-bottom: 0; }
+  .codebar .field { height: 34px; text-align: center; letter-spacing: 1px; direction: ltr; }
+  .codebar .btn { height: 34px; flex: none; }
+  .rcode { flex: none; font-size: 10px; color: var(--acc); border: 1px solid var(--line); background: var(--bg2); padding: 3px 8px; border-radius: 5px; cursor: pointer; direction: ltr; align-self: center; }
+  .rcode:hover { border-color: var(--acc); }
   .tree { background: var(--panel); border: 1px solid var(--line); border-radius: 0 0 8px 8px; overflow: hidden; }
   .tree-head {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -147,6 +152,7 @@
     display: flex; align-items: center; gap: 9px; padding: 7px 12px;
     border-bottom: 1px solid var(--line2); cursor: pointer; border-inline-start: 2px solid transparent;
   }
+  .mrow { transition: background .08s linear, border-color .08s linear; }
   .mrow:hover { background: rgba(76,141,255,.04); }
   .mrow.speaking { border-inline-start-color: var(--green); background: rgba(67,201,123,.07); }
   .mrow .qual { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex: none; }
@@ -257,6 +263,10 @@
         <div class="sname"><b>T اسپیک</b><span>playneofly.ir — server: main</span></div>
         <div class="me-chip"><div class="av" id="meAv">T</div><span id="meName">…</span></div>
       </div>
+      <div class="codebar">
+        <input class="field" id="codeInput" placeholder="room code…" autocomplete="off" />
+        <button class="btn primary" id="codeGo">ورود با کد</button>
+      </div>
       <div class="tree">
         <div class="tree-head"><span>کانال‌های صوتی</span><button class="linkbtn" id="btnNew">＋ کانال جدید</button></div>
         <div id="chanList"><div class="empty">در حال اتصال…</div></div>
@@ -268,6 +278,7 @@
       <div class="roombar">
         <button class="sq" id="btnLeave" title="قطع اتصال">✕</button>
         <div class="rname"><b id="roomName">…</b><span id="roomSub">…</span></div>
+        <span class="rcode mono" id="roomCode" title="کپی کد روم">…</span>
         <button class="sq" id="btnSet" title="تنظیمات کلیدها">⚙</button>
         <button class="sq" id="btnChat" title="چت متنی">💬</button>
         <button class="sq" id="btnSpatial" title="صدای موقعیتی سه‌بعدی">🗺</button>
@@ -450,6 +461,13 @@
         }).join("") : '<div class="sub-row">کسی داخل نیست</div>';
       });
     }
+    function joinByCode() {
+      var code = $("codeInput").value.trim().toLowerCase();
+      if (!/^[a-z0-9]{4,12}$/.test(code)) { toast("کد روم درست نیست"); return; }
+      joinChannel(code);
+    }
+    $("codeGo").addEventListener("click", joinByCode);
+    $("codeInput").addEventListener("keydown", function (e) { if (e.key === "Enter") joinByCode(); });
     $("btnNew").addEventListener("click", function () {
       var name = prompt("اسم کانال تازه:", "");
       if (!name) return;
@@ -504,6 +522,12 @@
         $("login").hidden = true; $("lobby").hidden = true; $("room").hidden = false;
         $("chatWrap").hidden = !S.chatOpen; renderChat();
         $("roomName").textContent = S.channel.name;
+        $("roomCode").textContent = S.channel.id;
+        $("roomCode").onclick = function () {
+          (navigator.clipboard ? navigator.clipboard.writeText(S.channel.id) : Promise.reject())
+            .then(function () { toast("کد روم کپی شد: " + S.channel.id); })
+            .catch(function () { prompt("کد روم:", S.channel.id); });
+        };
         $("btnLock").hidden = S.channel.ownerId !== me.id;
         $("btnSpatial").classList.toggle("on", S.spatial);
         applyModeUI();
@@ -662,8 +686,8 @@
     }
     function pushFlags() {
       var now = Date.now();
-      if (now - S.lastPush > 400) { S.lastPush = now; scheduleSync(20); }
-      else scheduleSync(450 - (now - S.lastPush));
+      if (now - S.lastPush > 250) { S.lastPush = now; scheduleSync(15); }
+      else scheduleSync(300 - (now - S.lastPush));
     }
     function syncLoop() {
       if (!S.channelId || S.syncBusy) return;
@@ -699,7 +723,15 @@
         if ((r.d.chat || []).length) {
           var log = $("chatLog");
           var atBottom = log ? log.scrollHeight - log.scrollTop - log.clientHeight < 60 : true;
-          S.chat = S.chat.concat(r.d.chat || []).slice(-120);
+          var incoming = r.d.chat || [];
+          incoming.forEach(function (m) {
+            if (m.clientId === S.clientId) {
+              for (var qi = 0; qi < S.chat.length; qi++) {
+                if (S.chat[qi]._own && S.chat[qi].body === m.body) { S.chat.splice(qi, 1); break; }
+              }
+            }
+          });
+          S.chat = S.chat.concat(incoming).slice(-120);
           S.chatCursor = Math.max(S.chatCursor, Number(r.d.chatCursor || S.chatCursor));
           renderChat(atBottom);
         }
@@ -710,7 +742,7 @@
           if (wasLocked !== undefined && wasLocked !== r.d.locked) toast(r.d.locked ? "کانال قفل شد" : "قفل کانال باز شد");
         }
         updateRoomStatusByPeers();
-        scheduleSync(S.drain ? 300 : 1000);
+        scheduleSync(S.drain ? 200 : 500);
       }).catch(function () { S.syncBusy = false; if (++S.errCount > 4) setRoomStatus("ارتباط قطع — تلاش مجدد"); scheduleSync(1800); });
     }
     var lastMembersSig = "";
@@ -888,7 +920,17 @@
       if (!txt) return;
       inp.value = "";
       api("/speak/channels/" + S.channelId + "/chat", { clientId: S.clientId, body: txt }).then(function (r) {
-        if (r.ok) scheduleSync(30); else toast((r.d && r.d.error) || "نشد");
+        if (r.ok) {
+          S.chat.push({
+            id: r.d.msg && r.d.msg.id, _own: true,
+            clientId: S.clientId, userId: me.id,
+            displayName: me.displayName || me.username, hue: me.hue || 220,
+            body: txt, createdAt: (r.d.msg && r.d.msg.createdAt) || Date.now()
+          });
+          S.chat = S.chat.slice(-120);
+          renderChat();
+          scheduleSync(40);
+        } else toast((r.d && r.d.error) || "نشد");
       });
     });
 
@@ -929,6 +971,12 @@
       else if (S.micMode === "voice") { b.textContent = S.micOn ? "🎙 ارسال با صدا" : "🔇 میکروفن بسته"; b.classList.remove("danger"); }
       else { b.textContent = micBroadcast() ? "🎙 میکروفن روشن" : "🔇 میکروفن بسته"; b.classList.remove("danger"); }
       $("btnPtt").classList.toggle("holding", S.micMode === "ptt" && S.holding);
+      var myIcon = document.querySelector('[data-card="' + S.clientId + '"] .micons span');
+      if (myIcon) {
+        var bc = micBroadcast();
+        myIcon.textContent = bc ? "🎙" : "🔇";
+        myIcon.className = bc ? "" : "off";
+      }
       var nowBc = micBroadcast();
       if (nowBc !== lastBroadcast) { lastBroadcast = nowBc; pushFlags(); }
     }

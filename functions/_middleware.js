@@ -9445,7 +9445,8 @@ app.post("/speak/channels/:id/chat", async (c) => {
   const gate = await secTouch(db, `spk-chat:${user.id}`, 30, 6e4, 1e4);
   if (!gate.ok) return jsonError(c, "یه کم آروم‌تر بنویس 🙂", 429);
   await run(db, `INSERT INTO speak_chat (channel_id, client_id, user_id, display_name, hue, body, created_at) VALUES (?,?,?,?,?,?,?)`, c.req.param("id"), cid, user.id, user.displayName || user.username, user.hue || 220, body, Date.now());
-  return c.json({ ok: true });
+  const row = await one(db, `SELECT id, created_at AS createdAt FROM speak_chat WHERE channel_id = ? AND client_id = ? ORDER BY id DESC LIMIT 1`, c.req.param("id"), cid).catch(() => null);
+  return c.json({ ok: true, msg: row || null });
 });
 app.post("/speak/channels/:id/signal", async (c) => {
   const user = await auth(c);
