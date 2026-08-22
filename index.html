@@ -4442,6 +4442,219 @@
         .catch(function () {});
     })();
     </script>
+    <!-- ===== تنظیمات تلگرامی: منو + زیرصفحه‌ها ===== -->
+    <style>
+      .settings.t-tg > h2[data-sec] { display: none !important; }
+      .settings.t-tg:not([data-view="me"])   [data-sec="me"]   { display: none !important; }
+      .settings.t-tg:not([data-view="prem"]) [data-sec="prem"] { display: none !important; }
+      .settings.t-tg:not([data-view="pub"])  [data-sec="pub"]  { display: none !important; }
+      .settings.t-tg:not([data-view="pass"]) [data-sec="pass"] { display: none !important; }
+      .settings.t-tg [data-sec="exit"] { display: none !important; }
+
+      #tSetMenu { display: none; max-width: 560px; margin-inline: auto; direction: rtl; padding-bottom: 40px; }
+      .settings.t-tg[data-view="menu"] #tSetMenu { display: block; }
+
+      #tSetHead { display: none; align-items: center; gap: 10px; max-width: 560px; margin: 2px auto 14px; direction: rtl; }
+      .settings.t-tg:not([data-view="menu"]) #tSetHead { display: flex; }
+      #tSetHead button {
+        display: flex; align-items: center; gap: 5px; border: 0; cursor: pointer;
+        background: rgba(76,141,255,.12); color: #8FC3FF; font-family: inherit;
+        font-size: 13px; font-weight: 700; padding: 8px 13px; border-radius: 11px;
+      }
+      #tSetHead button:hover { background: rgba(76,141,255,.22); }
+      #tSetHead b { font-size: 16px; font-weight: 800; color: var(--cream, #E9EFFA); }
+
+      .tset-prof {
+        display: flex; flex-direction: column; align-items: center; gap: 7px;
+        padding: 22px 14px 18px; cursor: pointer; border-radius: 18px; transition: background .15s;
+      }
+      .tset-prof:hover { background: rgba(76,141,255,.06); }
+      .tset-prof .av {
+        width: 92px; height: 92px; border-radius: 50%; overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 38px; font-weight: 800; color: #06101f;
+        background: linear-gradient(160deg, hsl(var(--h,220) 85% 72%), hsl(var(--h,220) 70% 46%));
+        border: 3px solid rgba(76,141,255,.5); box-shadow: 0 0 0 6px rgba(76,141,255,.1);
+      }
+      .tset-prof .av img { width: 100%; height: 100%; object-fit: cover; }
+      .tset-prof .nm { font-size: 18px; font-weight: 800; color: var(--cream, #E9EFFA); }
+      .tset-prof .un { font-size: 12.5px; color: #8FC3FF; direction: ltr; }
+      .tset-prof .hint { font-size: 10.5px; color: var(--mute, #8D95A8); }
+
+      .tset-group {
+        background: linear-gradient(165deg, #10182b 0%, #0C1220 100%);
+        border: 1px solid #1f2b45; border-radius: 16px; overflow: hidden; margin-bottom: 14px;
+      }
+      .tset-cap { font-size: 11px; font-weight: 700; color: #5c86c9; padding: 0 14px 7px; }
+      .tset-row {
+        display: flex; align-items: center; gap: 12px; width: 100%;
+        padding: 13px 14px; border: 0; background: none; cursor: pointer;
+        font-family: inherit; text-align: right; color: var(--cream, #E9EFFA);
+        transition: background .13s; direction: rtl;
+      }
+      .tset-row:hover { background: rgba(76,141,255,.08); }
+      .tset-row + .tset-row { border-top: 1px solid rgba(120,140,255,.08); }
+      .tset-row .ic {
+        width: 32px; height: 32px; border-radius: 9px; flex: none;
+        display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff;
+      }
+      .tset-row .lb { flex: 1; font-size: 14px; font-weight: 600; }
+      .tset-row .sb { font-size: 11px; color: var(--mute, #8D95A8); font-weight: 500; }
+      .tset-row .ch { color: #3d4c6e; font-size: 15px; transform: scaleX(-1); }
+      .tset-row.danger .lb { color: #ff9d9d; }
+      .ic.c1 { background: linear-gradient(160deg,#5C9BFF,#2A5FC4); }
+      .ic.c2 { background: linear-gradient(160deg,#f7b955,#e08a2e); }
+      .ic.c3 { background: linear-gradient(160deg,#53d38a,#22a05c); }
+      .ic.c4 { background: linear-gradient(160deg,#9d7bff,#6742d1); }
+      .ic.c5 { background: linear-gradient(160deg,#4fc3e8,#2287ad); }
+      .ic.c6 { background: linear-gradient(160deg,#ff7d7d,#cf4444); }
+      .tset-ver { text-align: center; font-size: 10.5px; color: #3d4c6e; margin: 4px 0 12px; }
+    </style>
+    <script>
+    (function () {
+      "use strict";
+      function el(tag, cls, txt) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (txt != null) n.textContent = txt;
+        return n;
+      }
+      var me = null, meBusy = false;
+      function loadMe(cb) {
+        if (me) { cb && cb(); return; }
+        if (meBusy) return;
+        meBusy = true;
+        fetch("/api/me", { credentials: "include", cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { meBusy = false; if (d && d.user) { me = d.user; cb && cb(); } })
+          .catch(function () { meBusy = false; });
+      }
+
+      var SEC_OF = { "من": "me", "کد پرمیوم": "prem", "رمز": "pass" };
+      function tagSections(s) {
+        var kids = [].slice.call(s.children);
+        var cur = null;
+        for (var i = 0; i < kids.length; i++) {
+          var k = kids[i];
+          if (k.tagName === "H2") {
+            var t = (k.textContent || "").trim();
+            if (SEC_OF[t]) { cur = SEC_OF[t]; k.setAttribute("data-sec", cur); }
+            continue;
+          }
+          if (k.id === "tSetMenu" || k.id === "tSetHead") { cur = null; continue; }
+          var want = cur;
+          if (k.classList && k.classList.contains("t-pub-row")) want = "pub";
+          var txt = (k.textContent || "").trim();
+          if (k.tagName === "BUTTON" && (txt === "خروج" || txt === "حذف حساب")) want = "exit";
+          if (want) k.setAttribute("data-sec", want);
+        }
+      }
+
+      var TITLES = { me: "حساب من", prem: "پرمیوم", pub: "پروفایل عمومی", pass: "رمز عبور" };
+      function setView(s, v) {
+        s.setAttribute("data-view", v);
+        var head = document.getElementById("tSetHead");
+        if (head) head.querySelector("b").textContent = TITLES[v] || "";
+        try { (s.closest(".stage") || document.scrollingElement).scrollTop = 0; } catch (e) {}
+      }
+
+      function row(icCls, icTxt, label, sub, onClick, danger) {
+        var b = el("button", "tset-row" + (danger ? " danger" : ""));
+        b.type = "button";
+        b.appendChild(el("span", "ic " + icCls, icTxt));
+        b.appendChild(el("span", "lb", label));
+        if (sub) b.appendChild(el("span", "sb", sub));
+        b.appendChild(el("span", "ch", "‹"));
+        b.addEventListener("click", onClick);
+        return b;
+      }
+      function group(cap, rows) {
+        var wrap = el("div");
+        if (cap) wrap.appendChild(el("div", "tset-cap", cap));
+        var g = el("div", "tset-group");
+        rows.forEach(function (r) { g.appendChild(r); });
+        wrap.appendChild(g);
+        return wrap;
+      }
+      function clickHidden(s, txt) {
+        var b = [].slice.call(s.querySelectorAll('[data-sec="exit"]'))
+          .find(function (x) { return (x.textContent || "").trim() === txt; });
+        if (b) b.click();
+      }
+
+      function buildMenu(s) {
+        var menu = el("div"); menu.id = "tSetMenu";
+        var prof = el("div", "tset-prof");
+        var av = el("div", "av");
+        var nm = el("div", "nm", "…");
+        var un = el("div", "un", "");
+        prof.appendChild(av); prof.appendChild(nm); prof.appendChild(un);
+        prof.appendChild(el("div", "hint", "برای ویرایش پروفایل ضربه بزن"));
+        prof.addEventListener("click", function () { setView(s, "me"); });
+        menu.appendChild(prof);
+
+        menu.appendChild(group("حساب", [
+          row("c1", "👤", "حساب من", "اسم، بایو، عکس", function () { setView(s, "me"); }),
+          row("c4", "🔒", "رمز عبور", "", function () { setView(s, "pass"); })
+        ]));
+        menu.appendChild(group("امکانات", [
+          row("c2", "👑", "پرمیوم", "خرید یا کد هدیه", function () { setView(s, "prem"); }),
+          row("c5", "🌐", "پروفایل عمومی", "لینک قابل شیر", function () { setView(s, "pub"); })
+        ]));
+        menu.appendChild(group("خطرناک", [
+          row("c3", "🚪", "خروج از حساب", "", function () { clickHidden(s, "خروج"); }, false),
+          row("c6", "🗑", "حذف حساب", "برای همیشه", function () { clickHidden(s, "حذف حساب"); }, true)
+        ]));
+        menu.appendChild(el("div", "tset-ver", "پیام‌رسان T · نسخهٔ 1.8"));
+
+        function fillProf() {
+          if (!me) return;
+          nm.textContent = me.displayName || me.username;
+          un.textContent = "@" + me.username;
+          av.style.setProperty("--h", String(me.hue || 220));
+          if (me.avatar) {
+            av.textContent = "";
+            var img = document.createElement("img");
+            img.src = me.avatar;
+            av.appendChild(img);
+          } else {
+            av.textContent = (me.displayName || me.username || "T").trim().charAt(0).toUpperCase();
+          }
+        }
+        loadMe(fillProf);
+        fillProf();
+        return menu;
+      }
+
+      function buildHead(s) {
+        var head = el("div"); head.id = "tSetHead";
+        var back = el("button", null, "بازگشت");
+        back.type = "button";
+        back.insertBefore(el("span", null, "→"), back.firstChild);
+        back.addEventListener("click", function () { setView(s, "menu"); });
+        head.appendChild(back);
+        head.appendChild(el("b", null, ""));
+        return head;
+      }
+
+      function tick() {
+        if (location.pathname.indexOf("/settings") !== 0) return;
+        var s = document.querySelector(".settings");
+        if (!s) return;
+        tagSections(s);
+        if (!s.classList.contains("t-tg")) {
+          s.classList.add("t-tg");
+          s.setAttribute("data-view", "menu");
+        }
+        if (!document.getElementById("tSetHead")) s.insertBefore(buildHead(s), s.firstChild);
+        if (!document.getElementById("tSetMenu")) s.insertBefore(buildMenu(s), s.children[1] || null);
+      }
+      setInterval(tick, 400);
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tick);
+      else tick();
+    })();
+    </script>
   </body>
+
 
 </html>
