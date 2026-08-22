@@ -9599,6 +9599,21 @@ ${body}
 // functions/_middleware.ts
 async function onRequest(context) {
   const url = new URL(context.request.url);
+  if (url.pathname === "/tSpeak" || url.pathname.startsWith("/tSpeak/")) {
+    const assetUrl = new URL(context.request.url);
+    assetUrl.pathname = "/tSpeak.html";
+    assetUrl.search = "";
+    try {
+      const res = await context.env.ASSETS.fetch(new Request(assetUrl.toString(), { method: "GET" }));
+      if (res && res.status < 300) {
+        const headers = new Headers(res.headers);
+        headers.set("Cache-Control", "no-cache");
+        return new Response(res.body, { status: 200, headers });
+      }
+    } catch (e) {
+    }
+    return context.next();
+  }
   const pm = url.pathname.match(/^\/@([A-Za-z][A-Za-z0-9_]{2,19})\/?$/);
   if (pm && context.env?.DB) {
     try {
