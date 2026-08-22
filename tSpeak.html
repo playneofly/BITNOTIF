@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="T اسپیک" />
-<link rel="apple-touch-icon" href="/assets/icon-192.png" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%2310141A'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='15' font-family='sans-serif' fill='%234C8DFF'%3E🎧%3C/text%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="/assets/tsp-192.png" />
+<link rel="icon" type="image/png" href="/assets/tsp-192.png" />
 <style>
   @font-face { font-family: "Vazirmatn"; src: url("/assets/Vazirmatn-T33.woff2") format("woff2"); font-display: swap; }
   :root {
@@ -179,6 +179,7 @@
   }
   .mini:hover { color: var(--text); }
   .mini.warn { color: var(--red); border-color: #5A3236; }
+  .mini.sun { color: var(--gold); border-color: rgba(216,169,78,.5); background: rgba(216,169,78,.07); }
 
   /* ===== نوار ابزار ===== */
   .toolbar { display: flex; gap: 7px; padding: 9px 10px; background: var(--panel); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; align-items: stretch; }
@@ -265,6 +266,47 @@
   .nfoot .btn { flex: 1; height: 42px; font-size: 13px; }
   .nfoot .btn:disabled { opacity: .45; cursor: default; }
 
+  @media (max-width: 480px) {
+    body { padding: 8px; font-size: 12px; }
+    .shell { max-width: 100%; }
+    .srvbar { padding: 7px 9px; }
+    .codebar { padding: 7px 8px; }
+    .codebar .field { height: 32px; font-size: 13px; }
+    .codebar .btn { height: 32px; font-size: 11px; padding: 0 10px; }
+    .chan { padding: 8px 9px; font-size: 11.5px; gap: 6px; }
+    .chan .go { padding: 4px 9px; font-size: 10px; }
+    .roombar { padding: 6px 7px; gap: 6px; }
+    .sq { width: 30px; height: 30px; font-size: 12px; border-radius: 5px; }
+    .roombar .rname b { font-size: 12px; }
+    .roombar .rname span { font-size: 8.5px; }
+    .rcode { font-size: 9px; padding: 2px 6px; }
+    .members { max-height: 40vh; }
+    .mrow { padding: 5.5px 9px; gap: 7px; }
+    .mrow .av2 { width: 22px; height: 22px; font-size: 10px; }
+    .mrow .who b { font-size: 11.5px; }
+    .mrow .who span { font-size: 8px; }
+    .mrow .micons { font-size: 10.5px; }
+    .toolbar { padding: 7px 7px; gap: 5px; flex-wrap: wrap; }
+    .toolbar .btn { height: 34px; font-size: 10.5px; padding: 0 6px; }
+    .toolbar .micbtn { min-width: 46%; }
+    .seg button { font-size: 9.5px; padding: 0 7px; height: 32px; }
+    .statusbar { font-size: 8.5px; padding: 5px 8px; gap: 6px; }
+    #chatLog { max-height: 128px; }
+    .chat-form { padding: 6px; }
+    .chat-form input { height: 32px; font-size: 12.5px; }
+    .chat-form .btn { height: 32px; font-size: 11px; padding: 0 10px; }
+    .ncard { padding: 18px 14px 14px; gap: 11px; }
+    .nopt { padding: 10px 6px 9px; }
+    .nopt small { font-size: 8.5px; }
+    .prof-card { padding: 16px 14px; gap: 7px; }
+    .nfoot .btn { height: 38px; font-size: 12px; }
+    .mdetail { padding: 6px 9px; gap: 6px; }
+  }
+  @media (max-height: 640px) {
+    .members { max-height: 34vh; }
+    #chatLog { max-height: 105px; }
+  }
+
   #toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
     background: #1C2530; border: 1px solid var(--line); color: var(--text);
@@ -281,7 +323,7 @@
   <div class="shell">
 
     <div id="login" class="card" hidden>
-      <div class="logo"><div class="mark">🎧</div><b>T اسپیک<small>اتاق گفتگوی صوتی پیام‌رسان T</small></b></div>
+      <div class="logo"><div class="mark"><img src="/assets/tsp-192.png" alt="" style="width:28px;height:28px;border-radius:7px" /></div><b>T اسپیک<small>اتاق گفتگوی صوتی پیام‌رسان T</small></b></div>
       <input class="field" id="lgUser" placeholder="نام کاربری" autocomplete="username" />
       <input class="field" id="lgPass" type="password" placeholder="رمز" autocomplete="current-password" />
       <button class="btn primary" id="lgBtn" style="width:100%">ورود و اتصال</button>
@@ -291,12 +333,12 @@
 
     <div id="lobby" hidden>
       <div class="srvbar">
-        <div class="logo"><div class="mark">🎧</div></div>
+        <div class="logo"><div class="mark"><img src="/assets/tsp-192.png" alt="" style="width:24px;height:24px;border-radius:6px" /></div></div>
         <div class="sname"><b>T اسپیک</b><span>playneofly.ir — server: main</span></div>
         <div class="me-chip"><div class="av" id="meAv">T</div><span id="meName">…</span></div>
       </div>
       <div class="codebar">
-        <input class="field" id="codeInput" placeholder="room code…" autocomplete="off" />
+        <input class="field" id="codeInput" placeholder="کد ۶ رقمی روم…" autocomplete="off" inputmode="numeric" maxlength="6" style="font-family:var(--mono)" />
         <button class="btn primary" id="codeGo">ورود با کد</button>
       </div>
       <div class="tree">
@@ -519,8 +561,8 @@
       });
     }
     function joinByCode() {
-      var code = $("codeInput").value.trim().toLowerCase();
-      if (!/^[a-z0-9]{4,12}$/.test(code)) { toast("کد روم درست نیست"); return; }
+      var code = $("codeInput").value.trim();
+      if (!/^[0-9]{6}$/.test(code)) { toast("کد روم باید ۶ رقم باشد"); return; }
       joinChannel(code);
     }
     $("codeGo").addEventListener("click", joinByCode);
@@ -830,8 +872,27 @@
           if (wasLocked !== undefined && wasLocked !== r.d.locked) toast(r.d.locked ? "کانال قفل شد" : "قفل کانال باز شد");
         }
         updateRoomStatusByPeers();
-        scheduleSync(S.drain ? 200 : 500);
+        if (++rttCount % 3 === 0) updateRtt();
+        scheduleSync(S.drain ? 200 : (S.chatOpen ? 350 : 550));
       }).catch(function () { S.syncBusy = false; if (++S.errCount > 4) setRoomStatus("ارتباط قطع — تلاش مجدد"); scheduleSync(1800); });
+    }
+    var rttCount = 0;
+    function updateRtt() {
+      var cids = Object.keys(S.pcs);
+      if (!cids.length) { $("roomPing").textContent = S.ping + "ms"; return; }
+      var total = 0, n = 0;
+      cids.forEach(function (cid) {
+        var pc = S.pcs[cid];
+        if (!pc || !pc.getStats) return;
+        pc.getStats().then(function (stats) {
+          var best = null;
+          stats.forEach(function (st) {
+            if (st.type === "candidate-pair" && (st.nominated || st.state === "succeeded") && st.currentRoundTripTime != null) best = st.currentRoundTripTime;
+          });
+          if (best != null) { total += best * 1000; n++; }
+          if (n > 0) $("roomPing").textContent = Math.round(total / n) + "ms";
+        }).catch(function () {});
+      });
     }
     var lastMembersSig = "";
     function membersChanged(ms) {
@@ -889,7 +950,7 @@
             html += '<button class="mini" data-prof="' + m.userId + '" data-un="' + esc(m.username) + '">پروفایل</button>';
             html += '<button class="mini' + (pm ? " warn" : "") + '" data-pmute="' + m.userId + '">' + (pm ? "بازکردن صدا" : "میوت شخصی") + "</button>";
             if (amMod() && !isOwner) {
-              html += '<button class="mini warn" data-smute="' + m.clientId + '">ساکت</button>';
+              html += '<button class="mini sun" data-smute="' + m.clientId + '" data-mm="' + (m.mic ? 1 : 0) + '">' + (m.mic ? "🔇 ساکت" : "🔊 بازکردن صدا") + '</button>';
               html += '<button class="mini warn" data-kick="' + m.clientId + '">اخراج</button>';
             }
           } else {
@@ -905,7 +966,13 @@
       var t = e.target;
       var act = t.getAttribute && (t.getAttribute("data-kick") || t.getAttribute("data-smute") || t.getAttribute("data-pmute") || t.getAttribute("data-prof"));
       if (t.getAttribute && t.getAttribute("data-kick")) { api("/speak/channels/" + S.channelId + "/mod", { action: "kick", target: t.getAttribute("data-kick") }); return; }
-      if (t.getAttribute && t.getAttribute("data-smute")) { api("/speak/channels/" + S.channelId + "/mod", { action: "mute", target: t.getAttribute("data-smute") }); return; }
+      if (t.getAttribute && t.getAttribute("data-smute")) {
+        var act = t.getAttribute("data-mm") === "1" ? "mute" : "unmute";
+        api("/speak/channels/" + S.channelId + "/mod", { action: act, target: t.getAttribute("data-smute") }).then(function () { scheduleSync(30); });
+        t.setAttribute("data-mm", act === "mute" ? "0" : "1");
+        t.textContent = act === "mute" ? "🔊 بازکردن صدا" : "🔇 ساکت";
+        return;
+      }
       if (t.getAttribute && t.getAttribute("data-pmute")) {
         var uid = t.getAttribute("data-pmute");
         S.pmuted[uid] = !S.pmuted[uid];

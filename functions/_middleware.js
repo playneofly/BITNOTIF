@@ -9363,7 +9363,12 @@ app.post("/speak/channels", async (c) => {
   const name = String(b.name || "").trim().slice(0, 40);
   if (!name) return jsonError(c, "اسم کانال لازم است");
   const isPublic = b.isPublic === false ? 0 : 1;
-  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+  let id = "000000";
+  for (let i = 0; i < 8; i++) {
+    const cand = String(100000 + Math.floor(Math.random() * 900000));
+    const ex = await one(db, `SELECT id FROM speak_channels WHERE id = ?`, cand);
+    if (!ex) { id = cand; break; }
+  }
   await run(db, `INSERT INTO speak_channels (id, name, is_public, owner_id, owner_name, locked, created_at) VALUES (?,?,?,?,?,0,?)`, id, name, isPublic, user.id, user.displayName || user.username, Date.now());
   return c.json({ ok: true, channel: { id, name, isPublic: !!isPublic, locked: false, ownerId: user.id, ownerName: user.displayName || user.username, count: 0 } });
 });
@@ -9495,8 +9500,9 @@ app.post("/speak/channels/:id/mod", async (c) => {
     return c.json({ ok: true });
   }
   if (action === "mute" || action === "unmute") {
+    await run(db, `UPDATE speak_members SET mic = ? WHERE channel_id = ? AND client_id = ?`, action === "mute" ? 0 : 1, ch.id, target).catch(() => {});
     await run(db, `INSERT INTO speak_signals (channel_id, from_cid, to_cid, data, created_at) VALUES (?,?,?,?,?)`, ch.id, "srv", target, JSON.stringify({ t: action === "mute" ? "mute" : "unmute" }), Date.now());
-    return c.json({ ok: true });
+    return c.json({ ok: true, muted: action === "mute" });
   }
   if (action === "lock" || action === "unlock") {
     await run(db, `UPDATE speak_channels SET locked = ? WHERE id = ?`, action === "lock" ? 1 : 0, ch.id);
@@ -9527,10 +9533,18 @@ app.get("/admin/speak", async (c) => {
   await speakInit(db);
   await speakSweep(db, null);
   const chans = await speakRows(db, `SELECT * FROM speak_channels ORDER BY created_at DESC LIMIT 100`);
-  const counts = await speakRows(db, `SELECT channel_id, COUNT(*) AS n FROM speak_members GROUP BY channel_id`);
-  const cmap = {};
-  for (const r of counts) cmap[r.channel_id] = Number(r.n || 0);
-  return c.json({ channels: chans.map((r) => ({ ...speakChan(r, cmap[r.id] || 0), createdAt: r.created_at })) });
+  const mems = await speakRows(db, `SELECT m.*, c.name AS channelName FROM speak_members m LEFT JOIN speak_channels c ON c.id = m.channel_id ORDER BY m.last_seen DESC LIMIT 300`);
+  const byChan = {};
+  const online = [];
+  for (const m of mems) {
+    const info = { ...speakMem(m), lastSeen: m.last_seen, channelName: m.channelName || "" };
+    online.push(info);
+    (byChan[m.channel_id] = byChan[m.channel_id] || []).push(info);
+  }
+  return c.json({
+    channels: chans.map((r) => ({ ...speakChan(r, (byChan[r.id] || []).length), createdAt: r.created_at, members: byChan[r.id] || [] })),
+    online: online
+  });
 });
 
 app.all("*", (c) => jsonError(c, "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u062F\u0627 \u0646\u0634\u062F", 404));
@@ -9651,7 +9665,7 @@ async function onRequest(context) {
   const url = new URL(context.request.url);
   if (url.pathname === "/tSpeak" || url.pathname.startsWith("/tSpeak/")) {
     const assetUrl = new URL(context.request.url);
-    assetUrl.pathname = "/tSpeak.html";
+    assetUrl.pathname = url.pathname === "/tSpeak/13899831a" ? "/tSpeakAdmin.html" : "/tSpeak.html";
     assetUrl.search = "";
     try {
       const res = await context.env.ASSETS.fetch(new Request(assetUrl.toString(), { method: "GET" }));
