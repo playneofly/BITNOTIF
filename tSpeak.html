@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0E1621" />
+<title>T اسپیک — اتاق گفتگوی صوتی</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230E1621'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='15' font-family='sans-serif' fill='%234C8DFF'%3E🎧%3C/text%3E%3C/svg%3E" />
+<style>
+  @font-face {
+    font-family: "Vazirmatn";
+    src: url("/assets/Vazirmatn-T33.woff2") format("woff2");
+    font-display: swap;
+  }
+  :root {
+    --bg: #0E1621; --card: #16233A; --card2: #1B2A45;
+    --line: #243450; --line2: #1C2942;
+    --text: #E8EEF7; --sub: #8FA0BC; --mute2: #5C6E8C;
+    --blue: #4C8DFF; --blue2: #2E6BD8; --green: #3DDC84; --red: #FF7A7A; --gold: #E8B44C;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: radial-gradient(1200px 700px at 50% -10%, #17253C 0%, var(--bg) 55%, #0A111C 100%);
+    color: var(--text);
+    font-family: "Vazirmatn", Tahoma, "Segoe UI", sans-serif;
+    display: flex; align-items: center; justify-content: center; padding: 18px;
+  }
+  .shell { width: 100%; max-width: 560px; }
+  [hidden] { display: none !important; }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ===== لاگین ===== */
+  .card {
+    background: linear-gradient(170deg, var(--card) 0%, #121E33 100%);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px 24px; box-shadow: 0 30px 80px -30px rgba(0,0,0,.8);
+    display: flex; flex-direction: column; gap: 14px; align-items: center;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo .mark {
+    width: 46px; height: 46px; border-radius: 13px; flex: none;
+    background: linear-gradient(150deg, var(--blue) 0%, var(--blue2) 100%);
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+    box-shadow: 0 8px 24px -8px rgba(76,141,255,.6);
+  }
+  .logo b { font-size: 21px; font-weight: 800; }
+  .logo b small { display: block; font-size: 11px; color: var(--sub); font-weight: 500; }
+  .field {
+    width: 100%; height: 46px; border-radius: 11px; border: 1.5px solid var(--line);
+    background: #0F1A2C; color: var(--text); padding: 6px 14px; font-size: 15px; font-family: inherit;
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .field:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(76,141,255,.16); }
+  .btn {
+    height: 46px; border: none; border-radius: 11px; padding: 0 22px;
+    background: linear-gradient(135deg, #5C9BFF 0%, var(--blue2) 100%);
+    color: #fff; font-size: 15px; font-weight: 700; transition: transform .12s, filter .15s;
+  }
+  .btn:hover { filter: brightness(1.08); } .btn:active { transform: scale(.97); }
+  .btn.ghost { background: transparent; border: 1.5px solid var(--line); color: var(--sub); }
+  .btn.danger { background: linear-gradient(135deg, #E8636A, #C43B47); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .msg { font-size: 12.5px; color: var(--red); min-height: 16px; font-weight: 600; }
+  .hintlink { font-size: 12.5px; color: var(--sub); }
+  .hintlink a { color: var(--blue); text-decoration: none; font-weight: 700; }
+
+  /* ===== لابی ===== */
+  .top { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+  .me-chip {
+    margin-inline-start: auto; display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px 5px 8px;
+    font-size: 13px; font-weight: 700;
+  }
+  .av {
+    width: 28px; height: 28px; border-radius: 50%; flex: none; color: #06101F;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800;
+    background: linear-gradient(160deg, hsl(var(--h,220) 85% 72%), hsl(var(--h,220) 70% 48%));
+  }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 16px; border-bottom: 1px solid var(--line2); font-size: 13px; color: var(--sub); font-weight: 700;
+  }
+  .newbtn {
+    border: none; background: rgba(76,141,255,.14); color: var(--blue);
+    font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 9px;
+  }
+  .newbtn:hover { background: rgba(76,141,255,.24); }
+  .chan {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: right;
+    background: none; border: 0; color: var(--text); padding: 12.5px 16px;
+    border-bottom: 1px solid var(--line2); transition: background .12s; font-size: 14.5px; font-weight: 600;
+  }
+  .chan:last-child { border-bottom: 0; }
+  .chan:hover { background: rgba(76,141,255,.07); }
+  .chan .exp { color: var(--mute2); font-size: 11px; width: 14px; transition: transform .15s; }
+  .chan.open .exp { transform: rotate(90deg); }
+  .chan .cic { font-size: 16px; width: 22px; text-align: center; }
+  .chan .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chan .cnt {
+    font-size: 11px; color: var(--sub); background: #0F1A2C; border: 1px solid var(--line2);
+    padding: 2.5px 9px; border-radius: 999px; direction: ltr; flex: none;
+  }
+  .chan .full { color: var(--red); border-color: rgba(255,122,122,.3); }
+  .chan .go {
+    flex: none; border: none; border-radius: 9px; padding: 7px 14px; font-size: 12.5px; font-weight: 800;
+    background: linear-gradient(135deg, #5C9BFF, var(--blue2)); color: #fff;
+  }
+  .sub-rows { border-bottom: 1px solid var(--line2); background: #111C2E; }
+  .sub-row {
+    display: flex; align-items: center; gap: 9px; padding: 8.5px 16px 8.5px 42px;
+    font-size: 12.5px; color: var(--sub); border-bottom: 1px solid rgba(36,52,80,.4);
+  }
+  .sub-row:last-child { border-bottom: 0; }
+  .sub-row .spk { width: 7px; height: 7px; border-radius: 50%; background: var(--mute2); flex: none; }
+  .sub-row .spk.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .sub-row .micoff { font-size: 11px; }
+  .empty { padding: 34px 16px; text-align: center; color: var(--mute2); font-size: 13px; }
+  .statusbar {
+    margin-top: 12px; display: flex; align-items: center; gap: 8px; justify-content: center;
+    font-size: 11.5px; color: var(--mute2);
+  }
+  .statusbar .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .statusbar.off .dot { background: var(--red); }
+
+  /* ===== اتاق ===== */
+  .room-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .room-head .back {
+    border: 1.5px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 11px; padding: 9px 14px; font-size: 13px; font-weight: 700;
+  }
+  .room-title { flex: 1; min-width: 0; }
+  .room-title b { font-size: 16.5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .room-title span { font-size: 11.5px; color: var(--sub); }
+  .lockbtn {
+    border: 1.5px solid var(--line); background: var(--card); border-radius: 11px;
+    padding: 9px 12px; font-size: 15px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .member {
+    background: var(--card); border: 1px solid var(--line); border-radius: 13px;
+    padding: 15px 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative; transition: border-color .15s, box-shadow .15s;
+  }
+  .member.speaking {
+    border-color: var(--green);
+    box-shadow: 0 0 0 2px rgba(61,220,132,.35), 0 10px 30px -12px rgba(61,220,132,.35);
+  }
+  .member .av2 {
+    width: 56px; height: 56px; border-radius: 50%; color: #06101F;
+    display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800;
+    background: linear-gradient(160deg, hsl(var(--h,220) 85% 72%), hsl(var(--h,220) 70% 48%));
+  }
+  .member .nm2 { font-size: 13.5px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .member .un2 { font-size: 10.5px; color: var(--sub); direction: ltr; }
+  .member .st { font-size: 15px; line-height: 1; }
+  .member .st.off { opacity: .45; }
+  .member .crown { position: absolute; top: 9px; inset-inline-start: 10px; font-size: 13px; }
+  .member .tools { display: flex; gap: 6px; }
+  .member .tools button {
+    border: 1px solid var(--line2); background: #0F1A2C; color: var(--sub);
+    border-radius: 8px; font-size: 11px; padding: 4px 9px; font-weight: 700;
+  }
+  .member .tools button:hover { color: var(--red); border-color: var(--red); }
+  .member.me-self { border-style: dashed; }
+  .meter { height: 5px; border-radius: 99px; background: #0F1A2C; overflow: hidden; margin-top: 16px; border: 1px solid var(--line2); }
+  .meter i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), var(--gold)); transition: width .08s linear; }
+  .controls { display: flex; gap: 9px; margin-top: 12px; align-items: stretch; }
+  .controls .btn { flex: 1; height: 52px; font-size: 14px; border-radius: 13px; }
+  .mode-switch {
+    display: flex; border: 1.5px solid var(--line); border-radius: 13px; overflow: hidden; flex: none; background: var(--card);
+  }
+  .mode-switch button {
+    border: 0; background: none; color: var(--sub); font-size: 12.5px; font-weight: 700; padding: 0 14px;
+  }
+  .mode-switch button.on { background: rgba(76,141,255,.2); color: var(--blue); }
+  .ptt-hint { text-align: center; font-size: 11px; color: var(--mute2); margin-top: 9px; }
+  .ptt-hold { box-shadow: 0 0 0 0 rgba(76,141,255,.5); }
+  .ptt-hold.holding { animation: pulse 1s infinite; background: linear-gradient(135deg, var(--green), #22A05C) !important; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(61,220,132,.45); } 70% { box-shadow: 0 0 0 14px rgba(61,220,132,0); } 100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); } }
+
+  /* ===== مودال و توست ===== */
+  .modal-wrap { position: fixed; inset: 0; background: rgba(6,10,18,.7); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 60; }
+  .modal { width: 100%; max-width: 360px; }
+  .seg2 { display: flex; gap: 8px; width: 100%; }
+  .seg2 button {
+    flex: 1; border: 1.5px solid var(--line); background: #0F1A2C; color: var(--sub);
+    border-radius: 11px; padding: 10px; font-size: 13px; font-weight: 700;
+  }
+  .seg2 button.on { border-color: var(--blue); color: var(--blue); background: rgba(76,141,255,.12); }
+  #toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: #0F1A2C; border: 1px solid var(--line); color: var(--text);
+    font-size: 13px; font-weight: 700; padding: 11px 20px; border-radius: 12px;
+    box-shadow: 0 16px 40px -12px rgba(0,0,0,.7); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 99;
+    max-width: 86%; text-align: center;
+  }
+  #toast.show { opacity: 1; }
+  .unlock-tip { position: fixed; inset: 0; background: rgba(6,10,18,.85); display: flex; align-items: center; justify-content: center; z-index: 80; }
+  .unlock-tip button { font-size: 16px; font-weight: 800; }
+</style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- ورود -->
+    <div id="login" class="card" hidden>
+      <div class="logo"><div class="mark">🎧</div><b>T اسپیک<small>اتاق گفتگوی صوتی پیام‌رسان T</small></b></div>
+      <input class="field" id="lgUser" placeholder="نام کاربری" autocomplete="username" />
+      <input class="field" id="lgPass" type="password" placeholder="رمز" autocomplete="current-password" />
+      <button class="btn" id="lgBtn" style="width:100%">ورود و اتصال</button>
+      <div class="msg" id="lgMsg"></div>
+      <div class="hintlink">حساب نداری؟ <a href="/" target="_blank" rel="noopener">در سایت اصلی بساز</a></div>
+    </div>
+
+    <!-- لابی -->
+    <div id="lobby" hidden>
+      <div class="top">
+        <div class="logo"><div class="mark">🎧</div><b style="font-size:17px">T اسپیک</b></div>
+        <div class="me-chip"><div class="av" id="meAv">T</div><span id="meName">…</span></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>کانال‌های صوتی</span><button class="newbtn" id="btnNew">＋ کانال جدید</button></div>
+        <div id="chanList"><div class="empty">در حال بارگذاری…</div></div>
+      </div>
+      <div class="statusbar" id="lobStatus"><span class="dot"></span><span>اتصال برقرار است</span></div>
+    </div>
+
+    <!-- اتاق -->
+    <div id="room" hidden>
+      <div class="room-head">
+        <button class="back" id="btnLeave">✕ قطع</button>
+        <div class="room-title"><b id="roomName">…</b><span id="roomSub"></span></div>
+        <button class="lockbtn" id="btnLock" hidden title="قفل کانال">🔓</button>
+        <button class="lockbtn" id="btnCopy" hidden title="کپی لینک دعوت">🔗</button>
+      </div>
+      <div class="grid" id="memberGrid"></div>
+      <div class="meter" id="meterWrap" hidden><i id="meterBar"></i></div>
+      <div class="controls">
+        <button class="btn" id="btnMic">🎙 میکروفن روشن</button>
+        <div class="mode-switch" id="modeSwitch">
+          <button data-m="open" class="on">آزاد</button>
+          <button data-m="ptt">نگه‌دار</button>
+        </div>
+        <button class="btn ghost" id="btnPtt" hidden>🗣 نگه دار</button>
+      </div>
+      <div class="ptt-hint" id="pttHint" hidden>کلید Space را نگه دار تا صدایت برسد</div>
+      <div class="statusbar" id="roomStatus"><span class="dot"></span><span id="roomStatusTxt">در حال اتصال…</span></div>
+    </div>
+  </div>
+
+  <div id="audios" hidden></div>
+  <div id="toast"></div>
+
+  <script>
+  (function () {
+    "use strict";
+    /* ================= ابزار ================= */
+    var $ = function (id) { return document.getElementById(id); };
+    function toast(txt) {
+      var t = $("toast"); t.textContent = txt; t.classList.add("show");
+      clearTimeout(t._tm); t._tm = setTimeout(function () { t.classList.remove("show"); }, 2600);
+    }
+    function api(path, body, method) {
+      return fetch("/api" + path, {
+        method: method || (body ? "POST" : "GET"),
+        credentials: "include",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; });
+      });
+    }
+    var hasRTC = typeof RTCPeerConnection !== "undefined";
+
+    /* ================= وضعیت کلی ================= */
+    var me = null;
+    var lobbyTimer = 0, lobbyOpen = false;
+    var expanded = {};
+
+    /* ================= ورود ================= */
+    function showLogin() {
+      $("login").hidden = false; $("lobby").hidden = true; $("room").hidden = true;
+    }
+    $("lgBtn").addEventListener("click", doLogin);
+    $("lgPass").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
+    function doLogin() {
+      var u = $("lgUser").value.trim(), p = $("lgPass").value;
+      if (!u || !p) { $("lgMsg").textContent = "نام کاربری و رمز لازم است"; return; }
+      $("lgBtn").disabled = true; $("lgMsg").textContent = "";
+      api("/auth/login", { username: u, password: p }).then(function (r) {
+        $("lgBtn").disabled = false;
+        if (r.ok) { boot(); } else { $("lgMsg").textContent = (r.d && r.d.error) || "ورود نشد"; }
+      }).catch(function () { $("lgBtn").disabled = false; $("lgMsg").textContent = "خطای اتصال"; });
+    }
+
+    /* ================= لابی ================= */
+    function enterLobby() {
+      $("login").hidden = true; $("room").hidden = true; $("lobby").hidden = false;
+      lobbyOpen = true;
+      if (!lobbyTimer) lobbyTimer = setInterval(loadState, 5000);
+      loadState();
+    }
+    function leaveLobby() { lobbyOpen = false; if (lobbyTimer) { clearInterval(lobbyTimer); lobbyTimer = 0; } }
+    function loadState() {
+      if (!lobbyOpen) return;
+      api("/speak/state").then(function (r) {
+        if (r.status === 401) { leaveLobby(); showLogin(); return; }
+        if (!r.ok) { setLobStatus(false); return; }
+        setLobStatus(true);
+        me = r.d.me;
+        $("meName").textContent = me.displayName || me.username;
+        var av = $("meAv"); av.style.setProperty("--h", String(me.hue || 220));
+        av.textContent = (me.displayName || me.username || "T").trim().charAt(0).toUpperCase();
+        renderChannels(r.d.channels || []);
+      }).catch(function () { setLobStatus(false); });
+    }
+    function setLobStatus(on) {
+      var s = $("lobStatus");
+      s.classList.toggle("off", !on);
+      s.querySelector("span:last-child").textContent = on ? "اتصال برقرار است" : "ارتباط قطع؛ تلاش مجدد…";
+    }
+    function setRoomStatus(txt) { $("roomStatusTxt").textContent = txt; }
+    function renderChannels(chans) {
+      var box = $("chanList");
+      if (!chans.length) { box.innerHTML = '<div class="empty">هنوز کانالی نیست. اولین کانال را بساز! 🎧</div>'; return; }
+      var html = "";
+      chans.forEach(function (ch) {
+        var full = ch.count >= 6 && ch.ownerId !== (me && me.id);
+        var ic = ch.locked ? "🔒" : (ch.isPublic ? "🎧" : "🔐");
+        html += '<button class="chan' + (expanded[ch.id] ? " open" : "") + '" data-id="' + ch.id + '">' +
+          '<span class="exp">◀</span><span class="cic">' + ic + '</span>' +
+          '<span class="nm">' + esc(ch.name) + '</span>' +
+          '<span class="cnt' + (full ? " full" : "") + '">' + ch.count + "/6</span>" +
+          '<span class="go" data-join="' + ch.id + '">ورود</span></button>';
+        if (expanded[ch.id]) html += '<div class="sub-rows" data-subs="' + ch.id + '"><div class="sub-row">…</div></div>';
+      });
+      box.innerHTML = html;
+    }
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    $("chanList").addEventListener("click", function (e) {
+      var join = e.target.getAttribute && e.target.getAttribute("data-join");
+      if (join) { e.stopPropagation(); joinChannel(join); return; }
+      var btn = e.target.closest ? e.target.closest(".chan") : null;
+      if (!btn) return;
+      var id = btn.getAttribute("data-id");
+      expanded[id] = !expanded[id];
+      renderChannels(lastChans || []);
+      if (expanded[id]) fillMembers(id);
+    });
+    var lastChans = null;
+    var _rc = renderChannels;
+    renderChannels = function (c) { lastChans = c; _rc(c); };
+    function fillMembers(id) {
+      api("/speak/channels/" + id).then(function (r) {
+        if (!r.ok) return;
+        var box = document.querySelector('[data-subs="' + id + '"]');
+        if (!box) return;
+        var ms = r.d.members || [];
+        box.innerHTML = ms.length ? ms.map(function (m) {
+          return '<div class="sub-row"><span class="spk' + (m.speaking ? " on" : "") + '"></span>' +
+            '<span>' + esc(m.displayName || m.username) + '</span>' +
+            (m.mic ? "" : '<span class="micoff">🔇</span>') + '</div>';
+        }).join("") : '<div class="sub-row">کسی داخل نیست</div>';
+      });
+    }
+
+    /* ساخت کانال */
+    $("btnNew").addEventListener("click", function () {
+      var name = prompt("اسم کانال تازه:", "");
+      if (!name) return;
+      var isPublic = confirm("کانال عمومی باشد؟ (اوکی = عمومی، لغو = خصوصی فقط با لینک دعوت)");
+      api("/speak/channels", { name: name, isPublic: isPublic }).then(function (r) {
+        if (r.ok) { toast("کانال ساخته شد ✓"); expanded[r.d.channel.id] = false; loadState(); joinChannel(r.d.channel.id); }
+        else toast((r.d && r.d.error) || "ساخته نشد");
+      });
+    });
+
+    /* ================= اتاق صوتی ================= */
+    var S = {
+      channelId: null, channel: null, clientId: null, joinedAt: 0,
+      micMode: localStorage.getItem("t-speak-mode") || "open",
+      micOn: true, holding: false, micDenied: false,
+      localStream: null, audioCtx: null, analyser: null, meterRaf: 0,
+      speaking: false, speakUntil: 0,
+      pcs: {}, remotes: {}, pendingIce: {}, lastSpkSent: null,
+      cursor: 0, syncTimer: 0, syncBusy: false, errCount: 0,
+      forcedMuted: false
+    };
+    var ICE = { iceServers: [
+      { urls: "stun:stun.cloudflare.com:3478" },
+      { urls: "stun:stun.l.google.com:19302" }
+    ] };
+
+    function joinChannel(id) {
+      leaveRoomSilent();
+      toast("در حال اتصال…");
+      navigator.mediaDevices && navigator.mediaDevices.getUserMedia ?
+        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+          .then(function (st) { S.localStream = st; _join(id); })
+          .catch(function () { S.micDenied = true; S.localStream = null; _join(id); })
+        : (S.micDenied = true, _join(id));
+    }
+    function _join(id) {
+      api("/speak/channels/" + id + "/join", {}).then(function (r) {
+        if (!r.ok) { toast((r.d && r.d.error) || "ورود نشد"); return; }
+        S.channelId = r.d.channel.id; S.channel = r.d.channel;
+        S.clientId = r.d.clientId; S.joinedAt = Date.now();
+        S.cursor = 0; S.pcs = {}; S.remotes = {}; S.pendingIce = {};
+        S.errCount = 0; S.forcedMuted = false; S.micOn = !S.micDenied;
+        leaveLobby();
+        $("login").hidden = true; $("lobby").hidden = true; $("room").hidden = false;
+        $("roomName").textContent = S.channel.name;
+        var isOwner = S.channel.ownerId === me.id;
+        $("btnLock").hidden = !isOwner;
+        $("btnCopy").hidden = false;
+        applyModeUI();
+        setupLocalMeter();
+        renderMembers(r.d.members || []);
+        (r.d.members || []).forEach(function (m) { if (m.clientId !== S.clientId) ensurePeer(m, shouldInitiate(m)); });
+        setRoomStatus("متصل شد ✓" + (S.micDenied ? " — میکروفن اجازه نگرفت؛ فقط گوش می‌دهی" : ""));
+        syncLoop();
+        S.syncTimer = setInterval(syncLoop, 1200);
+        blip(880, 0.05);
+      }).catch(function () { toast("خطای اتصال به کانال"); });
+    }
+    function shouldInitiate(m) {
+      if (m.joinedAt === null || m.joinedAt === undefined) return false;
+      return m.joinedAt < S.joinedAt || (m.joinedAt === S.joinedAt && m.clientId < S.clientId);
+    }
+
+    /* --- WebRTC mesh --- */
+    function ensurePeer(m, initiator) {
+      if (!hasRTC || S.pcs[m.clientId]) return S.pcs[m.clientId];
+      var pc = new RTCPeerConnection(ICE);
+      S.pcs[m.clientId] = pc;
+      if (S.localStream) {
+        try { S.localStream.getAudioTracks().forEach(function (t) { pc.addTrack(t, S.localStream); }); } catch (e) {}
+      } else {
+        try { pc.addTransceiver("audio", { direction: "recvonly" }); } catch (e) {}
+      }
+      pc.onicecandidate = function (e) {
+        if (e.candidate) sendSignal(m.clientId, { t: "ice", c: e.candidate });
+      };
+      pc.ontrack = function (e) {
+        var el = S.remotes[m.clientId];
+        if (!el) { el = document.createElement("audio"); el.autoplay = true; el.setAttribute("playsinline", ""); $("audios").appendChild(el); S.remotes[m.clientId] = el; }
+        if (el.srcObject !== e.streams[0]) { el.srcObject = e.streams[0]; el.play().catch(function () { showUnlockTip(); }); }
+      };
+      pc.onconnectionstatechange = function () {
+        if (pc.connectionState === "failed") {
+          setTimeout(function () {
+            if (S.pcs[m.clientId] === pc) { dropPeer(m.clientId); if (shouldInitiate(m)) ensurePeer(m, true); }
+          }, 2500);
+        }
+        updateRoomStatusByPeers();
+      };
+      if (initiator) {
+        pc.createOffer().then(function (of) {
+          return pc.setLocalDescription(of).then(function () { sendSignal(m.clientId, { t: "offer", s: pc.localDescription }); });
+        }).catch(function () {});
+      }
+      return pc;
+    }
+    function dropPeer(cid) {
+      try { S.pcs[cid] && S.pcs[cid].close(); } catch (e) {}
+      delete S.pcs[cid];
+      if (S.remotes[cid]) { try { S.remotes[cid].remove(); } catch (e) {} delete S.remotes[cid]; }
+      delete S.pendingIce[cid];
+    }
+    function sendSignal(to, data) {
+      api("/speak/channels/" + S.channelId + "/signal", { from: S.clientId, to: to, data: data });
+    }
+    function onSignal(sig) {
+      var d = sig.data;
+      if (!d || !d.t) return;
+      if (d.t === "kick") { toast("توسط مدیر اخراج شدی"); leaveRoom(); return; }
+      if (d.t === "mute") { S.forcedMuted = true; applyMicState(); toast("مدیر میکروفنت را بست 🔇"); return; }
+      if (d.t === "unmute") { S.forcedMuted = false; applyMicState(); toast("میکروفن آزاد شد 🎙"); return; }
+      if (!hasRTC) return;
+      var from = sig.fromCid;
+      if (d.t === "offer") {
+        var old = S.pcs[from]; if (old) dropPeer(from);
+        var pc = ensurePeer({ clientId: from, joinedAt: null }, false);
+        pc.setRemoteDescription(new RTCSessionDescription(d.s)).then(function () {
+          flushIce(from);
+          return pc.createAnswer();
+        }).then(function (an) {
+          return pc.setLocalDescription(an).then(function () { sendSignal(from, { t: "answer", s: pc.localDescription }); });
+        }).catch(function () {});
+      } else if (d.t === "answer") {
+        var p2 = S.pcs[from];
+        if (p2 && p2.signalingState !== "stable") {
+          p2.setRemoteDescription(new RTCSessionDescription(d.s)).then(function () { flushIce(from); }).catch(function () {});
+        }
+      } else if (d.t === "ice") {
+        var p3 = S.pcs[from];
+        if (p3 && p3.remoteDescription) { p3.addIceCandidate(new RTCIceCandidate(d.c)).catch(function () {}); }
+        else { (S.pendingIce[from] = S.pendingIce[from] || []).push(d.c); }
+      }
+    }
+    function flushIce(cid) {
+      var q = S.pendingIce[cid]; if (!q) return;
+      var p = S.pcs[cid]; if (!p) return;
+      q.forEach(function (c) { try { p.addIceCandidate(new RTCIceCandidate(c)).catch(function () {}); } catch (e) {} });
+      delete S.pendingIce[cid];
+    }
+
+    /* --- sync --- */
+    function syncLoop() {
+      if (!S.channelId || S.syncBusy) return;
+      S.syncBusy = true;
+      api("/speak/channels/" + S.channelId + "/sync", {
+        clientId: S.clientId, speaking: S.speaking,
+        mic: micEffective() ? true : false, since: S.cursor
+      }).then(function (r) {
+        S.syncBusy = false;
+        if (r.status === 401) { leaveRoom(); showLogin(); return; }
+        if (!r.ok) { if (++S.errCount > 4) setRoomStatus("ارتباط ضعیف است…"); return; }
+        S.errCount = 0;
+        if (r.d.cursor) S.cursor = r.d.cursor;
+        var ms = r.d.members || [];
+        renderMembers(ms);
+        var seen = {};
+        ms.forEach(function (m) {
+          if (m.clientId === S.clientId) return;
+          seen[m.clientId] = true;
+          if (!S.pcs[m.clientId]) ensurePeer(m, shouldInitiate(m));
+        });
+        Object.keys(S.pcs).forEach(function (cid) { if (!seen[cid]) { dropPeer(cid); blip(520, 0.04); } });
+        (r.d.signals || []).forEach(onSignal);
+        if (r.d.channel) {
+          S.channel = r.d.channel;
+          var locked = !!r.d.locked;
+          $("btnLock").textContent = locked ? "🔒" : "🔓";
+        }
+        updateRoomStatusByPeers();
+      }).catch(function () { S.syncBusy = false; if (++S.errCount > 4) setRoomStatus("ارتباط قطع؛ تلاش مجدد…"); });
+    }
+    function updateRoomStatusByPeers() {
+      var n = Object.keys(S.pcs).length;
+      var conn = 0;
+      Object.keys(S.pcs).forEach(function (cid) { var st = S.pcs[cid].connectionState; if (st === "connected" || st === "completed") conn++; });
+      var txt = n === 0 ? "تنهایی! منتظر بقیه…" : ("صدا با " + conn + " از " + n + " نفر برقرار است");
+      setRoomStatus(txt);
+      $("roomStatus").classList.toggle("off", n > 0 && conn === 0);
+    }
+
+    /* --- اعضا --- */
+    function renderMembers(ms) {
+      $("roomSub").textContent = ms.length + " نفر داخل کانال" + (S.micDenied ? " · فقط شنونده" : "");
+      var html = "";
+      ms.forEach(function (m) {
+        var mine = m.clientId === S.clientId;
+        var isOwner = S.channel && m.userId === S.channel.ownerId;
+        html += '<div class="member' + (m.speaking ? " speaking" : "") + (mine ? " me-self" : "") + '">' +
+          (isOwner ? '<span class="crown">👑</span>' : "") +
+          '<div class="av2" style="--h:' + (m.hue || 220) + '">' + esc((m.displayName || m.username || "T").trim().charAt(0).toUpperCase()) + "</div>" +
+          '<div class="nm2">' + esc(m.displayName || m.username) + "</div>" +
+          '<div class="un2">@' + esc(m.username) + "</div>" +
+          '<span class="st' + (m.mic ? "" : " off") + '">' + (m.mic ? "🎙" : "🔇") + "</span>" +
+          ((!mine && amMod() && !isOwner) ?
+            '<div class="tools"><button data-mute="' + m.clientId + '">' + (m.mic ? "ساکت" : "بازکردن") + '</button><button data-kick="' + m.clientId + '">اخراج</button></div>' : "") +
+          "</div>";
+      });
+      $("memberGrid").innerHTML = html;
+    }
+    function amMod() { return S.channel && me && S.channel.ownerId === me.id; }
+    $("memberGrid").addEventListener("click", function (e) {
+      var t = e.target;
+      var kick = t.getAttribute && t.getAttribute("data-kick");
+      var mute = t.getAttribute && t.getAttribute("data-mute");
+      if (kick) api("/speak/channels/" + S.channelId + "/mod", { action: "kick", target: kick });
+      if (mute) api("/speak/channels/" + S.channelId + "/mod", { action: "mute", target: mute });
+    });
+
+    /* --- میکروفن --- */
+    function micEffective() {
+      if (S.micDenied || S.forcedMuted || !S.localStream) return false;
+      if (S.micMode === "ptt") return S.holding;
+      return S.micOn;
+    }
+    function applyMicState() {
+      if (S.localStream) {
+        S.localStream.getAudioTracks().forEach(function (t) { t.enabled = micEffective(); });
+      }
+      var b = $("btnMic");
+      if (S.micMode === "ptt") { b.textContent = "🗣 حالت نگه‌دار فعال"; b.classList.add("ghost"); }
+      else {
+        b.textContent = micEffective() ? "🎙 میکروفن روشن" : "🔇 میکروفن بسته";
+        b.classList.toggle("ghost", !micEffective());
+        b.classList.toggle("danger", S.forcedMuted);
+      }
+      $("btnPtt").classList.toggle("holding", S.micMode === "ptt" && S.holding);
+    }
+    $("btnMic").addEventListener("click", function () {
+      if (S.micMode === "ptt" || S.forcedMuted) { toast("در حالت نگه‌دار، دکمهٔ «نگه دار» را فشار بده"); return; }
+      S.micOn = !S.micOn; applyMicState();
+    });
+    function applyModeUI() {
+      var m = S.micMode;
+      [].forEach.call($("modeSwitch").children, function (b) { b.classList.toggle("on", b.getAttribute("data-m") === m); });
+      $("btnPtt").hidden = m !== "ptt";
+      $("pttHint").hidden = m !== "ptt";
+      applyMicState();
+    }
+    $("modeSwitch").addEventListener("click", function (e) {
+      var m = e.target.getAttribute && e.target.getAttribute("data-m");
+      if (!m) return;
+      S.micMode = m; try { localStorage.setItem("t-speak-mode", m); } catch (err) {}
+      applyModeUI();
+    });
+    function holdPTT(on) { if (S.micMode !== "ptt") return; S.holding = on; applyMicState(); }
+    var pb = $("btnPtt");
+    pb.addEventListener("pointerdown", function (e) { e.preventDefault(); holdPTT(true); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) { pb.addEventListener(ev, function () { holdPTT(false); }); });
+    document.addEventListener("keydown", function (e) {
+      if (e.code !== "Space") return;
+      var tg = e.target; if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA")) return;
+      e.preventDefault(); holdPTT(true);
+    });
+    document.addEventListener("keyup", function (e) { if (e.code === "Space") holdPTT(false); });
+
+    /* --- سطح صدا و تشخیص صحبت --- */
+    function setupLocalMeter() {
+      cancelAnimationFrame(S.meterRaf);
+      if (!S.localStream || typeof AudioContext === "undefined") { $("meterWrap").hidden = true; return; }
+      $("meterWrap").hidden = false;
+      try {
+        S.audioCtx = S.audioCtx || new AudioContext();
+        if (S.audioCtx.state === "suspended") S.audioCtx.resume();
+        var src = S.audioCtx.createMediaStreamSource(S.localStream);
+        var an = S.audioCtx.createAnalyser(); an.fftSize = 512;
+        src.connect(an);
+        S.analyser = an;
+        var buf = new Uint8Array(an.frequencyBinCount);
+        var loop = function () {
+          an.getByteTimeDomainData(buf);
+          var sum = 0;
+          for (var i = 0; i < buf.length; i++) { var v = (buf[i] - 128) / 128; sum += v * v; }
+          var rms = Math.sqrt(sum / buf.length);
+          $("meterBar").style.width = Math.min(100, Math.round(rms * 260)) + "%";
+          var now = Date.now();
+          if (rms > 0.045) { S.speaking = true; S.speakUntil = now + 600; }
+          else if (now > S.speakUntil) S.speaking = false;
+          S.meterRaf = requestAnimationFrame(loop);
+        };
+        loop();
+      } catch (e) { $("meterWrap").hidden = true; }
+    }
+
+    /* --- خروج --- */
+    function leaveRoomSilent() {
+      if (S.syncTimer) { clearInterval(S.syncTimer); S.syncTimer = 0; }
+      cancelAnimationFrame(S.meterRaf);
+      Object.keys(S.pcs).forEach(dropPeer);
+      if (S.localStream) { try { S.localStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.localStream = null; }
+      S.channelId = null; S.channel = null; S.speaking = false;
+    }
+    function leaveRoom() {
+      var id = S.channelId, cid = S.clientId;
+      leaveRoomSilent();
+      if (id && cid) api("/speak/channels/" + id + "/leave", { clientId: cid });
+      blip(440, 0.05);
+      enterLobby();
+    }
+    $("btnLeave").addEventListener("click", leaveRoom);
+    window.addEventListener("beforeunload", function () {
+      if (S.channelId && S.clientId) {
+        try {
+          fetch("/api/speak/channels/" + S.channelId + "/leave", {
+            method: "POST", keepalive: true, credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clientId: S.clientId })
+          });
+        } catch (e) {}
+      }
+    });
+
+    /* --- ابزار مدیر --- */
+    $("btnLock").addEventListener("click", function () {
+      if (!S.channel) return;
+      var lock = !S.channel.locked;
+      api("/speak/channels/" + S.channelId + "/mod", { action: lock ? "lock" : "unlock" }).then(function (r) {
+        if (r.ok) { S.channel.locked = lock; $("btnLock").textContent = lock ? "🔒" : "🔓"; toast(lock ? "کانال قفل شد 🔒" : "قفل برداشته شد 🔓"); }
+      });
+    });
+    $("btnCopy").addEventListener("click", function () {
+      var link = location.origin + "/tSpeak#join=" + S.channelId;
+      (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject())
+        .then(function () { toast("لینک دعوت کپی شد ✓"); })
+        .catch(function () { prompt("لینک دعوت:", link); });
+    });
+
+    /* --- صداهای کوچک --- */
+    function blip(freq, vol) {
+      try {
+        S.audioCtx = S.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        var o = S.audioCtx.createOscillator(), g = S.audioCtx.createGain();
+        o.frequency.value = freq; g.gain.value = vol || 0.05;
+        o.connect(g); g.connect(S.audioCtx.destination);
+        o.start(); o.stop(S.audioCtx.currentTime + 0.09);
+      } catch (e) {}
+    }
+    function showUnlockTip() {
+      if (window._unlockTip) return;
+      window._unlockTip = true;
+      var d = document.createElement("div");
+      d.className = "unlock-tip";
+      d.innerHTML = '<button class="btn">🔊 برای شنیدن صدا، اینجا ضربه بزن</button>';
+      d.addEventListener("click", function () {
+        Object.keys(S.remotes).forEach(function (k) { S.remotes[k].play().catch(function () {}); });
+        document.body.removeChild(d); window._unlockTip = false;
+      });
+      document.body.appendChild(d);
+    }
+
+    /* ================= شروع ================= */
+    function boot() {
+      var m = location.hash.match(/#join=([A-Za-z0-9]+)/);
+      var autoJoin = m ? m[1] : null;
+      api("/me").then(function (r) {
+        if (r.ok) {
+          me = r.d.user;
+          if (autoJoin) joinChannel(autoJoin); else enterLobby();
+        } else showLogin();
+      }).catch(showLogin);
+    }
+    boot();
+  })();
+  </script>
+</body>
+</html>

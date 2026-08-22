@@ -9251,6 +9251,238 @@ app.get("/admin/support/media/:mid", async (c) => {
     }
   });
 });
+// ===== T اسپیک — اتاق صوتی (فاز ۱: WebRTC مستقیم P2P + سیگنالینگ با D1) =====
+// معماری آمادهٔ فاز ۲: فقط همین مسیرها به Durable Objects منتقل می‌شوند؛ کلاینت بدون تغییر می‌ماند.
+var SPEAK_MAX = 6;
+var SPEAK_TTL = 16000;
+var SPEAK_SIG_TTL = 60000;
+var speakReady = false;
+async function speakRows(db, sql, ...params) {
+  try {
+    const r = await db.prepare(sql).bind(...params).all();
+    return r.results || [];
+  } catch (e) {
+    return [];
+  }
+}
+async function speakInit(db) {
+  if (speakReady) return;
+  await run(db, `CREATE TABLE IF NOT EXISTS speak_channels (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    is_public INTEGER DEFAULT 1,
+    owner_id TEXT NOT NULL,
+    owner_name TEXT,
+    locked INTEGER DEFAULT 0,
+    created_at INTEGER
+  )`).catch(() => {});
+  await run(db, `CREATE TABLE IF NOT EXISTS speak_members (
+    channel_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    username TEXT,
+    display_name TEXT,
+    hue INTEGER DEFAULT 220,
+    mic INTEGER DEFAULT 1,
+    speaking INTEGER DEFAULT 0,
+    joined_at INTEGER,
+    last_seen INTEGER,
+    PRIMARY KEY (channel_id, client_id)
+  )`).catch(() => {});
+  await run(db, `CREATE TABLE IF NOT EXISTS speak_signals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel_id TEXT,
+    from_cid TEXT,
+    to_cid TEXT,
+    data TEXT,
+    created_at INTEGER
+  )`).catch(() => {});
+  speakReady = true;
+}
+async function speakSweep(db, channelId) {
+  const now = Date.now();
+  await run(db, `DELETE FROM speak_members WHERE last_seen < ?`, now - SPEAK_TTL).catch(() => {});
+  if (channelId) {
+    await run(db, `DELETE FROM speak_signals WHERE channel_id = ? AND created_at < ?`, channelId, now - SPEAK_SIG_TTL).catch(() => {});
+  }
+}
+function speakChan(r, n) {
+  return { id: r.id, name: r.name, isPublic: !!r.is_public, locked: !!r.locked, ownerId: r.owner_id, ownerName: r.owner_name || "", count: n || 0 };
+}
+function speakMem(r) {
+  return { clientId: r.client_id, userId: r.user_id, username: r.username, displayName: r.display_name, hue: r.hue || 220, mic: !!r.mic, speaking: !!r.speaking, joinedAt: r.joined_at };
+}
+app.get("/speak/state", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  await speakSweep(db, null);
+  const chans = await speakRows(db, `SELECT * FROM speak_channels WHERE is_public = 1 OR owner_id = ? ORDER BY created_at DESC LIMIT 80`, user.id);
+  const counts = await speakRows(db, `SELECT channel_id, COUNT(*) AS n FROM speak_members GROUP BY channel_id`);
+  const cmap = {};
+  for (const r of counts) cmap[r.channel_id] = Number(r.n || 0);
+  const mine = await one(db, `SELECT m.channel_id FROM speak_members m WHERE m.user_id = ? LIMIT 1`, user.id);
+  return c.json({
+    me: { id: user.id, username: user.username, displayName: user.displayName, hue: user.hue || 220 },
+    channels: chans.map((r) => speakChan(r, cmap[r.id] || 0)),
+    inChannel: mine ? mine.channel_id : null
+  });
+});
+app.post("/speak/channels", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  const gate = await secTouch(db, `spk-ch:${user.id}`, 10, 36e5, 6e4);
+  if (!gate.ok) return jsonError(c, "کانال ساختن زیاد شد؛ کمی صبر کن", 429);
+  const b = await c.req.json().catch(() => ({}));
+  const name = String(b.name || "").trim().slice(0, 40);
+  if (!name) return jsonError(c, "اسم کانال لازم است");
+  const isPublic = b.isPublic === false ? 0 : 1;
+  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+  await run(db, `INSERT INTO speak_channels (id, name, is_public, owner_id, owner_name, locked, created_at) VALUES (?,?,?,?,?,0,?)`, id, name, isPublic, user.id, user.displayName || user.username, Date.now());
+  return c.json({ ok: true, channel: { id, name, isPublic: !!isPublic, locked: false, ownerId: user.id, ownerName: user.displayName || user.username, count: 0 } });
+});
+app.get("/speak/channels/:id", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  await speakSweep(db, c.req.param("id"));
+  const ch = await one(db, `SELECT * FROM speak_channels WHERE id = ?`, c.req.param("id"));
+  if (!ch) return jsonError(c, "کانال پیدا نشد", 404);
+  const rows = await speakRows(db, `SELECT * FROM speak_members WHERE channel_id = ? ORDER BY joined_at ASC`, ch.id);
+  return c.json({ channel: speakChan(ch, rows.length), members: rows.map(speakMem) });
+});
+app.post("/speak/channels/:id/join", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  await speakSweep(db, c.req.param("id"));
+  const ch = await one(db, `SELECT * FROM speak_channels WHERE id = ?`, c.req.param("id"));
+  if (!ch) return jsonError(c, "کانال پیدا نشد", 404);
+  const isOwner = ch.owner_id === user.id;
+  const ownerLike = isOwner ? "owner" : await requireOwnerLike(user, db);
+  if (ch.locked && !isOwner && !ownerLike) return jsonError(c, "کانال قفل است", 403);
+  const already = await one(db, `SELECT client_id FROM speak_members WHERE user_id = ? AND channel_id = ?`, user.id, ch.id);
+  if (!already) {
+    const others = await one(db, `SELECT COUNT(*) AS n FROM speak_members WHERE channel_id = ? AND user_id <> ?`, ch.id, user.id);
+    if (Number(others && others.n || 0) >= SPEAK_MAX && !ownerLike) return jsonError(c, `کانال پر است (حداکثر ${SPEAK_MAX} نفر)`, 409);
+  }
+  await run(db, `DELETE FROM speak_members WHERE user_id = ?`, user.id);
+  const clientId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  const now = Date.now();
+  await run(db, `INSERT INTO speak_members (channel_id, client_id, user_id, username, display_name, hue, mic, speaking, joined_at, last_seen) VALUES (?,?,?,?,?,?,1,0,?,?)`, ch.id, clientId, user.id, user.username, user.displayName || user.username, user.hue || 220, now, now);
+  const rows = await speakRows(db, `SELECT * FROM speak_members WHERE channel_id = ? ORDER BY joined_at ASC`, ch.id);
+  return c.json({ ok: true, clientId, channel: speakChan(ch, rows.length), members: rows.map(speakMem) });
+});
+app.post("/speak/channels/:id/sync", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  const b = await c.req.json().catch(() => ({}));
+  const cid = String(b.clientId || "");
+  const me = await one(db, `SELECT * FROM speak_members WHERE channel_id = ? AND client_id = ? AND user_id = ?`, c.req.param("id"), cid, user.id);
+  if (!me) return jsonError(c, "عضو نیستی؛ دوباره وارد شو", 409);
+  const now = Date.now();
+  const newSpk = b.speaking ? 1 : 0;
+  const newMic = b.mic === false ? 0 : 1;
+  if (newSpk !== Number(me.speaking || 0) || newMic !== Number(me.mic || 0) || now - Number(me.last_seen || 0) > 5000) {
+    await run(db, `UPDATE speak_members SET last_seen = ?, speaking = ?, mic = ? WHERE channel_id = ? AND client_id = ?`, now, newSpk, newMic, c.req.param("id"), cid).catch(() => {});
+  }
+  await speakSweep(db, c.req.param("id"));
+  const rows = await speakRows(db, `SELECT * FROM speak_members WHERE channel_id = ? ORDER BY joined_at ASC`, c.req.param("id"));
+  const since = Number(b.since || 0);
+  const sigs = await speakRows(db, `SELECT id, from_cid AS fromCid, to_cid AS toCid, data FROM speak_signals WHERE channel_id = ? AND to_cid = ? AND id > ? ORDER BY id ASC LIMIT 60`, c.req.param("id"), cid, since);
+  let top = since;
+  for (const s of sigs) top = Math.max(top, Number(s.id));
+  if (sigs.length) await run(db, `DELETE FROM speak_signals WHERE channel_id = ? AND to_cid = ? AND id <= ?`, c.req.param("id"), cid, top).catch(() => {});
+  const ch = await one(db, `SELECT * FROM speak_channels WHERE id = ?`, c.req.param("id"));
+  return c.json({ members: rows.map(speakMem), signals: sigs, cursor: top, locked: !!(ch && ch.locked), channel: ch ? speakChan(ch, rows.length) : null });
+});
+app.post("/speak/channels/:id/signal", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  const b = await c.req.json().catch(() => ({}));
+  const cid = String(b.from || "");
+  const to = String(b.to || "");
+  if (!cid || !to) return jsonError(c, "داده ناقص است");
+  const me = await one(db, `SELECT user_id FROM speak_members WHERE channel_id = ? AND client_id = ? AND user_id = ?`, c.req.param("id"), cid, user.id);
+  if (!me) return jsonError(c, "عضو نیستی", 403);
+  const data = JSON.stringify(b.data == null ? null : b.data).slice(0, 60000);
+  await run(db, `INSERT INTO speak_signals (channel_id, from_cid, to_cid, data, created_at) VALUES (?,?,?,?,?)`, c.req.param("id"), cid, to, data, Date.now());
+  return c.json({ ok: true });
+});
+app.post("/speak/channels/:id/leave", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  const b = await c.req.json().catch(() => ({}));
+  await run(db, `DELETE FROM speak_members WHERE channel_id = ? AND client_id = ? AND user_id = ?`, c.req.param("id"), String(b.clientId || ""), user.id).catch(() => {});
+  return c.json({ ok: true });
+});
+app.post("/speak/channels/:id/mod", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  const b = await c.req.json().catch(() => ({}));
+  const ch = await one(db, `SELECT * FROM speak_channels WHERE id = ?`, c.req.param("id"));
+  if (!ch) return jsonError(c, "کانال پیدا نشد", 404);
+  const ownerLike = ch.owner_id === user.id ? "owner" : await requireOwnerLike(user, db);
+  if (!ownerLike) return jsonError(c, "اجازه نداری", 403);
+  const action = String(b.action || "");
+  const target = String(b.target || "");
+  if (action === "kick") {
+    await run(db, `DELETE FROM speak_members WHERE channel_id = ? AND client_id = ?`, ch.id, target).catch(() => {});
+    await run(db, `INSERT INTO speak_signals (channel_id, from_cid, to_cid, data, created_at) VALUES (?,?,?,?,?)`, ch.id, "srv", target, JSON.stringify({ t: "kick" }), Date.now());
+    return c.json({ ok: true });
+  }
+  if (action === "mute" || action === "unmute") {
+    await run(db, `INSERT INTO speak_signals (channel_id, from_cid, to_cid, data, created_at) VALUES (?,?,?,?,?)`, ch.id, "srv", target, JSON.stringify({ t: action === "mute" ? "mute" : "unmute" }), Date.now());
+    return c.json({ ok: true });
+  }
+  if (action === "lock" || action === "unlock") {
+    await run(db, `UPDATE speak_channels SET locked = ? WHERE id = ?`, action === "lock" ? 1 : 0, ch.id);
+    return c.json({ ok: true });
+  }
+  return jsonError(c, "عمل نامعلوم است");
+});
+app.delete("/speak/channels/:id", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await speakInit(db);
+  const ch = await one(db, `SELECT * FROM speak_channels WHERE id = ?`, c.req.param("id"));
+  if (!ch) return jsonError(c, "کانال پیدا نشد", 404);
+  const ownerLike = ch.owner_id === user.id ? "owner" : await requireOwnerLike(user, db);
+  if (!ownerLike) return jsonError(c, "اجازه نداری", 403);
+  await run(db, `DELETE FROM speak_channels WHERE id = ?`, ch.id);
+  await run(db, `DELETE FROM speak_members WHERE channel_id = ?`, ch.id).catch(() => {});
+  await run(db, `DELETE FROM speak_signals WHERE channel_id = ?`, ch.id).catch(() => {});
+  return c.json({ ok: true });
+});
+app.get("/admin/speak", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const gate = await requireOwnerLike(user, c.env.DB);
+  if (!gate) return jsonError(c, "این پنل برای تو نیست", 403);
+  const db = c.env.DB;
+  await speakInit(db);
+  await speakSweep(db, null);
+  const chans = await speakRows(db, `SELECT * FROM speak_channels ORDER BY created_at DESC LIMIT 100`);
+  const counts = await speakRows(db, `SELECT channel_id, COUNT(*) AS n FROM speak_members GROUP BY channel_id`);
+  const cmap = {};
+  for (const r of counts) cmap[r.channel_id] = Number(r.n || 0);
+  return c.json({ channels: chans.map((r) => ({ ...speakChan(r, cmap[r.id] || 0), createdAt: r.created_at })) });
+});
+
 app.all("*", (c) => jsonError(c, "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u062F\u0627 \u0646\u0634\u062F", 404));
 var app_default = app;
 
