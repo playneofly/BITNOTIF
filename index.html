@@ -4362,5 +4362,86 @@
       setInterval(injectPubRow, 900);
     })();
     </script>
+    <!-- ===== بنر آپدیت اپ اندروید (فقط داخل اپ TApp دیده می‌شود) ===== -->
+    <style>
+      #tUpdBar {
+        position: fixed; inset-inline: 10px; bottom: calc(12px + env(safe-area-inset-bottom));
+        z-index: 100009; direction: rtl;
+        background: linear-gradient(165deg, #111827 0%, #0C1220 100%);
+        border: 1px solid rgba(76,141,255,.45); border-radius: 15px;
+        padding: 13px 14px; box-shadow: 0 18px 44px rgba(0,0,0,.6);
+        font-family: var(--sans, Tahoma, sans-serif); color: var(--cream, #E9EFFA);
+        display: none; max-width: 430px; margin-inline: auto;
+      }
+      #tUpdBar.on { display: block; animation: tUpdIn .35s cubic-bezier(.22,.9,.36,1) both; }
+      @keyframes tUpdIn { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+      #tUpdBar .tt { font-size: 13.5px; font-weight: 800; color: #8FC3FF; margin-bottom: 5px; }
+      #tUpdBar .tx { font-size: 12px; line-height: 2; color: #c6cede; }
+      #tUpdBar .tx b { color: #ffd98a; font-weight: 700; }
+      #tUpdBar .row { display: flex; gap: 8px; margin-top: 10px; }
+      #tUpdBar a.go {
+        flex: 1; text-align: center; text-decoration: none; padding: 10px; border-radius: 10px;
+        font-size: 12.5px; font-weight: 800; color: #F4F8FF;
+        background: linear-gradient(135deg, #5C9BFF 0%, #2A5FC4 100%);
+      }
+      #tUpdBar button.no {
+        border: 0; background: none; color: var(--mute, #8D95A8);
+        font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 10px 8px;
+      }
+    </style>
+    <script>
+    (function () {
+      "use strict";
+      var m = navigator.userAgent.match(/TApp\/(\d+(?:\.\d+)*)/);
+      if (!m) return; /* فقط داخل اپ اندروید T */
+      var appV = m[1];
+      function cmp(a, b) {
+        var x = String(a).split("."), y = String(b).split(".");
+        for (var i = 0; i < Math.max(x.length, y.length); i++) {
+          var d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0);
+          if (d) return d;
+        }
+        return 0;
+      }
+      function build(siteV) {
+        var key = "t_upd_snooze_" + siteV;
+        try { if (Number(localStorage.getItem(key) || 0) > Date.now() - 864e5) return; } catch (e) {}
+        if (document.getElementById("tUpdBar")) return;
+        var legacy = cmp(appV, "1.8") < 0; /* نسخه‌های قبل از تعویض کلید امضا */
+        var bar = document.createElement("div");
+        bar.id = "tUpdBar";
+        var tt = document.createElement("div"); tt.className = "tt";
+        tt.textContent = "نسخهٔ جدید اپ T رسید! (" + siteV + ")";
+        var tx = document.createElement("div"); tx.className = "tx";
+        if (legacy) {
+          tx.innerHTML = "نسخهٔ اپ تو (" + appV + ") قدیمی شده. برای این آپدیت <b>فقط همین یک‌بار</b> باید اول اپ فعلی را حذف کنی و بعد نسخهٔ جدید را نصب کنی. از این به بعد آپدیت‌ها مستقیم روی همان اپ نصب می‌شوند. حسابت هم دست نمی‌خورد؛ فقط دوباره وارد می‌شوی.";
+        } else {
+          tx.textContent = "دانلود کن و نصب کن — مستقیم روی همین اپ نصب می‌شود، نیازی به حذف نیست.";
+        }
+        var row = document.createElement("div"); row.className = "row";
+        var go = document.createElement("a"); go.className = "go";
+        go.href = "/api/download/apk";
+        go.textContent = legacy ? "دانلود نسخهٔ جدید" : "دانلود و نصب";
+        var no = document.createElement("button"); no.className = "no"; no.type = "button";
+        no.textContent = "بعداً";
+        no.addEventListener("click", function () {
+          try { localStorage.setItem(key, String(Date.now())); } catch (e) {}
+          bar.remove();
+        });
+        row.appendChild(go); row.appendChild(no);
+        bar.appendChild(tt); bar.appendChild(tx); bar.appendChild(row);
+        document.body.appendChild(bar);
+        requestAnimationFrame(function () { bar.classList.add("on"); });
+      }
+      fetch("/api/site", { cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var siteV = d && d.site && d.site.apk && d.site.apk.version;
+          if (siteV && cmp(appV, siteV) < 0) build(siteV);
+        })
+        .catch(function () {});
+    })();
+    </script>
   </body>
+
 </html>

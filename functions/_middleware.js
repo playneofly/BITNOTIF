@@ -7002,21 +7002,22 @@ app.get("/site", async (c) => {
   const maintText = (await setting(c.env.DB, "maintenance_text", "")).trim();
   let apk = null;
   try {
-    const file = await one(
-      c.env.DB,
-      `SELECT name, bytes, created_at FROM site_files WHERE id = 'apk'`
-    );
-    if (file) apk = { name: file.name, bytes: file.bytes, uploadedAt: file.created_at };
+    apk = await staticApk(c);
   } catch {
-    apk = null;
   }
-  if (!apk) {
+  if (apk) {
+    apk = { ...apk, version: STATIC_APK_VERSION };
+  } else {
     try {
-      apk = await staticApk(c);
+      const file = await one(
+        c.env.DB,
+        `SELECT name, bytes, created_at FROM site_files WHERE id = 'apk'`
+      );
+      if (file) apk = { name: file.name, bytes: file.bytes, uploadedAt: file.created_at, version: await setting(c.env.DB, "apk_version", "") };
     } catch {
+      apk = null;
     }
   }
-  if (apk) apk.version = await setting(c.env.DB, "apk_version", "");
   return c.json({
     site: {
       maintenance: await setting(c.env.DB, "maintenance", "0") === "1",
@@ -8213,6 +8214,7 @@ function parseApk(raw2, nameRaw) {
   if (bytes < 32) return null;
   return { name, mime, data, bytes };
 }
+var STATIC_APK_VERSION = "1.8";
 var staticApkCache = null;
 async function staticApk(c) {
   if (staticApkCache && Date.now() - staticApkCache.at < 6e4) return staticApkCache.v;
@@ -8231,6 +8233,16 @@ async function staticApk(c) {
       total = cr.indexOf("/") > -1 ? Number(cr.split("/")[1]) : Number(res.headers.get("content-length") || 0);
       try {
         await res.body?.cancel();
+      } catch {
+      }
+    }
+    if (res.ok && ct.indexOf("text/html") === -1 && !total) {
+      try {
+        const full = await fetch(url.toString());
+        const fct = (full.headers.get("content-type") || "").toLowerCase();
+        if (full.ok && fct.indexOf("text/html") === -1) {
+          total = (await full.arrayBuffer()).byteLength;
+        }
       } catch {
       }
     }
@@ -8261,29 +8273,29 @@ async function apkMeta(db) {
   }
 }
 app.get("/download/apk", async (c) => {
+  try {
+    const url = new URL(c.req.url);
+    url.pathname = "/T.apk";
+    url.search = "";
+    const res = await fetch(url.toString());
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (res.ok && ct.indexOf("text/html") === -1) {
+      return new Response(res.body, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/vnd.android.package-archive",
+          "Content-Disposition": 'attachment; filename="T.apk"',
+          "Cache-Control": "public, max-age=3600"
+        }
+      });
+    }
+  } catch {
+  }
   const row = await one(
     c.env.DB,
     `SELECT name, mime, data FROM site_files WHERE id = 'apk'`
   );
   if (!row) {
-    try {
-      const url = new URL(c.req.url);
-      url.pathname = "/T.apk";
-      url.search = "";
-      const res = await fetch(url.toString());
-      const ct = (res.headers.get("content-type") || "").toLowerCase();
-      if (res.ok && ct.indexOf("text/html") === -1) {
-        return new Response(res.body, {
-          status: 200,
-          headers: {
-            "Content-Type": "application/vnd.android.package-archive",
-            "Content-Disposition": 'attachment; filename="T.apk"',
-            "Cache-Control": "public, max-age=3600"
-          }
-        });
-      }
-    } catch {
-    }
     return jsonError(c, "\u0641\u0627\u06CC\u0644\u06CC \u0646\u06CC\u0633\u062A", 404);
   }
   const decoded = decodeDataUrl(row.data);
