@@ -3164,15 +3164,46 @@ function bytesToBase64(bytes) {
   }
   return btoa(bin);
 }
-async function transcribeBytes(env, bytes) {
-  try {
-    const out = await env.AI.run("@cf/openai/whisper-large-v3-turbo", { audio: bytesToBase64(bytes) });
-    const t = String(out?.text || out?.transcription || "").trim();
-    if (t) return { text: t, model: "whisper-large-v3-turbo" };
-  } catch {
+function sttClean(raw) {
+  let t = String(raw || "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  /* ویسپر گاهی یک جمله را ده‌ها بار تکرار می‌کند */
+  const parts = t.split(/(?<=[.!?؟،])\s+/).filter(Boolean);
+  const out = [];
+  for (const part of parts) {
+    const last = out[out.length - 1];
+    if (last && last.trim() === part.trim()) continue;
+    if (out.filter((x) => x.trim() === part.trim()).length >= 2) continue;
+    out.push(part);
   }
-  const out = await env.AI.run("@cf/openai/whisper", { audio: [...bytes] });
-  return { text: String(out?.text || out?.transcription || "").trim(), model: "whisper" };
+  t = out.join(" ").trim();
+  const words = t.split(" ");
+  if (words.length > 6) {
+    const uniq = new Set(words);
+    if (uniq.size <= 2) return "";
+  }
+  return t;
+}
+async function transcribeBytes(env, bytes, mime, lang) {
+  const b64 = bytesToBase64(bytes);
+  const language = lang === "auto" ? null : lang || "fa";
+  const tries = [
+    ["@cf/openai/whisper-large-v3-turbo", language ? { audio: b64, language, task: "transcribe" } : { audio: b64, task: "transcribe" }],
+    ["@cf/openai/whisper-large-v3-turbo", { audio: b64 }],
+    ["@cf/openai/whisper", { audio: [...bytes] }]
+  ];
+  let lastErr = null;
+  for (const [model, input] of tries) {
+    try {
+      const out = await env.AI.run(model, input);
+      const text = sttClean(out?.text ?? out?.transcription ?? out?.response ?? "");
+      if (text) return { text, model };
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  if (lastErr) throw lastErr;
+  return { text: "", model: "none" };
 }
 function hueFrom(input) {
   let h = 0;
@@ -8531,9 +8562,11 @@ app.post("/media/:id/transcribe", async (c) => {
   const bytes = await mediaBytes(c.env, row);
   if (!bytes) return jsonError(c, "\u0641\u0627\u06cc\u0644 \u062e\u0631\u0627\u0628 \u0627\u0633\u062a", 500);
   if (bytes.length > 9e6) return jsonError(c, "\u0641\u0627\u06cc\u0644 \u0635\u0648\u062a\u06cc \u062e\u06cc\u0644\u06cc \u0628\u0632\u0631\u06af \u0627\u0633\u062a", 413);
+  if (bytes.length < 1200) return jsonError(c, "\u0627\u06cc\u0646 \u0648\u06cc\u0633 \u062e\u06cc\u0644\u06cc \u06a9\u0648\u062a\u0627\u0647 \u0627\u0633\u062a", 400);
   const t0 = Date.now();
   try {
-    const out = await transcribeBytes(c.env, bytes);
+    const sttLang = (await setting(c.env.DB, "stt_lang", "fa")).trim() || "fa";
+    const out = await transcribeBytes(c.env, bytes, row.mime, sttLang);
     const text = String(out.text || "").trim();
     if (!text) return c.json({ text: "", empty: true });
     await soft(

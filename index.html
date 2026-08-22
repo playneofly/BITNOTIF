@@ -328,8 +328,7 @@
       window.__meReq = fetch("/api/me", { credentials: "include", cache: "no-store" })
         .then(function (r) { return { status: r.status, ct: r.headers.get("content-type") || "" }; })
         .catch(function () { return { status: 0, ct: "" }; });
-      /* اگر کوکی نشانهٔ ورود هست، اپ بدون منتظر ماندن به شبکه نشان داده می‌شود */
-      window.__hint = document.cookie.indexOf("t_in=1") > -1;
+      /* تا تأیید واقعی نشست، خودِ اپ پنهان می‌ماند تا صفحهٔ ورود قدیمی حتی یک فریم هم دیده نشود. */
     </script>
 
     <!-- ===== کامپوننت‌های Uiverse: ورودی درخشان + دکمهٔ آپلود پوشه‌ای ===== -->
@@ -1379,10 +1378,8 @@
          مسیر سریع: کوکیِ نشانه (t_in) که موقع ورود ست می‌شود؛ بدون انتظار برای شبکه.
          بعد پاسخ واقعی /api/me می‌رسد و اگر لازم بود تصمیم اصلاح می‌شود. */
       function boot() {
-        if (window.__hint) {
-          settled = true;
-          showApp();
-        }
+        /* مهم: دیگر با کوکی حدس نمی‌زنیم. تا پاسخ واقعی /api/me فقط لودر دیده می‌شود؛
+           به این شکل صفحهٔ ورود قدیمیِ داخل باندل React بعد از ورود چشمک نمی‌زند. */
         var req = window.__meReq || fetch(API + "/me", { credentials: "include", cache: "no-store" })
           .then(function (r) { return { status: r.status, ct: r.headers.get("content-type") || "" }; })
           .catch(function () { return { status: 0, ct: "" }; });
@@ -1390,8 +1387,7 @@
         req.then(function (r) {
           if (r.status === 200) { settled = true; showApp(); return; }
           if (r.status === 0 || r.ct.indexOf("application/json") === -1) {
-            /* شبکه/API در دسترس نیست */
-            if (!settled) showLogin("Server is not reachable right now. Please refresh in a moment.");
+            if (!settled) showLogin("ارتباط با سرور برقرار نشد؛ یک لحظه دیگر دوباره امتحان کن.");
             return;
           }
           settled = true;
