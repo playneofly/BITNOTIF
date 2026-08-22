@@ -7,11 +7,7 @@
 <title>T اسپیک — اتاق گفتگوی صوتی</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230E1621'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='15' font-family='sans-serif' fill='%234C8DFF'%3E🎧%3C/text%3E%3C/svg%3E" />
 <style>
-  @font-face {
-    font-family: "Vazirmatn";
-    src: url("/assets/Vazirmatn-T33.woff2") format("woff2");
-    font-display: swap;
-  }
+  @font-face { font-family: "Vazirmatn"; src: url("/assets/Vazirmatn-T33.woff2") format("woff2"); font-display: swap; }
   :root {
     --bg: #0E1621; --card: #16233A; --card2: #1B2A45;
     --line: #243450; --line2: #1C2942;
@@ -23,15 +19,14 @@
   html, body { height: 100%; }
   body {
     margin: 0; background: radial-gradient(1200px 700px at 50% -10%, #17253C 0%, var(--bg) 55%, #0A111C 100%);
-    color: var(--text);
-    font-family: "Vazirmatn", Tahoma, "Segoe UI", sans-serif;
+    color: var(--text); font-family: "Vazirmatn", Tahoma, "Segoe UI", sans-serif;
     display: flex; align-items: center; justify-content: center; padding: 18px;
   }
-  .shell { width: 100%; max-width: 560px; }
+  .shell { width: 100%; max-width: 560px; max-height: 100%; }
   [hidden] { display: none !important; }
   button { font-family: inherit; cursor: pointer; }
 
-  /* ===== لاگین ===== */
+  /* ===== ورود ===== */
   .card {
     background: linear-gradient(170deg, var(--card) 0%, #121E33 100%);
     border: 1px solid var(--line); border-radius: var(--radius);
@@ -54,9 +49,9 @@
   }
   .field:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(76,141,255,.16); }
   .btn {
-    height: 46px; border: none; border-radius: 11px; padding: 0 22px;
+    height: 46px; border: none; border-radius: 11px; padding: 0 20px;
     background: linear-gradient(135deg, #5C9BFF 0%, var(--blue2) 100%);
-    color: #fff; font-size: 15px; font-weight: 700; transition: transform .12s, filter .15s;
+    color: #fff; font-size: 14.5px; font-weight: 700; transition: transform .12s, filter .15s;
   }
   .btn:hover { filter: brightness(1.08); } .btn:active { transform: scale(.97); }
   .btn.ghost { background: transparent; border: 1.5px solid var(--line); color: var(--sub); }
@@ -83,10 +78,7 @@
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
     padding: 12px 16px; border-bottom: 1px solid var(--line2); font-size: 13px; color: var(--sub); font-weight: 700;
   }
-  .newbtn {
-    border: none; background: rgba(76,141,255,.14); color: var(--blue);
-    font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 9px;
-  }
+  .newbtn { border: none; background: rgba(76,141,255,.14); color: var(--blue); font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 9px; }
   .newbtn:hover { background: rgba(76,141,255,.24); }
   .chan {
     display: flex; align-items: center; gap: 10px; width: 100%; text-align: right;
@@ -118,10 +110,7 @@
   .sub-row .spk.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
   .sub-row .micoff { font-size: 11px; }
   .empty { padding: 34px 16px; text-align: center; color: var(--mute2); font-size: 13px; }
-  .statusbar {
-    margin-top: 12px; display: flex; align-items: center; gap: 8px; justify-content: center;
-    font-size: 11.5px; color: var(--mute2);
-  }
+  .statusbar { margin-top: 12px; display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 11.5px; color: var(--mute2); }
   .statusbar .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
   .statusbar.off .dot { background: var(--red); }
 
@@ -134,14 +123,11 @@
   .room-title { flex: 1; min-width: 0; }
   .room-title b { font-size: 16.5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .room-title span { font-size: 11.5px; color: var(--sub); }
-  .lockbtn {
-    border: 1.5px solid var(--line); background: var(--card); border-radius: 11px;
-    padding: 9px 12px; font-size: 15px;
-  }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .lockbtn { border: 1.5px solid var(--line); background: var(--card); border-radius: 11px; padding: 9px 12px; font-size: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; }
   .member {
     background: var(--card); border: 1px solid var(--line); border-radius: 13px;
-    padding: 15px 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 14px 10px 11px; display: flex; flex-direction: column; align-items: center; gap: 7px;
     position: relative; transition: border-color .15s, box-shadow .15s;
   }
   .member.speaking {
@@ -149,14 +135,15 @@
     box-shadow: 0 0 0 2px rgba(61,220,132,.35), 0 10px 30px -12px rgba(61,220,132,.35);
   }
   .member .av2 {
-    width: 56px; height: 56px; border-radius: 50%; color: #06101F;
-    display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800;
+    width: 54px; height: 54px; border-radius: 50%; color: #06101F;
+    display: flex; align-items: center; justify-content: center; font-size: 23px; font-weight: 800;
     background: linear-gradient(160deg, hsl(var(--h,220) 85% 72%), hsl(var(--h,220) 70% 48%));
   }
   .member .nm2 { font-size: 13.5px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .member .un2 { font-size: 10.5px; color: var(--sub); direction: ltr; }
   .member .st { font-size: 15px; line-height: 1; }
   .member .st.off { opacity: .45; }
+  .member .qual { position: absolute; top: 9px; inset-inline-end: 10px; font-size: 9px; }
   .member .crown { position: absolute; top: 9px; inset-inline-start: 10px; font-size: 13px; }
   .member .tools { display: flex; gap: 6px; }
   .member .tools button {
@@ -165,31 +152,40 @@
   }
   .member .tools button:hover { color: var(--red); border-color: var(--red); }
   .member.me-self { border-style: dashed; }
-  .meter { height: 5px; border-radius: 99px; background: #0F1A2C; overflow: hidden; margin-top: 16px; border: 1px solid var(--line2); }
+  .member .vol {
+    width: 86%; display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--sub);
+  }
+  .member .vol input { flex: 1; accent-color: var(--blue); height: 14px; }
+  .meter { height: 5px; border-radius: 99px; background: #0F1A2C; overflow: hidden; margin-top: 14px; border: 1px solid var(--line2); }
   .meter i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), var(--gold)); transition: width .08s linear; }
-  .controls { display: flex; gap: 9px; margin-top: 12px; align-items: stretch; }
-  .controls .btn { flex: 1; height: 52px; font-size: 14px; border-radius: 13px; }
-  .mode-switch {
-    display: flex; border: 1.5px solid var(--line); border-radius: 13px; overflow: hidden; flex: none; background: var(--card);
-  }
-  .mode-switch button {
-    border: 0; background: none; color: var(--sub); font-size: 12.5px; font-weight: 700; padding: 0 14px;
-  }
+  .controls { display: flex; gap: 8px; margin-top: 12px; align-items: stretch; }
+  .controls .btn { flex: 1; height: 52px; font-size: 13.5px; border-radius: 13px; padding: 0 8px; }
+  .mode-switch { display: flex; border: 1.5px solid var(--line); border-radius: 13px; overflow: hidden; flex: none; background: var(--card); }
+  .mode-switch button { border: 0; background: none; color: var(--sub); font-size: 11.5px; font-weight: 700; padding: 0 10px; }
   .mode-switch button.on { background: rgba(76,141,255,.2); color: var(--blue); }
   .ptt-hint { text-align: center; font-size: 11px; color: var(--mute2); margin-top: 9px; }
-  .ptt-hold { box-shadow: 0 0 0 0 rgba(76,141,255,.5); }
-  .ptt-hold.holding { animation: pulse 1s infinite; background: linear-gradient(135deg, var(--green), #22A05C) !important; }
+  .btn.ptt-hold.holding { animation: pulse 1s infinite; background: linear-gradient(135deg, var(--green), #22A05C) !important; }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(61,220,132,.45); } 70% { box-shadow: 0 0 0 14px rgba(61,220,132,0); } 100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); } }
+  .sens-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--sub); margin-top: 8px; }
+  .sens-row input { flex: 1; accent-color: var(--blue); }
+
+  /* ===== چت متنی ===== */
+  #chatWrap {
+    margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 13px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #chatLog { max-height: 190px; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .chat-msg { max-width: 82%; padding: 7px 11px; border-radius: 12px; font-size: 12.5px; line-height: 1.6; word-break: break-word; }
+  .chat-msg.others { align-self: flex-start; background: #101C30; border: 1px solid var(--line2); }
+  .chat-msg.own { align-self: flex-end; background: linear-gradient(135deg, #3F7BDB, #2E5FBE); color: #fff; }
+  .chat-msg .who { font-size: 10px; color: var(--blue); font-weight: 800; display: block; margin-bottom: 2px; }
+  .chat-msg.own .who { color: #DCEBFF; }
+  .chat-msg .tm { font-size: 9px; opacity: .65; display: block; margin-top: 2px; direction: ltr; text-align: left; }
+  .chat-form { display: flex; gap: 8px; padding: 9px; border-top: 1px solid var(--line2); }
+  .chat-form input { flex: 1; height: 40px; }
+  .chat-form .btn { height: 40px; padding: 0 16px; }
 
   /* ===== مودال و توست ===== */
-  .modal-wrap { position: fixed; inset: 0; background: rgba(6,10,18,.7); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 60; }
-  .modal { width: 100%; max-width: 360px; }
-  .seg2 { display: flex; gap: 8px; width: 100%; }
-  .seg2 button {
-    flex: 1; border: 1.5px solid var(--line); background: #0F1A2C; color: var(--sub);
-    border-radius: 11px; padding: 10px; font-size: 13px; font-weight: 700;
-  }
-  .seg2 button.on { border-color: var(--blue); color: var(--blue); background: rgba(76,141,255,.12); }
   #toast {
     position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
     background: #0F1A2C; border: 1px solid var(--line); color: var(--text);
@@ -205,7 +201,6 @@
 <body>
   <div class="shell">
 
-    <!-- ورود -->
     <div id="login" class="card" hidden>
       <div class="logo"><div class="mark">🎧</div><b>T اسپیک<small>اتاق گفتگوی صوتی پیام‌رسان T</small></b></div>
       <input class="field" id="lgUser" placeholder="نام کاربری" autocomplete="username" />
@@ -215,7 +210,6 @@
       <div class="hintlink">حساب نداری؟ <a href="/" target="_blank" rel="noopener">در سایت اصلی بساز</a></div>
     </div>
 
-    <!-- لابی -->
     <div id="lobby" hidden>
       <div class="top">
         <div class="logo"><div class="mark">🎧</div><b style="font-size:17px">T اسپیک</b></div>
@@ -228,25 +222,36 @@
       <div class="statusbar" id="lobStatus"><span class="dot"></span><span>اتصال برقرار است</span></div>
     </div>
 
-    <!-- اتاق -->
     <div id="room" hidden>
       <div class="room-head">
         <button class="back" id="btnLeave">✕ قطع</button>
         <div class="room-title"><b id="roomName">…</b><span id="roomSub"></span></div>
+        <button class="lockbtn" id="btnChat" title="چت متنی">💬</button>
         <button class="lockbtn" id="btnLock" hidden title="قفل کانال">🔓</button>
-        <button class="lockbtn" id="btnCopy" hidden title="کپی لینک دعوت">🔗</button>
+        <button class="lockbtn" id="btnCopy" title="کپی لینک دعوت">🔗</button>
       </div>
       <div class="grid" id="memberGrid"></div>
+      <div id="chatWrap" hidden>
+        <div id="chatLog"></div>
+        <form class="chat-form" id="chatForm">
+          <input class="field" id="chatInput" placeholder="پیام متنی…" autocomplete="off" maxlength="500" />
+          <button class="btn" type="submit">ارسال</button>
+        </form>
+      </div>
       <div class="meter" id="meterWrap" hidden><i id="meterBar"></i></div>
       <div class="controls">
         <button class="btn" id="btnMic">🎙 میکروفن روشن</button>
         <div class="mode-switch" id="modeSwitch">
           <button data-m="open" class="on">آزاد</button>
+          <button data-m="voice">با صدا</button>
           <button data-m="ptt">نگه‌دار</button>
         </div>
-        <button class="btn ghost" id="btnPtt" hidden>🗣 نگه دار</button>
+        <button class="btn ghost ptt-hold" id="btnPtt" hidden>🗣 نگه دار</button>
       </div>
-      <div class="ptt-hint" id="pttHint" hidden>کلید Space را نگه دار تا صدایت برسد</div>
+      <div class="ptt-hint" id="pttHint" hidden>کلید Space را نگه دار تا صدات برسد</div>
+      <div class="sens-row" id="sensRow" hidden>
+        <span>حساسیت صدا</span><input type="range" id="sensRange" min="10" max="150" value="45" />
+      </div>
       <div class="statusbar" id="roomStatus"><span class="dot"></span><span id="roomStatusTxt">در حال اتصال…</span></div>
     </div>
   </div>
@@ -257,7 +262,6 @@
   <script>
   (function () {
     "use strict";
-    /* ================= ابزار ================= */
     var $ = function (id) { return document.getElementById(id); };
     function toast(txt) {
       var t = $("toast"); t.textContent = txt; t.classList.add("show");
@@ -273,17 +277,24 @@
         return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; });
       });
     }
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
     var hasRTC = typeof RTCPeerConnection !== "undefined";
+    var ICE = { iceServers: [
+      { urls: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"] },
+      { urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"],
+        username: "openrelayproject", credential: "openrelayproject" }
+    ] };
 
-    /* ================= وضعیت کلی ================= */
     var me = null;
     var lobbyTimer = 0, lobbyOpen = false;
-    var expanded = {};
+    var expanded = {}, lastChans = null;
 
     /* ================= ورود ================= */
-    function showLogin() {
-      $("login").hidden = false; $("lobby").hidden = true; $("room").hidden = true;
-    }
+    function showLogin() { $("login").hidden = false; $("lobby").hidden = true; $("room").hidden = true; }
     $("lgBtn").addEventListener("click", doLogin);
     $("lgPass").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
     function doLogin() {
@@ -292,7 +303,7 @@
       $("lgBtn").disabled = true; $("lgMsg").textContent = "";
       api("/auth/login", { username: u, password: p }).then(function (r) {
         $("lgBtn").disabled = false;
-        if (r.ok) { boot(); } else { $("lgMsg").textContent = (r.d && r.d.error) || "ورود نشد"; }
+        if (r.ok) boot(); else $("lgMsg").textContent = (r.d && r.d.error) || "ورود نشد";
       }).catch(function () { $("lgBtn").disabled = false; $("lgMsg").textContent = "خطای اتصال"; });
     }
 
@@ -314,7 +325,8 @@
         $("meName").textContent = me.displayName || me.username;
         var av = $("meAv"); av.style.setProperty("--h", String(me.hue || 220));
         av.textContent = (me.displayName || me.username || "T").trim().charAt(0).toUpperCase();
-        renderChannels(r.d.channels || []);
+        lastChans = r.d.channels || [];
+        renderChannels(lastChans);
       }).catch(function () { setLobStatus(false); });
     }
     function setLobStatus(on) {
@@ -322,7 +334,6 @@
       s.classList.toggle("off", !on);
       s.querySelector("span:last-child").textContent = on ? "اتصال برقرار است" : "ارتباط قطع؛ تلاش مجدد…";
     }
-    function setRoomStatus(txt) { $("roomStatusTxt").textContent = txt; }
     function renderChannels(chans) {
       var box = $("chanList");
       if (!chans.length) { box.innerHTML = '<div class="empty">هنوز کانالی نیست. اولین کانال را بساز! 🎧</div>'; return; }
@@ -339,11 +350,6 @@
       });
       box.innerHTML = html;
     }
-    function esc(s) {
-      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
-        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-      });
-    }
     $("chanList").addEventListener("click", function (e) {
       var join = e.target.getAttribute && e.target.getAttribute("data-join");
       if (join) { e.stopPropagation(); joinChannel(join); return; }
@@ -354,9 +360,6 @@
       renderChannels(lastChans || []);
       if (expanded[id]) fillMembers(id);
     });
-    var lastChans = null;
-    var _rc = renderChannels;
-    renderChannels = function (c) { lastChans = c; _rc(c); };
     function fillMembers(id) {
       api("/speak/channels/" + id).then(function (r) {
         if (!r.ok) return;
@@ -370,8 +373,6 @@
         }).join("") : '<div class="sub-row">کسی داخل نیست</div>';
       });
     }
-
-    /* ساخت کانال */
     $("btnNew").addEventListener("click", function () {
       var name = prompt("اسم کانال تازه:", "");
       if (!name) return;
@@ -386,47 +387,45 @@
     var S = {
       channelId: null, channel: null, clientId: null, joinedAt: 0,
       micMode: localStorage.getItem("t-speak-mode") || "open",
-      micOn: true, holding: false, micDenied: false,
+      sens: Number(localStorage.getItem("t-speak-sens") || 45) / 1000,
+      micOn: true, holding: false, micDenied: false, voiceDetected: false,
       localStream: null, audioCtx: null, analyser: null, meterRaf: 0,
-      speaking: false, speakUntil: 0,
-      pcs: {}, remotes: {}, pendingIce: {}, lastSpkSent: null,
-      cursor: 0, syncTimer: 0, syncBusy: false, errCount: 0,
-      forcedMuted: false
+      speaking: false, speakUntil: 0, lastPush: 0,
+      pcs: {}, remotes: {}, remoteAn: {}, pendingIce: {},
+      chat: [], chatCursor: 0, chatOpen: false,
+      cursor: 0, syncBusy: false, syncTm: 0, drain: false, errCount: 0,
+      forcedMuted: false, vols: {}
     };
-    var ICE = { iceServers: [
-      { urls: "stun:stun.cloudflare.com:3478" },
-      { urls: "stun:stun.l.google.com:19302" }
-    ] };
+    try { S.vols = JSON.parse(localStorage.getItem("t-speak-vols") || "{}") || {}; } catch (e) { S.vols = {}; }
 
     function joinChannel(id) {
       leaveRoomSilent();
       toast("در حال اتصال…");
-      navigator.mediaDevices && navigator.mediaDevices.getUserMedia ?
-        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } })
           .then(function (st) { S.localStream = st; _join(id); })
-          .catch(function () { S.micDenied = true; S.localStream = null; _join(id); })
-        : (S.micDenied = true, _join(id));
+          .catch(function () { S.micDenied = true; S.localStream = null; _join(id); });
+      } else { S.micDenied = true; S.localStream = null; _join(id); }
     }
     function _join(id) {
       api("/speak/channels/" + id + "/join", {}).then(function (r) {
         if (!r.ok) { toast((r.d && r.d.error) || "ورود نشد"); return; }
         S.channelId = r.d.channel.id; S.channel = r.d.channel;
-        S.clientId = r.d.clientId; S.joinedAt = Date.now();
-        S.cursor = 0; S.pcs = {}; S.remotes = {}; S.pendingIce = {};
+        S.clientId = r.d.clientId; S.joinedAt = Number(r.d.joinedAt || Date.now());
+        S.cursor = 0; S.chatCursor = 0; S.chat = []; S.drain = true;
+        S.pcs = {}; S.remotes = {}; S.remoteAn = {}; S.pendingIce = {};
         S.errCount = 0; S.forcedMuted = false; S.micOn = !S.micDenied;
         leaveLobby();
         $("login").hidden = true; $("lobby").hidden = true; $("room").hidden = false;
+        $("chatWrap").hidden = !S.chatOpen; renderChat();
         $("roomName").textContent = S.channel.name;
-        var isOwner = S.channel.ownerId === me.id;
-        $("btnLock").hidden = !isOwner;
-        $("btnCopy").hidden = false;
+        $("btnLock").hidden = S.channel.ownerId !== me.id;
         applyModeUI();
         setupLocalMeter();
         renderMembers(r.d.members || []);
         (r.d.members || []).forEach(function (m) { if (m.clientId !== S.clientId) ensurePeer(m, shouldInitiate(m)); });
         setRoomStatus("متصل شد ✓" + (S.micDenied ? " — میکروفن اجازه نگرفت؛ فقط گوش می‌دهی" : ""));
-        syncLoop();
-        S.syncTimer = setInterval(syncLoop, 1200);
+        scheduleSync(60);
         blip(880, 0.05);
       }).catch(function () { toast("خطای اتصال به کانال"); });
     }
@@ -441,7 +440,13 @@
       var pc = new RTCPeerConnection(ICE);
       S.pcs[m.clientId] = pc;
       if (S.localStream) {
-        try { S.localStream.getAudioTracks().forEach(function (t) { pc.addTrack(t, S.localStream); }); } catch (e) {}
+        try {
+          S.localStream.getAudioTracks().forEach(function (t) { pc.addTrack(t, S.localStream); });
+          var snd = pc.getSenders()[0];
+          if (snd && snd.setParameters) {
+            try { snd.setParameters({ encodings: [{ maxBitrate: 24000 }] }); } catch (e) {}
+          }
+        } catch (e) {}
       } else {
         try { pc.addTransceiver("audio", { direction: "recvonly" }); } catch (e) {}
       }
@@ -449,9 +454,7 @@
         if (e.candidate) sendSignal(m.clientId, { t: "ice", c: e.candidate });
       };
       pc.ontrack = function (e) {
-        var el = S.remotes[m.clientId];
-        if (!el) { el = document.createElement("audio"); el.autoplay = true; el.setAttribute("playsinline", ""); $("audios").appendChild(el); S.remotes[m.clientId] = el; }
-        if (el.srcObject !== e.streams[0]) { el.srcObject = e.streams[0]; el.play().catch(function () { showUnlockTip(); }); }
+        attachRemote(m, e.streams[0]);
       };
       pc.onconnectionstatechange = function () {
         if (pc.connectionState === "failed") {
@@ -459,7 +462,7 @@
             if (S.pcs[m.clientId] === pc) { dropPeer(m.clientId); if (shouldInitiate(m)) ensurePeer(m, true); }
           }, 2500);
         }
-        updateRoomStatusByPeers();
+        updateQual(m.clientId); updateRoomStatusByPeers();
       };
       if (initiator) {
         pc.createOffer().then(function (of) {
@@ -468,17 +471,35 @@
       }
       return pc;
     }
+    function attachRemote(m, stream) {
+      var el = S.remotes[m.clientId];
+      if (!el) {
+        el = document.createElement("audio"); el.autoplay = true; el.setAttribute("playsinline", "");
+        var v = S.vols[m.userId];
+        if (v !== undefined) el.volume = Math.max(0, Math.min(1, v));
+        $("audios").appendChild(el); S.remotes[m.clientId] = el;
+      }
+      if (el.srcObject !== stream) { el.srcObject = stream; el.play().catch(function () { showUnlockTip(); }); }
+      try {
+        S.audioCtx = S.audioCtx || new AudioContext();
+        var an = S.audioCtx.createAnalyser(); an.fftSize = 512;
+        S.audioCtx.createMediaStreamSource(stream).connect(an);
+        S.remoteAn[m.clientId] = { an: an, buf: new Uint8Array(an.frequencyBinCount), speaking: false, until: 0 };
+      } catch (e) {}
+    }
     function dropPeer(cid) {
       try { S.pcs[cid] && S.pcs[cid].close(); } catch (e) {}
       delete S.pcs[cid];
       if (S.remotes[cid]) { try { S.remotes[cid].remove(); } catch (e) {} delete S.remotes[cid]; }
-      delete S.pendingIce[cid];
+      delete S.pendingIce[cid]; delete S.remoteAn[cid];
     }
     function sendSignal(to, data) {
       api("/speak/channels/" + S.channelId + "/signal", { from: S.clientId, to: to, data: data });
+      scheduleSync(80);
     }
     function onSignal(sig) {
-      var d = sig.data;
+      var d = null;
+      try { d = typeof sig.data === "string" ? JSON.parse(sig.data) : sig.data; } catch (e) { d = null; }
       if (!d || !d.t) return;
       if (d.t === "kick") { toast("توسط مدیر اخراج شدی"); leaveRoom(); return; }
       if (d.t === "mute") { S.forcedMuted = true; applyMicState(); toast("مدیر میکروفنت را بست 🔇"); return; }
@@ -486,7 +507,7 @@
       if (!hasRTC) return;
       var from = sig.fromCid;
       if (d.t === "offer") {
-        var old = S.pcs[from]; if (old) dropPeer(from);
+        if (S.pcs[from]) dropPeer(from);
         var pc = ensurePeer({ clientId: from, joinedAt: null }, false);
         pc.setRemoteDescription(new RTCSessionDescription(d.s)).then(function () {
           flushIce(from);
@@ -512,36 +533,67 @@
       delete S.pendingIce[cid];
     }
 
-    /* --- sync --- */
+    /* --- sync هوشمند: سریع موقع اتصال، آرام موقع ثبات --- */
+    function scheduleSync(delay) {
+      if (S.syncTm || !S.channelId) return;
+      S.syncTm = setTimeout(function () { S.syncTm = 0; syncLoop(); }, delay);
+    }
+    function pushFlags() {
+      var now = Date.now();
+      if (now - S.lastPush > 400) { S.lastPush = now; scheduleSync(20); }
+      else scheduleSync(450 - (now - S.lastPush));
+    }
     function syncLoop() {
       if (!S.channelId || S.syncBusy) return;
       S.syncBusy = true;
       api("/speak/channels/" + S.channelId + "/sync", {
         clientId: S.clientId, speaking: S.speaking,
-        mic: micEffective() ? true : false, since: S.cursor
+        mic: micBroadcast() ? true : false, since: S.cursor, chatSince: S.chatCursor
       }).then(function (r) {
         S.syncBusy = false;
         if (r.status === 401) { leaveRoom(); showLogin(); return; }
-        if (!r.ok) { if (++S.errCount > 4) setRoomStatus("ارتباط ضعیف است…"); return; }
+        if (r.status === 409) { toast("از کانال خارج شدی"); leaveRoom(); return; }
+        if (!r.ok) { if (++S.errCount > 4) setRoomStatus("ارتباط ضعیف است…"); scheduleSync(1500); return; }
         S.errCount = 0;
         if (r.d.cursor) S.cursor = r.d.cursor;
         var ms = r.d.members || [];
-        renderMembers(ms);
+        var changed = membersChanged(ms);
+        S.lastMembers = ms;
+        if (changed) renderMembers(ms);
         var seen = {};
         ms.forEach(function (m) {
           if (m.clientId === S.clientId) return;
           seen[m.clientId] = true;
           if (!S.pcs[m.clientId]) ensurePeer(m, shouldInitiate(m));
         });
-        Object.keys(S.pcs).forEach(function (cid) { if (!seen[cid]) { dropPeer(cid); blip(520, 0.04); } });
+        var someoneLeft = false;
+        Object.keys(S.pcs).forEach(function (cid) { if (!seen[cid]) { dropPeer(cid); someoneLeft = true; } });
+        if (someoneLeft) blip(520, 0.04);
         (r.d.signals || []).forEach(onSignal);
+        S.drain = (r.d.signals || []).length > 0;
+        if ((r.d.chat || []).length) {
+          var atBottom = true;
+          var log = $("chatLog");
+          if (log) atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+          S.chat = S.chat.concat(r.d.chat || []).slice(-120);
+          S.chatCursor = Math.max(S.chatCursor, Number(r.d.chatCursor || S.chatCursor));
+          renderChat(atBottom);
+        }
         if (r.d.channel) {
+          var wasLocked = S.channel && S.channel.locked;
           S.channel = r.d.channel;
-          var locked = !!r.d.locked;
-          $("btnLock").textContent = locked ? "🔒" : "🔓";
+          $("btnLock").textContent = r.d.locked ? "🔒" : "🔓";
+          if (wasLocked !== undefined && wasLocked !== r.d.locked) toast(r.d.locked ? "کانال قفل شد 🔒" : "قفل کانال باز شد 🔓");
         }
         updateRoomStatusByPeers();
-      }).catch(function () { S.syncBusy = false; if (++S.errCount > 4) setRoomStatus("ارتباط قطع؛ تلاش مجدد…"); });
+        scheduleSync(S.drain ? 300 : 1000);
+      }).catch(function () { S.syncBusy = false; if (++S.errCount > 4) setRoomStatus("ارتباط قطع؛ تلاش مجدد…"); scheduleSync(1800); });
+    }
+    var lastMembersSig = "";
+    function membersChanged(ms) {
+      var sig = ms.map(function (m) { return m.clientId + ":" + (m.mic ? 1 : 0) + ":" + (m.speaking ? 1 : 0); }).join("|");
+      if (sig === lastMembersSig) return false;
+      lastMembersSig = sig; return true;
     }
     function updateRoomStatusByPeers() {
       var n = Object.keys(S.pcs).length;
@@ -551,6 +603,19 @@
       setRoomStatus(txt);
       $("roomStatus").classList.toggle("off", n > 0 && conn === 0);
     }
+    function setRoomStatus(txt) { $("roomStatusTxt").textContent = txt; }
+    function qualIcon(cid) {
+      if (cid === S.clientId) return "🟣";
+      var p = S.pcs[cid]; if (!p) return "⚪";
+      var st = p.connectionState;
+      if (st === "connected" || st === "completed") return "🟢";
+      if (st === "failed" || st === "disconnected" || st === "closed") return "🔴";
+      return "🟡";
+    }
+    function updateQual(cid) {
+      var el = document.querySelector('[data-card="' + cid + '"] .qual');
+      if (el) el.textContent = qualIcon(cid);
+    }
 
     /* --- اعضا --- */
     function renderMembers(ms) {
@@ -559,12 +624,17 @@
       ms.forEach(function (m) {
         var mine = m.clientId === S.clientId;
         var isOwner = S.channel && m.userId === S.channel.ownerId;
-        html += '<div class="member' + (m.speaking ? " speaking" : "") + (mine ? " me-self" : "") + '">' +
+        var remoteSpk = S.remoteAn[m.clientId] && S.remoteAn[m.clientId].speaking;
+        var speaking = m.speaking || remoteSpk;
+        var vol = S.vols[m.userId] !== undefined ? S.vols[m.userId] : 1;
+        html += '<div class="member' + (speaking ? " speaking" : "") + (mine ? " me-self" : "") + '" data-card="' + m.clientId + '" data-user="' + m.userId + '">' +
           (isOwner ? '<span class="crown">👑</span>' : "") +
+          '<span class="qual">' + qualIcon(m.clientId) + "</span>" +
           '<div class="av2" style="--h:' + (m.hue || 220) + '">' + esc((m.displayName || m.username || "T").trim().charAt(0).toUpperCase()) + "</div>" +
           '<div class="nm2">' + esc(m.displayName || m.username) + "</div>" +
           '<div class="un2">@' + esc(m.username) + "</div>" +
           '<span class="st' + (m.mic ? "" : " off") + '">' + (m.mic ? "🎙" : "🔇") + "</span>" +
+          (mine ? "" : '<div class="vol" title="تنظیم بلندی صدای این کاربر"><span>🔈</span><input type="range" min="0" max="100" step="5" value="' + Math.round(vol * 100) + '" data-vol="' + m.clientId + '" /><span>🔊</span></div>') +
           ((!mine && amMod() && !isOwner) ?
             '<div class="tools"><button data-mute="' + m.clientId + '">' + (m.mic ? "ساکت" : "بازکردن") + '</button><button data-kick="' + m.clientId + '">اخراج</button></div>' : "") +
           "</div>";
@@ -576,31 +646,77 @@
       var t = e.target;
       var kick = t.getAttribute && t.getAttribute("data-kick");
       var mute = t.getAttribute && t.getAttribute("data-mute");
-      if (kick) api("/speak/channels/" + S.channelId + "/mod", { action: "kick", target: kick });
-      if (mute) api("/speak/channels/" + S.channelId + "/mod", { action: "mute", target: mute });
+      if (kick) { api("/speak/channels/" + S.channelId + "/mod", { action: "kick", target: kick }); return; }
+      if (mute) { api("/speak/channels/" + S.channelId + "/mod", { action: "mute", target: mute }); return; }
+    });
+    $("memberGrid").addEventListener("input", function (e) {
+      var cid = e.target.getAttribute && e.target.getAttribute("data-vol");
+      if (!cid) return;
+      var card = e.target.closest("[data-card]");
+      var userId = card ? card.getAttribute("data-user") : null;
+      var v = Number(e.target.value) / 100;
+      if (S.remotes[cid]) S.remotes[cid].volume = v;
+      if (userId) { S.vols[userId] = v; try { localStorage.setItem("t-speak-vols", JSON.stringify(S.vols)); } catch (err) {} }
+    });
+
+    /* --- چت متنی --- */
+    function renderChat(atBottom) {
+      var log = $("chatLog"); if (!log) return;
+      if (!S.chat.length) { log.innerHTML = '<div class="empty" style="padding:14px">پیامی نیست. اولین را بنویس ✍️</div>'; return; }
+      log.innerHTML = S.chat.map(function (m) {
+        var own = m.clientId === S.clientId;
+        var hhmm = new Date(Number(m.createdAt || 0)).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
+        return '<div class="chat-msg ' + (own ? "own" : "others") + '">' +
+          (own ? "" : '<span class="who">' + esc(m.displayName || "?") + "</span>") +
+          esc(m.body) + '<span class="tm">' + hhmm + "</span></div>";
+      }).join("");
+      if (atBottom !== false) log.scrollTop = log.scrollHeight;
+    }
+    $("btnChat").addEventListener("click", function () {
+      S.chatOpen = !S.chatOpen;
+      $("chatWrap").hidden = !S.chatOpen;
+      if (S.chatOpen) renderChat();
+    });
+    $("chatForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var inp = $("chatInput");
+      var txt = inp.value.trim();
+      if (!txt) return;
+      inp.value = "";
+      api("/speak/channels/" + S.channelId + "/chat", { clientId: S.clientId, body: txt }).then(function (r) {
+        if (r.ok) scheduleSync(30); else toast((r.d && r.d.error) || "نشد");
+      });
     });
 
     /* --- میکروفن --- */
-    function micEffective() {
+    function micBroadcast() {
       if (S.micDenied || S.forcedMuted || !S.localStream) return false;
       if (S.micMode === "ptt") return S.holding;
+      if (S.micMode === "voice") return true;
       return S.micOn;
     }
+    function micEffective() {
+      if (S.micMode === "voice") return S.voiceDetected;
+      return micBroadcast();
+    }
+    var lastBroadcast = null;
     function applyMicState() {
       if (S.localStream) {
         S.localStream.getAudioTracks().forEach(function (t) { t.enabled = micEffective(); });
       }
       var b = $("btnMic");
-      if (S.micMode === "ptt") { b.textContent = "🗣 حالت نگه‌دار فعال"; b.classList.add("ghost"); }
-      else {
-        b.textContent = micEffective() ? "🎙 میکروفن روشن" : "🔇 میکروفن بسته";
-        b.classList.toggle("ghost", !micEffective());
-        b.classList.toggle("danger", S.forcedMuted);
-      }
+      if (S.micMode === "ptt") { b.textContent = "🗣 نگه‌دار فعال"; b.classList.add("ghost"); }
+      else if (S.micMode === "voice") { b.textContent = S.micDenied ? "🔇 میکروفن اجازه نگرفت" : "🎙 ارسال با صدا"; b.classList.toggle("ghost", S.micDenied); }
+      else { b.textContent = micBroadcast() ? "🎙 میکروفن روشن" : "🔇 میکروفن بسته"; b.classList.toggle("ghost", !micBroadcast()); }
+      b.classList.toggle("danger", S.forcedMuted);
       $("btnPtt").classList.toggle("holding", S.micMode === "ptt" && S.holding);
+      var nowBc = micBroadcast();
+      if (nowBc !== lastBroadcast) { lastBroadcast = nowBc; pushFlags(); }
     }
     $("btnMic").addEventListener("click", function () {
-      if (S.micMode === "ptt" || S.forcedMuted) { toast("در حالت نگه‌دار، دکمهٔ «نگه دار» را فشار بده"); return; }
+      if (S.forcedMuted) { toast("مدیر میکروفنت را بسته است"); return; }
+      if (S.micMode === "ptt") { toast("در حالت نگه‌دار، دکمهٔ «نگه دار» را فشار بده"); return; }
+      if (S.micMode === "voice") { toast("در این حالت صدا خودش میکروفن را باز می‌کند — حساسیت را تنظیم کن"); return; }
       S.micOn = !S.micOn; applyMicState();
     });
     function applyModeUI() {
@@ -608,15 +724,21 @@
       [].forEach.call($("modeSwitch").children, function (b) { b.classList.toggle("on", b.getAttribute("data-m") === m); });
       $("btnPtt").hidden = m !== "ptt";
       $("pttHint").hidden = m !== "ptt";
+      $("sensRow").hidden = m !== "voice";
       applyMicState();
     }
     $("modeSwitch").addEventListener("click", function (e) {
       var m = e.target.getAttribute && e.target.getAttribute("data-m");
       if (!m) return;
       S.micMode = m; try { localStorage.setItem("t-speak-mode", m); } catch (err) {}
-      applyModeUI();
+      applyModeUI(); pushFlags();
     });
-    function holdPTT(on) { if (S.micMode !== "ptt") return; S.holding = on; applyMicState(); }
+    $("sensRange").value = Math.round(S.sens * 1000);
+    $("sensRange").addEventListener("input", function () {
+      S.sens = Number(this.value) / 1000;
+      try { localStorage.setItem("t-speak-sens", String(this.value)); } catch (err) {}
+    });
+    function holdPTT(on) { if (S.micMode !== "ptt" || S.holding === on) return; S.holding = on; applyMicState(); }
     var pb = $("btnPtt");
     pb.addEventListener("pointerdown", function (e) { e.preventDefault(); holdPTT(true); });
     ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) { pb.addEventListener(ev, function () { holdPTT(false); }); });
@@ -627,7 +749,7 @@
     });
     document.addEventListener("keyup", function (e) { if (e.code === "Space") holdPTT(false); });
 
-    /* --- سطح صدا و تشخیص صحبت --- */
+    /* --- سطح صدا و تشخیص صحبت (محلی + ریموت) --- */
     function setupLocalMeter() {
       cancelAnimationFrame(S.meterRaf);
       if (!S.localStream || typeof AudioContext === "undefined") { $("meterWrap").hidden = true; return; }
@@ -638,30 +760,59 @@
         var src = S.audioCtx.createMediaStreamSource(S.localStream);
         var an = S.audioCtx.createAnalyser(); an.fftSize = 512;
         src.connect(an);
-        S.analyser = an;
-        var buf = new Uint8Array(an.frequencyBinCount);
-        var loop = function () {
-          an.getByteTimeDomainData(buf);
+        S.analyser = { an: an, buf: new Uint8Array(an.frequencyBinCount) };
+      } catch (e) { $("meterWrap").hidden = true; return; }
+      var loop = function () {
+        if (S.analyser) {
+          S.analyser.an.getByteTimeDomainData(S.analyser.buf);
           var sum = 0;
-          for (var i = 0; i < buf.length; i++) { var v = (buf[i] - 128) / 128; sum += v * v; }
-          var rms = Math.sqrt(sum / buf.length);
+          for (var i = 0; i < S.analyser.buf.length; i++) { var v = (S.analyser.buf[i] - 128) / 128; sum += v * v; }
+          var rms = Math.sqrt(sum / S.analyser.buf.length);
           $("meterBar").style.width = Math.min(100, Math.round(rms * 260)) + "%";
           var now = Date.now();
-          if (rms > 0.045) { S.speaking = true; S.speakUntil = now + 600; }
-          else if (now > S.speakUntil) S.speaking = false;
-          S.meterRaf = requestAnimationFrame(loop);
-        };
-        loop();
-      } catch (e) { $("meterWrap").hidden = true; }
+          var det = rms > S.sens;
+          if (det) { S.speakUntil = now + 600; }
+          var speaking = now < S.speakUntil;
+          if (speaking !== S.speaking) {
+            S.speaking = speaking;
+            pushFlags();
+            var myCard = document.querySelector('[data-card="' + S.clientId + '"]');
+            if (myCard) myCard.classList.toggle("speaking", S.speaking);
+          }
+          if (S.micMode === "voice") {
+            if (det) S.voiceUntil = now + 450;
+            var vd = now < (S.voiceUntil || 0);
+            if (vd !== S.voiceDetected) { S.voiceDetected = vd; applyMicState(); }
+          }
+        }
+        Object.keys(S.remoteAn).forEach(function (cid) {
+          var ra = S.remoteAn[cid];
+          ra.an.getByteTimeDomainData(ra.buf);
+          var s2 = 0;
+          for (var j = 0; j < ra.buf.length; j++) { var v2 = (ra.buf[j] - 128) / 128; s2 += v2 * v2; }
+          var r2 = Math.sqrt(s2 / ra.buf.length);
+          var now2 = Date.now();
+          if (r2 > 0.03) ra.until = now2 + 500;
+          var sp = now2 < ra.until;
+          if (sp !== ra.speaking) {
+            ra.speaking = sp;
+            var card = document.querySelector('[data-card="' + cid + '"]');
+            if (card) card.classList.toggle("speaking", sp);
+          }
+        });
+        S.meterRaf = requestAnimationFrame(loop);
+      };
+      loop();
     }
 
     /* --- خروج --- */
     function leaveRoomSilent() {
-      if (S.syncTimer) { clearInterval(S.syncTimer); S.syncTimer = 0; }
+      if (S.syncTm) { clearTimeout(S.syncTm); S.syncTm = 0; }
       cancelAnimationFrame(S.meterRaf);
       Object.keys(S.pcs).forEach(dropPeer);
+      S.remoteAn = {};
       if (S.localStream) { try { S.localStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.localStream = null; }
-      S.channelId = null; S.channel = null; S.speaking = false;
+      S.channelId = null; S.channel = null; S.speaking = false; S.lastMembersSig = "";
     }
     function leaveRoom() {
       var id = S.channelId, cid = S.clientId;
@@ -697,8 +848,6 @@
         .then(function () { toast("لینک دعوت کپی شد ✓"); })
         .catch(function () { prompt("لینک دعوت:", link); });
     });
-
-    /* --- صداهای کوچک --- */
     function blip(freq, vol) {
       try {
         S.audioCtx = S.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
