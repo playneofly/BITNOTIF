@@ -4551,7 +4551,7 @@
             if (SEC_OF[t]) { cur = SEC_OF[t]; k.setAttribute("data-sec", cur); }
             continue;
           }
-          if (k.id === "tSetMenu" || k.id === "tSetHead") { cur = null; continue; }
+          if (k.id === "tSetMenu" || k.id === "tSetHead" || k.id === "tSetLook") { cur = null; continue; }
           var want = cur;
           if (k.classList && k.classList.contains("t-pub-row")) want = "pub";
           var txt = (k.textContent || "").trim();
@@ -4705,7 +4705,9 @@
 
       /* --- صفحهٔ «ظاهر» --- */
       #tSetLook { display: none; max-width: 560px; margin-inline: auto; direction: rtl; padding-bottom: 40px; }
-      .settings.t-tg[data-view="look"] #tSetLook { display: block; }
+      .settings.t-tg[data-view="look"] #tSetLook { display: block !important; }
+      #tSetLook[data-sec] { display: none; }
+      .settings.t-tg[data-view="look"] #tSetLook[data-sec] { display: block !important; }
       .tlook-seg { display: flex; gap: 10px; padding: 14px; }
       .tlook-opt {
         flex: 1; border: 1.5px solid var(--line); background: var(--bg1); cursor: pointer;
@@ -4842,8 +4844,17 @@
       setInterval(lookTick, 400);
     })();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f2aa835df3d6e5',t:'MTc4NzQwOTk3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f"}' crossorigin="anonymous"></script>
-</body>
+  </body>
+
+
+</html>
+"data-look-added", "1"); }
+        }
+      }
+      setInterval(lookTick, 400);
+    })();
+    </script>
+  </body>
 
 
 </html>
