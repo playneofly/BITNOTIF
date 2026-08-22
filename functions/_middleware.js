@@ -2833,7 +2833,7 @@ var SEC_WRITE_MAX = 300;
 var SEC_LOGIN_MAX = 8;
 var SEC_LOGIN_WINDOW = 15 * 60 * 1e3;
 var SEC_LOGIN_LOCK = 15 * 60 * 1e3;
-var PBKDF2_ITER = 21e4;
+var PBKDF2_ITER = 1e5;
 function clientIp(c) {
   return String(
     c.req.header("CF-Connecting-IP") || (c.req.header("x-forwarded-for") || "").split(",")[0] || c.req.header("x-real-ip") || "0.0.0.0"
@@ -2918,22 +2918,30 @@ function legacyHash(stored) {
   return typeof stored === "string" && stored.indexOf("pbkdf2$") !== 0;
 }
 async function verifyPassword(password, stored) {
-  if (typeof stored !== "string" || !stored) return false;
-  if (stored.indexOf("pbkdf2$") === 0) {
-    const parts = stored.split("$");
-    const iter = Number(parts[1]) || PBKDF2_ITER;
-    const salt = parts[2] || "";
-    const digest = parts[3] || "";
+  try {
+    if (typeof stored !== "string" || !stored) return false;
+    if (stored.indexOf("pbkdf2$") === 0) {
+      const parts = stored.split("$");
+      const iter = Number(parts[1]) || PBKDF2_ITER;
+      const salt = parts[2] || "";
+      const digest = parts[3] || "";
+      if (!salt || !digest) return false;
+      return sameDigest(await pbkdf2Hex(password, salt, iter), digest);
+    }
+    const [salt, digest] = stored.split(".");
     if (!salt || !digest) return false;
-    return sameDigest(await pbkdf2Hex(password, salt, iter), digest);
+    return sameDigest(await sha256Hex(`${salt}:${password}`), digest);
+  } catch {
+    return false;
   }
-  const [salt, digest] = stored.split(".");
-  if (!salt || !digest) return false;
-  return sameDigest(await sha256Hex(`${salt}:${password}`), digest);
 }
 async function upgradeHash(db, user, password) {
   try {
-    if (!legacyHash(user.password_hash)) return;
+    const stored = user.password_hash;
+    if (!legacyHash(stored)) {
+      const iter = Number(String(stored).split("$")[1]) || 0;
+      if (iter === PBKDF2_ITER) return;
+    }
     const fresh = await hashPassword(password);
     await run(db, `UPDATE users SET password_hash = ? WHERE id = ?`, fresh, user.id);
   } catch {
@@ -4304,6 +4312,10 @@ var PREMIUM_REACT = "\u2726";
 var COOKIE = "t_session";
 var SESSION_MS = 1e3 * 60 * 60 * 24 * 30;
 var app = new Hono2().basePath("/api");
+app.onError((e, c) => {
+  const msg = e instanceof Error ? e.message : String(e);
+  return c.json({ error: "\u062e\u0637\u0627\u06cc \u062f\u0627\u062e\u0644\u06cc \u0633\u0631\u0648\u0631: " + msg.slice(0, 160) }, 500);
+});
 app.use("*", async (c, next) => {
   if (!c.env?.DB) {
     return jsonError(c, "\u062F\u06CC\u062A\u0627\u0628\u06CC\u0633 \u0648\u0635\u0644 \u0646\u06CC\u0633\u062A. \u062F\u0631 Pages \u06CC\u06A9 D1 \u0628\u0647 \u0627\u0633\u0645 DB \u0628\u0628\u0646\u062F.", 503);

@@ -22,6 +22,8 @@
       @supports (height: 100dvh) { :root { --app-h: 100dvh; } }
 
       html, body { height: 100%; }
+      /* صفحهٔ ورود قدیمی (داخل باندل React) برای همیشه حذف شد؛ این قفل هم نمی‌گذارد هیچ نسخهٔ کش‌شده‌ای آن را نشان بدهد */
+      .auth:not(.del-auth), .auth-dust { display: none !important; }
       #loginOverlay {
         position: fixed; inset: 0; z-index: 99999;
         background: radial-gradient(1000px 700px at 50% -20%, #16203a 0%, var(--lg-bg) 60%, #04060d 100%);
@@ -322,7 +324,7 @@
       /* عددهای لاتین در متن فارسی کمی جاافتاده‌تر */
       .when, .foot, .tsup-time, .time { font-variant-numeric: tabular-nums; }
     </style>
-    <link rel="modulepreload" href="/assets/index-Bt5upPRT.js">
+    <link rel="modulepreload" href="/assets/index-Dk7welQn.js">
     <script>
       /* درخواست وضعیت ورود همین اول کار شروع می‌شود تا با دانلود اپ موازی برود */
       window.__meReq = fetch("/api/me", { credentials: "include", cache: "no-store" })
@@ -1267,7 +1269,7 @@
       #tDl .tdl-extra button:hover { background: rgba(76, 141, 255, .26); }
       #tDl .tdl-extra button[disabled] { opacity: .5; cursor: default; }
     </style>
-    <script type="module" crossorigin src="/assets/index-Bt5upPRT.js"></script>
+    <script type="module" crossorigin src="/assets/index-Dk7welQn.js"></script>
   </head>
   <body style="margin:0;background:#0B0B12">
     <!-- اپ تا وقتی وضعیت ورود مشخص نشده مخفی است -->
@@ -1473,7 +1475,7 @@
           .catch(function (err) {
             btn.disabled = false;
             showMsg(loginMsg, err && err.message === "no-api"
-              ? "Server API is not responding. (Cloudflare Functions / D1)"
+              ? "\u0633\u0631\u0648\u0631 \u0627\u0644\u0627\u0646 \u062c\u0648\u0627\u0628 \u0646\u0645\u06cc\u200c\u062f\u0647\u062f\u061b \u0686\u0646\u062f \u0644\u062d\u0638\u0647 \u0628\u0639\u062f \u062f\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062a\u062d\u0627\u0646 \u06a9\u0646"
               : "Connection error", "error");
           });
       });
@@ -1505,7 +1507,7 @@
           .catch(function (err) {
             btn.disabled = false;
             showMsg(signupMsg, err && err.message === "no-api"
-              ? "Server API is not responding. (Cloudflare Functions / D1)"
+              ? "\u0633\u0631\u0648\u0631 \u0627\u0644\u0627\u0646 \u062c\u0648\u0627\u0628 \u0646\u0645\u06cc\u200c\u062f\u0647\u062f\u061b \u0686\u0646\u062f \u0644\u062d\u0638\u0647 \u0628\u0639\u062f \u062f\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062a\u062d\u0627\u0646 \u06a9\u0646"
               : "Connection error", "error");
           });
       });
