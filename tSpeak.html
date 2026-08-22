@@ -209,7 +209,7 @@
   /* ===== مودال پروفایل ===== */
   #profWrap { position: fixed; inset: 0; background: rgba(6,10,16,.72); display: flex; align-items: center; justify-content: center; padding: 18px; z-index: 60; }
   .prof-card {
-    width: 100%; max-width: 320px; background: var(--panel); border: 1px solid var(--line);
+    width: 100%; max-width: 370px; background: var(--panel); border: 1px solid var(--line);
     border-radius: 10px; padding: 20px 18px; display: flex; flex-direction: column; align-items: center; gap: 8px;
   }
   .prof-card .pav {
@@ -232,6 +232,38 @@
   .setrow .srow-b .btn { min-width:96px; height:34px; font-size:11.5px; }
   .btn.rec { border-color: var(--acc) !important; color: var(--acc) !important; animation: recblink 1s infinite; }
   @keyframes recblink { 50% { background: rgba(76,141,255,.22); } }
+
+  /* ===== مودال ساخت کانال ===== */
+  #newWrap { position: fixed; inset: 0; background: rgba(6,10,16,.74); display: flex; align-items: center; justify-content: center; padding: 18px; z-index: 70; }
+  .ncard {
+    width: 100%; max-width: 430px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 24px 22px 18px; display: flex; flex-direction: column; gap: 15px;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,.85); max-height: 92vh; overflow-y: auto;
+  }
+  .ncard .nhead { display: flex; align-items: center; gap: 11px; }
+  .ncard .nhead .nmark {
+    width: 42px; height: 42px; border-radius: 9px; flex: none; font-size: 20px; color: #fff;
+    background: linear-gradient(150deg, var(--acc), var(--acc2));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ncard .nhead b { font-size: 15.5px; display: block; }
+  .ncard .nhead small { font-size: 10.5px; color: var(--sub); display: block; margin-top: 2px; }
+  .ncard label.nl { font-size: 11px; font-weight: 700; color: var(--sub); letter-spacing: .3px; }
+  .ncard .ncnt { font-size: 9.5px; color: var(--dim); font-family: var(--mono); text-align: left; direction: ltr; margin-top: 5px; }
+  .nopts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .nopt {
+    border: 1px solid var(--line); background: var(--bg2); border-radius: 8px;
+    padding: 13px 10px 11px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    cursor: pointer; text-align: center; transition: border-color .12s, background .12s; font-family: inherit;
+  }
+  .nopt .oic { width: 40px; height: 40px; border-radius: 9px; background: var(--panel2); display: flex; align-items: center; justify-content: center; font-size: 18px; transition: background .12s; }
+  .nopt b { font-size: 12.5px; color: var(--text); }
+  .nopt small { font-size: 9.5px; color: var(--sub); line-height: 1.7; }
+  .nopt.on { border-color: var(--acc); background: rgba(76,141,255,.1); }
+  .nopt.on .oic { background: linear-gradient(150deg, var(--acc), var(--acc2)); }
+  .nfoot { display: flex; gap: 8px; margin-top: 4px; }
+  .nfoot .btn { flex: 1; height: 42px; font-size: 13px; }
+  .nfoot .btn:disabled { opacity: .45; cursor: default; }
 
   #toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -318,6 +350,31 @@
       <div class="prow">
         <button class="btn" id="pMute">🔇 میوت شخصی</button>
         <button class="btn" id="pClose">بستن</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="newWrap" hidden>
+    <div class="ncard">
+      <div class="nhead">
+        <div class="nmark">＋</div>
+        <div><b>کانال تازه</b><small>یک اتاق صوتی بساز و دوستانت را دعوت کن</small></div>
+      </div>
+      <div>
+        <label class="nl" for="newName">اسم کانال</label>
+        <input class="field" id="newName" maxlength="40" placeholder="مثلا: تالار شب‌ها" style="margin-top:8px" autocomplete="off" />
+        <div class="ncnt" id="newCnt">0/40</div>
+      </div>
+      <div>
+        <label class="nl">نوع کانال</label>
+        <div class="nopts" style="margin-top:8px">
+          <button type="button" class="nopt on" id="optPub"><span class="oic">🎧</span><b>عمومی</b><small>در لیست برای همه دیده می‌شود</small></button>
+          <button type="button" class="nopt" id="optPriv"><span class="oic">🔐</span><b>خصوصی</b><small>فقط با کد یا لینک دعوت وارد می‌شوند</small></button>
+        </div>
+      </div>
+      <div class="nfoot">
+        <button class="btn" id="newCancel">انصراف</button>
+        <button class="btn primary" id="newCreate" disabled>ساخت و ورود</button>
       </div>
     </div>
   </div>
@@ -468,14 +525,45 @@
     }
     $("codeGo").addEventListener("click", joinByCode);
     $("codeInput").addEventListener("keydown", function (e) { if (e.key === "Enter") joinByCode(); });
-    $("btnNew").addEventListener("click", function () {
-      var name = prompt("اسم کانال تازه:", "");
+    var newPub = true;
+    function openNew() {
+      newPub = true;
+      $("newName").value = ""; $("newCnt").textContent = "0/40";
+      $("optPub").classList.add("on"); $("optPriv").classList.remove("on");
+      $("newCreate").disabled = true; $("newCreate").textContent = "ساخت و ورود";
+      $("newWrap").hidden = false;
+      setTimeout(function () { try { $("newName").focus(); } catch (e) {} }, 60);
+    }
+    $("btnNew").addEventListener("click", openNew);
+    $("newCancel").addEventListener("click", function () { $("newWrap").hidden = true; });
+    $("newWrap").addEventListener("click", function (e) { if (e.target === this) this.hidden = true; });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        if (!$("newWrap").hidden) $("newWrap").hidden = true;
+      }
+    });
+    $("optPub").addEventListener("click", function () { newPub = true; this.classList.add("on"); $("optPriv").classList.remove("on"); });
+    $("optPriv").addEventListener("click", function () { newPub = false; this.classList.add("on"); $("optPub").classList.remove("on"); });
+    $("newName").addEventListener("input", function () {
+      $("newCnt").textContent = this.value.length + "/40";
+      $("newCreate").disabled = !this.value.trim();
+    });
+    $("newName").addEventListener("keydown", function (e) { if (e.key === "Enter" && !$("newCreate").disabled) $("newCreate").click(); });
+    $("newCreate").addEventListener("click", function () {
+      var name = $("newName").value.trim();
       if (!name) return;
-      var isPublic = confirm("کانال عمومی باشد؟ (اوکی = عمومی، لغو = خصوصی با لینک دعوت)");
-      api("/speak/channels", { name: name, isPublic: isPublic }).then(function (r) {
-        if (r.ok) { toast("کانال ساخته شد"); expanded[r.d.channel.id] = false; loadState(); joinChannel(r.d.channel.id); }
-        else toast((r.d && r.d.error) || "ساخته نشد");
-      });
+      var b = $("newCreate");
+      b.disabled = true; b.textContent = "در حال ساخت…";
+      api("/speak/channels", { name: name, isPublic: newPub }).then(function (r) {
+        b.textContent = "ساخت و ورود";
+        if (r.ok) {
+          $("newWrap").hidden = true;
+          toast("کانال ساخته شد");
+          expanded[r.d.channel.id] = false;
+          loadState();
+          joinChannel(r.d.channel.id);
+        } else { b.disabled = false; toast((r.d && r.d.error) || "ساخته نشد"); }
+      }).catch(function () { b.disabled = false; b.textContent = "ساخت و ورود"; toast("خطای اتصال"); });
     });
 
     /* ================= اتاق صوتی ================= */
