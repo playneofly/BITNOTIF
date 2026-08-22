@@ -5336,6 +5336,18 @@ app.get("/users/search", async (c) => {
   const filtered = rows.filter((r) => !blockedIds.has(r.id));
   return c.json({ users: await hydrateUsers(c.env.DB, filtered, user) });
 });
+app.get("/users/:username/avatar", async (c) => {
+  const t = await one(c.env.DB, `SELECT avatar, deleted_at, banned_at FROM users WHERE username_lc = ?`, c.req.param("username").toLowerCase());
+  if (!t || t.deleted_at || !t.avatar) return jsonError(c, "\u0639\u06a9\u0633\u06cc \u0646\u06cc\u0633\u062a", 404);
+  const dec = decodeDataUrl(t.avatar);
+  if (!dec) return jsonError(c, "\u0639\u06a9\u0633\u06cc \u0646\u06cc\u0633\u062a", 404);
+  const copy = new Uint8Array(dec.bytes.byteLength);
+  copy.set(dec.bytes);
+  return new Response(new Blob([copy], { type: dec.mime || "image/png" }), {
+    status: 200,
+    headers: { "Content-Type": dec.mime || "image/png", "Cache-Control": "public, max-age=3600" }
+  });
+});
 app.get("/users/:username", async (c) => {
   const user = await auth(c, true);
   if (user instanceof Response) return user;
@@ -9230,9 +9242,126 @@ app.get("/admin/support/media/:mid", async (c) => {
 app.all("*", (c) => jsonError(c, "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u062F\u0627 \u0646\u0634\u062F", 404));
 var app_default = app;
 
+function tEscHtml(v) {
+  return String(v ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+}
+function tFaDate(ms) {
+  try {
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "long" }).format(new Date(ms));
+  } catch {
+    try { return String(new Date(ms).getFullYear()); } catch { return ""; }
+  }
+}
+async function publicProfilePage(db, uname, url) {
+  let t = null;
+  try {
+    t = await one(db, `SELECT username, display_name, bio, hue, avatar, badge, premium, premium_until, created_at, deleted_at, banned_at FROM users WHERE username_lc = ?`, uname.toLowerCase());
+  } catch {
+    t = null;
+  }
+  const origin = url.origin;
+  const gone = !t || t.deleted_at;
+  const name = gone ? "" : tEscHtml(t.display_name || t.username);
+  const user = gone ? tEscHtml(uname) : tEscHtml(t.username);
+  const bio = gone ? "" : tEscHtml(String(t.bio || "").slice(0, 400));
+  const hue = gone ? 220 : Number(t.hue) || 220;
+  const hasAvatar = !gone && !!t.avatar;
+  const isPrem = !gone && (Number(t.premium) === 1 || Number(t.premium_until || 0) > Date.now());
+  const isStaff = !gone && (t.badge === "owner" || t.badge === "admin");
+  const since = gone ? "" : tFaDate(Number(t.created_at) || Date.now());
+  const ogImg = hasAvatar ? `${origin}/api/users/${user}/avatar` : `${origin}/assets/icon-512.png`;
+  const title = gone ? "\u06a9\u0627\u0631\u0628\u0631 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f \u00b7 T" : `${name} \u062f\u0631 \u067e\u06cc\u0627\u0645\u200c\u0631\u0633\u0627\u0646 T`;
+  const desc = gone ? "\u067e\u06cc\u0627\u0645\u200c\u0631\u0633\u0627\u0646 \u0641\u0627\u0631\u0633\u06cc T" : (bio || `\u0628\u0627 ${name} \u062f\u0631 \u067e\u06cc\u0627\u0645\u200c\u0631\u0633\u0627\u0646 T \u06af\u0641\u062a\u200c\u0648\u06af\u0648 \u06a9\u0646`);
+  const avatarHtml = gone
+    ? `<div class="av letter" style="--h:${hue}">?</div>`
+    : hasAvatar
+      ? `<img class="av" src="/api/users/${user}/avatar" alt="${name}">`
+      : `<div class="av letter" style="--h:${hue}">${tEscHtml((t.display_name || t.username || "T").trim().charAt(0).toUpperCase())}</div>`;
+  const badges = [
+    isStaff ? '<span class="chip staff">\u062a\u06cc\u0645 T</span>' : "",
+    isPrem ? '<span class="chip prem">\u{1F451} \u067e\u0631\u0645\u06cc\u0648\u0645</span>' : ""
+  ].join("");
+  const body = gone
+    ? `<h1>\u0627\u06cc\u0646 \u06a9\u0627\u0631\u0628\u0631 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f</h1>
+       <p class="sub">\u0634\u0627\u06cc\u062f \u0622\u06cc\u062f\u06cc \u0639\u0648\u0636 \u0634\u062f\u0647 \u06cc\u0627 \u062d\u0633\u0627\u0628 \u062d\u0630\u0641 \u0634\u062f\u0647 \u0628\u0627\u0634\u062f.</p>`
+    : `${avatarHtml}
+       <h1>${name}</h1>
+       <p class="uname" dir="ltr">@${user}</p>
+       <div class="chips">${badges}</div>
+       ${bio ? `<p class="bio">${bio}</p>` : ""}
+       ${since ? `<p class="since">\u0639\u0636\u0648 T \u0627\u0632 ${tEscHtml(since)}</p>` : ""}`;
+  const html = `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${title}</title>
+<meta name="description" content="${desc}">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${desc}">
+<meta property="og:image" content="${ogImg}">
+<meta property="og:url" content="${origin}/@${user}">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="/assets/icon-192.png">
+<style>
+@font-face{font-family:"Vazirmatn";src:url("/assets/Vazirmatn-T33.woff2") format("woff2-variations");font-weight:100 900;font-display:swap}
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;
+  font-family:"Vazirmatn","Segoe UI",Tahoma,sans-serif;color:#E9EFFA;
+  background:radial-gradient(1000px 700px at 50% -20%, #16203a 0%, #070C18 60%, #04060d 100%)}
+.card{width:100%;max-width:380px;text-align:center;background:linear-gradient(165deg,#111827 0%,#0C1220 100%);
+  border:1px solid #26324a;border-radius:20px;padding:34px 26px 26px;box-shadow:0 24px 60px -16px rgba(0,0,0,.8)}
+.mark{font-size:15px;font-weight:800;letter-spacing:.5px;color:#4C8DFF;margin-bottom:18px}
+.av{width:104px;height:104px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 14px;
+  border:3px solid rgba(76,141,255,.55);box-shadow:0 0 0 6px rgba(76,141,255,.12)}
+.av.letter{display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:#06101f;
+  background:linear-gradient(160deg,hsl(var(--h,220) 85% 72%),hsl(var(--h,220) 70% 46%))}
+h1{font-size:22px;font-weight:800;margin-bottom:2px}
+.uname{color:#8FC3FF;font-size:14px;margin-bottom:8px}
+.chips{display:flex;justify-content:center;gap:6px;margin-bottom:10px;min-height:4px}
+.chip{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px}
+.chip.staff{background:rgba(76,141,255,.16);color:#8FC3FF;border:1px solid rgba(76,141,255,.4)}
+.chip.prem{background:rgba(255,205,100,.12);color:#ffd98a;border:1px solid rgba(255,205,100,.35)}
+.bio{font-size:13.5px;line-height:2;color:#c6cede;margin:6px 0 4px;white-space:pre-wrap;word-break:break-word}
+.since{font-size:11.5px;color:#8D95A8;margin-top:8px}
+.sub{font-size:13px;color:#8D95A8;line-height:2;margin-top:6px}
+.btns{display:flex;flex-direction:column;gap:9px;margin-top:22px}
+a.btn{display:block;text-decoration:none;padding:12px;border-radius:11px;font-size:14.5px;font-weight:700;
+  background:linear-gradient(135deg,#5C9BFF 0%,#2A5FC4 100%);color:#F4F8FF;box-shadow:0 8px 20px -6px rgba(76,141,255,.45)}
+a.btn.ghost{background:rgba(76,141,255,.08);border:1px solid rgba(76,141,255,.3);color:#8FC3FF;box-shadow:none}
+.foot{margin-top:18px;font-size:11px;color:#5c6478}
+.foot a{color:#4C8DFF;text-decoration:none}
+</style>
+</head>
+<body>
+<main class="card">
+<div class="mark">\u067e\u06cc\u0627\u0645\u200c\u0631\u0633\u0627\u0646 T</div>
+${body}
+<div class="btns">
+<a class="btn" href="/">\u06af\u0641\u062a\u200c\u0648\u06af\u0648 \u062f\u0631 T</a>
+<a class="btn ghost" href="/api/download/apk">\u062f\u0627\u0646\u0644\u0648\u062f \u0627\u067e \u0627\u0646\u062f\u0631\u0648\u06cc\u062f</a>
+</div>
+<p class="foot"><a href="${origin}">${tEscHtml(url.host)}</a></p>
+</main>
+</body>
+</html>`;
+  return new Response(html, {
+    status: gone ? 404 : 200,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300" }
+  });
+}
+
 // functions/_middleware.ts
 async function onRequest(context) {
   const url = new URL(context.request.url);
+  const pm = url.pathname.match(/^\/@([A-Za-z][A-Za-z0-9_]{2,19})\/?$/);
+  if (pm && context.env?.DB) {
+    try {
+      return await publicProfilePage(context.env.DB, pm[1], url);
+    } catch {
+    }
+  }
   if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
     if (!context.env?.DB) {
       return Response.json(

@@ -4102,5 +4102,265 @@
       })();
     })();
     </script>
+    <!-- ===== بستهٔ زیبایی ۲: پرواز پیام + تیک ، اسکلتون لودینگ ، ویوفرم واقعی ویس ، پروفایل عمومی ===== -->
+    <style>
+      /* --- پرواز پیام از کادر تایپ --- */
+      .t-fly-ghost {
+        position: fixed; z-index: 100011; pointer-events: none;
+        background: #2a3148; border: 1px solid rgba(120,140,255,.4); color: var(--cream, #e9effa);
+        border-radius: 16px 16px 6px 16px; padding: 8px 13px; font-size: 14px; line-height: 1.7;
+        max-width: 62vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        box-shadow: 0 14px 34px rgba(0,0,0,.5); will-change: transform, opacity;
+      }
+      /* --- تیک پیام تازهٔ خودم با پاپ --- */
+      @keyframes tTickPop { 0% { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.4); } 100% { transform: scale(1); opacity: 1; } }
+      .msg-line.is-mine.is-new:not(.pending) .foot > span:last-of-type {
+        display: inline-block; animation: tTickPop .5s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      /* --- اسکلتون لودینگ لیست چت --- */
+      .t-skel { display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; }
+      .t-skel-row { display: flex; align-items: center; gap: 11px; padding: 10px 8px; border-radius: 14px; }
+      .t-skel-av { width: 46px; height: 46px; border-radius: 50%; flex: none; }
+      .t-skel-l { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+      .t-skel-b { height: 10px; border-radius: 6px; }
+      .t-skel-b.w1 { width: 42%; } .t-skel-b.w2 { width: 74%; }
+      .t-skel-av, .t-skel-b {
+        background: linear-gradient(100deg, rgba(120,140,255,.09) 30%, rgba(140,170,255,.24) 50%, rgba(120,140,255,.09) 70%);
+        background-size: 200% 100%; animation: tShimmer 1.15s linear infinite;
+      }
+      @keyframes tShimmer { to { background-position: -200% 0; } }
+      .list.t-loading > p { display: none !important; }
+      /* --- ویوفرم واقعی: میله‌ها ترنزیشن نرم بگیرند --- */
+      .voice-bars span { transition: height .35s ease; }
+      /* --- ردیف پروفایل عمومی در تنظیمات --- */
+      .t-pub-row {
+        margin: 12px 0 4px; padding: 12px; border-radius: 13px;
+        background: rgba(76,141,255,.07); border: 1px solid rgba(76,141,255,.25);
+      }
+      .t-pub-row .ttl { font-size: 12.5px; font-weight: 700; color: var(--gold2, #8fc3ff); margin-bottom: 6px; }
+      .t-pub-row .lnk {
+        direction: ltr; text-align: left; font-size: 12.5px; color: var(--cream, #e9effa);
+        background: rgba(0,0,0,.25); border: 1px dashed rgba(120,140,255,.35);
+        border-radius: 8px; padding: 7px 10px; margin-bottom: 8px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .t-pub-row .row { display: flex; gap: 7px; }
+      .t-pub-row button {
+        flex: 1; padding: 8px; border-radius: 9px; cursor: pointer; font-family: inherit;
+        font-size: 12px; font-weight: 700; border: 1px solid rgba(76,141,255,.35);
+        background: rgba(76,141,255,.14); color: #BFD8FF; transition: background .15s;
+      }
+      .t-pub-row button:hover { background: rgba(76,141,255,.26); }
+      .t-pub-row button.ok { background: rgba(80,220,130,.18); border-color: rgba(80,220,130,.45); color: #b4f5c8; }
+    </style>
+    <script>
+    (function () {
+      "use strict";
+      function el(tag, cls, txt) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (txt != null) n.textContent = txt;
+        return n;
+      }
+
+      /* ================= ۱) اسکلتون لودینگ لیست چت ================= */
+      var convsLoaded = false, skelDone = false, bootAt = Date.now();
+      try {
+        var _fetch = window.fetch;
+        window.fetch = function (input) {
+          var pr = _fetch.apply(this, arguments);
+          try {
+            var u = typeof input === "string" ? input : (input && input.url) || "";
+            if (!convsLoaded && u.indexOf("/api/conversations") > -1 && u.indexOf("/messages") === -1) {
+              pr.then(function () { convsLoaded = true; }, function () { convsLoaded = true; });
+            }
+          } catch (e) {}
+          return pr;
+        };
+      } catch (e) {}
+      function skelTick() {
+        if (skelDone) return;
+        if (Date.now() - bootAt > 30000) { skelCleanup(); return; }
+        var list = document.querySelector(".list");
+        if (!list) return;
+        if (convsLoaded) { skelCleanup(); return; }
+        if (!list.querySelector(".t-skel")) {
+          list.classList.add("t-loading");
+          var w = el("div", "t-skel");
+          for (var i = 0; i < 7; i++) {
+            var row = el("div", "t-skel-row");
+            row.appendChild(el("div", "t-skel-av"));
+            var L = el("div", "t-skel-l");
+            L.appendChild(el("div", "t-skel-b w1"));
+            L.appendChild(el("div", "t-skel-b w2"));
+            row.appendChild(L);
+            w.appendChild(row);
+          }
+          list.prepend(w);
+        }
+      }
+      function skelCleanup() {
+        skelDone = true;
+        [].slice.call(document.querySelectorAll(".t-skel")).forEach(function (x) { x.remove(); });
+        [].slice.call(document.querySelectorAll(".list.t-loading")).forEach(function (x) { x.classList.remove("t-loading"); });
+        clearInterval(skelTimer);
+      }
+      var skelTimer = setInterval(skelTick, 110);
+
+      /* ================= ۲) پرواز پیام موقع ارسال ================= */
+      window.__tFlyCount = 0;
+      function composerInput() {
+        return document.querySelector(".composer textarea, .composer input[type=text], .composer input:not([type])");
+      }
+      function flyGhost(text) {
+        try {
+          var inp = composerInput();
+          var v = String(text != null ? text : (inp ? inp.value : "")).trim();
+          if (!v || !inp) return;
+          var msgs = document.querySelector(".msgs");
+          if (!msgs) return;
+          var r0 = inp.getBoundingClientRect();
+          var r1 = msgs.getBoundingClientRect();
+          if (!r0.width || !r1.width) return;
+          var g = el("div", "t-fly-ghost", v.slice(0, 90));
+          g.style.left = r0.left + "px";
+          g.style.top = r0.top + "px";
+          g.style.maxWidth = Math.min(r0.width, 340) + "px";
+          document.body.appendChild(g);
+          var gr = g.getBoundingClientRect();
+          var dx = (r1.left + r1.width - gr.width - 14) - gr.left; /* سمت پیام‌های خودم */
+          var dy = (r1.top + r1.height - gr.height - 12) - gr.top;
+          window.__tFlyCount++;
+          var anim = g.animate(
+            [
+              { transform: "translate(0,0) scale(1)", opacity: 1 },
+              { transform: "translate(" + dx * 0.55 + "px," + dy * 0.6 + "px) scale(.96)", opacity: .95, offset: .6 },
+              { transform: "translate(" + dx + "px," + dy + "px) scale(.88)", opacity: 0 }
+            ],
+            { duration: 430, easing: "cubic-bezier(.22,.9,.36,1)" }
+          );
+          anim.onfinish = function () { g.remove(); };
+          setTimeout(function () { if (g.parentNode) g.remove(); }, 900);
+        } catch (e) {}
+      }
+      document.addEventListener("click", function (ev) {
+        var t = ev.target;
+        if (!t || !t.closest) return;
+        var b = t.closest(".composer .send, .composer .send-fancy");
+        if (b && !b.classList.contains("mic")) flyGhost(null);
+      }, true);
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key !== "Enter" || ev.shiftKey) return;
+        var t = ev.target;
+        if (t && t.closest && t.closest(".composer") && /^(TEXTAREA|INPUT)$/.test(t.tagName)) flyGhost(t.value);
+      }, true);
+
+      /* ================= ۳) ویوفرم واقعی ویس ================= */
+      var peaksCache = new Map();
+      var AC = null;
+      function mediaKey(src) {
+        var id = window.__tMediaOfUrl ? window.__tMediaOfUrl(src) : "";
+        if (!id) { var m = String(src).match(/\/api\/media\/([A-Za-z0-9_-]+)/); if (m) id = m[1]; }
+        return id || src;
+      }
+      function applyPeaks(voice, peaks) {
+        var groups = voice.querySelectorAll(".voice-bars");
+        for (var gi = 0; gi < groups.length; gi++) {
+          var sp = groups[gi].children, n = sp.length;
+          for (var i = 0; i < n; i++) {
+            var pk = peaks[Math.min(peaks.length - 1, Math.floor(i * peaks.length / Math.max(1, n)))];
+            sp[i].style.height = pk + "%";
+          }
+        }
+        voice.setAttribute("data-twave", "1");
+      }
+      function buildWave(voice) {
+        var a = voice.querySelector("audio");
+        if (!a || !a.src) return;
+        var key = mediaKey(a.src);
+        if (peaksCache.has(key)) { applyPeaks(voice, peaksCache.get(key)); return; }
+        if (voice.getAttribute("data-twbusy")) return;
+        voice.setAttribute("data-twbusy", "1");
+        /* CSP اجازهٔ fetch از blob: نمی‌دهد؛ اگر شناسهٔ رسانه را داریم از API می‌خوانیم */
+        var srcUrl = key && key !== a.src ? "/api/media/" + encodeURIComponent(key) : a.src;
+        fetch(srcUrl, { credentials: "include" })
+          .then(function (r) { return r.arrayBuffer(); })
+          .then(function (buf) {
+            AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+            return new Promise(function (res, rej) { AC.decodeAudioData(buf, res, rej); });
+          })
+          .then(function (ab) {
+            var ch = ab.getChannelData(0), N = 32, peaks = [];
+            var step = Math.max(1, Math.floor(ch.length / N));
+            var hop = Math.max(1, Math.floor(step / 60));
+            for (var i = 0; i < N; i++) {
+              var sum = 0, cnt = 0;
+              for (var j = i * step; j < Math.min(ch.length, (i + 1) * step); j += hop) { sum += Math.abs(ch[j]); cnt++; }
+              peaks.push(cnt ? sum / cnt : 0);
+            }
+            var mx = Math.max.apply(null, peaks) || 1;
+            peaks = peaks.map(function (v) { return Math.max(14, Math.round(Math.pow(v / mx, 0.72) * 94)); });
+            peaksCache.set(key, peaks);
+            applyPeaks(voice, peaks);
+            voice.removeAttribute("data-twbusy");
+          })
+          .catch(function () {
+            voice.setAttribute("data-twave", "err");
+            voice.removeAttribute("data-twbusy");
+          });
+      }
+      function waveTick() {
+        var vs = document.querySelectorAll(".voice:not([data-twave])");
+        for (var i = 0; i < vs.length; i++) buildWave(vs[i]);
+      }
+      setInterval(waveTick, 700);
+
+      /* ================= ۴) لینک پروفایل عمومی در تنظیمات ================= */
+      var meName = "", meBusy = false;
+      function loadMe() {
+        if (meName || meBusy) return;
+        meBusy = true;
+        fetch("/api/me", { credentials: "include", cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { meBusy = false; if (d && d.user && d.user.username) meName = d.user.username; })
+          .catch(function () { meBusy = false; });
+      }
+      function injectPubRow() {
+        if (location.pathname.indexOf("/settings") !== 0) return;
+        if (!meName) { loadMe(); return; }
+        if (document.querySelector(".t-pub-row")) return;
+        var anchor = document.querySelector(".t-prem-buy");
+        var host = anchor ? (anchor.closest("div") || anchor) : null;
+        if (!host) {
+          var applyBtn = [].slice.call(document.querySelectorAll("button"))
+            .find(function (x) { return /اعمال\s*کد/.test(x.textContent || ""); });
+          host = applyBtn || null;
+        }
+        if (!host) return;
+        var link = location.origin + "/@" + meName;
+        var row = el("div", "t-pub-row");
+        row.appendChild(el("div", "ttl", "پروفایل عمومی من — این لینک را همه‌جا شیر کن"));
+        row.appendChild(el("div", "lnk", link.replace(/^https?:\/\//, "")));
+        var btns = el("div", "row");
+        var cp = el("button", null, "کپی لینک");
+        cp.type = "button";
+        cp.addEventListener("click", function () {
+          var done = function () {
+            cp.classList.add("ok"); cp.textContent = "کپی شد ✓";
+            setTimeout(function () { cp.classList.remove("ok"); cp.textContent = "کپی لینک"; }, 1800);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done).catch(done);
+          else done();
+        });
+        var op = el("button", null, "دیدن صفحه");
+        op.type = "button";
+        op.addEventListener("click", function () { window.open(link, "_blank"); });
+        btns.appendChild(cp); btns.appendChild(op);
+        row.appendChild(btns);
+        host.insertAdjacentElement("afterend", row);
+      }
+      setInterval(injectPubRow, 900);
+    })();
+    </script>
   </body>
 </html>
