@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
     <meta name="theme-color" content="#070C18" />
+    <script>
+      /* ===== بوت تم: قبل از رندر، تم ذخیره‌شده را روی <html> می‌گذارد ===== */
+      (function () {
+        try {
+          var t = localStorage.getItem("t-theme") || "dark";
+          if (t === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t = "light";
+          document.documentElement.setAttribute("data-t-theme", t);
+        } catch (e) {}
+      })();
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -4654,7 +4664,186 @@
       else tick();
     })();
     </script>
-  </body>
+
+    <!-- ===== تم تیره/روشن + صفحهٔ «ظاهر» در تنظیمات ===== -->
+    <style>
+      /* --- پالت روشن «نیلی و یاس»: همتای روشنِ همان هویت --- */
+      html[data-t-theme="light"] {
+        --bg0: #E7EDF6;  --bg1: #F2F5FA;  --bg2: #FFFFFF;  --bg3: #E4EAF3;
+        --line:  rgba(38, 70, 120, .16);
+        --line2: rgba(38, 70, 120, .08);
+        --line-gold: rgba(37, 99, 201, .35);
+        --gold:  #2E6BD8;  --gold2: #4C8DFF;  --gold3: #1D4FB8;
+        --ink:   #0C0E14;
+        --cream: #1B2537;
+        --mute:  #5A6779;  --mute2: #8693A6;
+        --owner: #2E5FC4;  --owner-deep: #E4EDFF;
+        --admin: #8A6A1F;  --verify: #2563C9;
+        --danger: #B54444;
+        --glass: rgba(244, 247, 252, .9);
+        --shadow: 0 18px 48px rgba(23, 40, 74, .16);
+        --accent: #2E6BD8; --accent2: #4C8DFF;
+        /* پنل ورود */
+        --lg-bg:#E9EEF7; --lg-card:#FFFFFF; --lg-card2:#F4F7FB; --lg-border:#D4DDEA;
+        --lg-input:#EDF1F8; --lg-text:#1B2537; --lg-sub:#5A6779;
+      }
+      html[data-t-theme="light"] body { background: #E7EDF6 !important; }
+      html[data-t-theme="light"] #bootLoader { background: #E7EDF6; }
+      html[data-t-theme="light"] .banter-loader div { background: #4C8DFF !important; }
+      /* بافت گفتگو */
+      html[data-t-theme="light"] .t-chatbg .island { background: linear-gradient(180deg, #EEF3FA 0%, #DFE9F6 100%); opacity: .9; }
+      html[data-t-theme="light"] .t-chatbg .container { --c: #4C8DFF; background-color: #E9EFF8; }
+      /* تنظیمات تلگرامی */
+      html[data-t-theme="light"] .tset-group { background: #FFFFFF; border-color: #DCE4F0; }
+      html[data-t-theme="light"] .tset-cap { color: #7C8AA0; }
+      html[data-t-theme="light"] .tset-row + .tset-row { border-top-color: rgba(38, 70, 120, .09); }
+      html[data-t-theme="light"] .tset-row:hover { background: rgba(76, 141, 255, .09); }
+      html[data-t-theme="light"] .tset-ver { color: #9AA7BB; }
+      html[data-t-theme="light"] #tSetHead button { color: var(--gold); background: rgba(76, 141, 255, .13); }
+      html[data-t-theme="light"] #tSetHead button:hover { background: rgba(76, 141, 255, .22); }
+      html[data-t-theme="light"] #tSetHead b { color: var(--cream); }
+
+      /* --- صفحهٔ «ظاهر» --- */
+      #tSetLook { display: none; max-width: 560px; margin-inline: auto; direction: rtl; padding-bottom: 40px; }
+      .settings.t-tg[data-view="look"] #tSetLook { display: block; }
+      .tlook-seg { display: flex; gap: 10px; padding: 14px; }
+      .tlook-opt {
+        flex: 1; border: 1.5px solid var(--line); background: var(--bg1); cursor: pointer;
+        border-radius: 14px; padding: 14px 8px 12px; display: flex; flex-direction: column;
+        align-items: center; gap: 7px; font-family: inherit; transition: border-color .15s, background .15s, transform .12s;
+      }
+      .tlook-opt:hover { background: rgba(76, 141, 255, .08); }
+      .tlook-opt:active { transform: scale(.97); }
+      .tlook-opt .tl-ic { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--bg3); }
+      .tlook-opt .tl-lb { font-size: 13px; font-weight: 700; color: var(--cream); }
+      .tlook-opt .tl-sb { font-size: 10px; color: var(--mute); font-weight: 500; }
+      .tlook-opt.on { border-color: var(--gold2); background: rgba(76, 141, 255, .13); box-shadow: 0 0 0 3px rgba(76, 141, 255, .12); }
+      .tlook-opt.on .tl-ic { background: linear-gradient(160deg, var(--gold2), var(--gold3)); }
+      .tlook-prev { display: flex; flex-direction: column; gap: 8px; padding: 16px 14px; }
+      .tl-bub { max-width: 78%; padding: 9px 13px; border-radius: 15px; font-size: 13px; line-height: 1.7; }
+      .tl-in { align-self: flex-start; background: var(--bg3); color: var(--cream); border: 1px solid var(--line); border-bottom-right-radius: 5px; }
+      .tl-out { align-self: flex-end; background: linear-gradient(135deg, var(--gold2), var(--gold3)); color: #fff; border-bottom-left-radius: 5px; }
+      .tl-meta { align-self: flex-end; font-size: 9.5px; color: var(--mute2); direction: ltr; }
+      .tset-row .ic.c7 { background: linear-gradient(160deg, #ff9ec7, #d6558f); }
+    </style>
+    <script>
+    (function () {
+      "use strict";
+      var KEY = "t-theme";
+
+      /* ---------- مدیر تم ---------- */
+      function mode() { try { return localStorage.getItem(KEY) || "dark"; } catch (e) { return "dark"; } }
+      function effective(m) {
+        if (m !== "auto") return m;
+        return (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+      }
+      function apply(m) {
+        var eff = effective(m);
+        document.documentElement.setAttribute("data-t-theme", eff);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", eff === "light" ? "#E7EDF6" : "#070C18");
+        document.dispatchEvent(new CustomEvent("t-theme", { detail: { mode: m, effective: eff } }));
+      }
+      window.__tTheme = {
+        get: mode,
+        set: function (m) {
+          if (["dark", "light", "auto"].indexOf(m) === -1) return;
+          try { localStorage.setItem(KEY, m); } catch (e) {}
+          apply(m);
+        }
+      };
+      apply(mode());
+      if (window.matchMedia) {
+        var mq = matchMedia("(prefers-color-scheme: light)");
+        var onSys = function () { if (mode() === "auto") apply("auto"); };
+        if (mq.addEventListener) mq.addEventListener("change", onSys);
+        else if (mq.addListener) mq.addListener(onSys);
+      }
+
+      /* ---------- تزریق صفحهٔ «ظاهر» در تنظیمات تلگرامی ---------- */
+      function el(tag, cls, txt) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (txt != null) n.textContent = txt;
+        return n;
+      }
+      function openLook(s) {
+        s.setAttribute("data-view", "look");
+        var head = document.getElementById("tSetHead");
+        if (head) head.querySelector("b").textContent = "ظاهر";
+        try { (s.closest(".stage") || document.scrollingElement).scrollTop = 0; } catch (e) {}
+      }
+      function segBtn(m, ic, lb, sb) {
+        var b = el("button", "tlook-opt");
+        b.type = "button";
+        b.setAttribute("data-m", m);
+        b.appendChild(el("span", "tl-ic", ic));
+        b.appendChild(el("span", "tl-lb", lb));
+        b.appendChild(el("span", "tl-sb", sb));
+        b.addEventListener("click", function () {
+          window.__tTheme.set(m);
+          markActive();
+        });
+        return b;
+      }
+      function markActive() {
+        var cur = mode();
+        [].slice.call(document.querySelectorAll(".tlook-opt")).forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-m") === cur);
+        });
+      }
+      function buildLook(s) {
+        var page = el("div"); page.id = "tSetLook";
+
+        var cap1 = el("div", "tset-cap", "تم"); page.appendChild(cap1);
+        var seg = el("div", "tset-group tlook-seg");
+        seg.appendChild(segBtn("dark",  "🌙", "تیره",   "پیش‌فرض"));
+        seg.appendChild(segBtn("light", "☀️", "روشن",   "کم‌نور و روشن"));
+        seg.appendChild(segBtn("auto",  "🌗", "خودکار", "مطابق دستگاه"));
+        page.appendChild(seg);
+
+        var cap2 = el("div", "tset-cap", "پیش‌نمایش"); page.appendChild(cap2);
+        var prev = el("div", "tset-group tlook-prev");
+        var b1 = el("div", "tl-bub tl-in", "سلام! این پیش‌نمایش تم انتخابی است.");
+        var b2 = el("div", "tl-bub tl-out", "چه قشنگ! ✨ همین می‌ماند.");
+        var mt = el("div", "tl-meta", "12:34 ✓✓");
+        prev.appendChild(b1); prev.appendChild(b2); prev.appendChild(mt);
+        page.appendChild(prev);
+
+        page.appendChild(el("div", "tset-ver", "انتخاب روی همین دستگاه ذخیره می‌شود"));
+
+        markActive();
+        document.addEventListener("t-theme", markActive);
+        return page;
+      }
+      function lookRow(s) {
+        var b = el("button", "tset-row");
+        b.type = "button";
+        b.appendChild(el("span", "ic c7", "🎨"));
+        b.appendChild(el("span", "lb", "ظاهر"));
+        b.appendChild(el("span", "sb", "تم تیره، روشن یا خودکار"));
+        b.appendChild(el("span", "ch", "‹"));
+        b.addEventListener("click", function () { openLook(s); });
+        return b;
+      }
+      function lookTick() {
+        if (location.pathname.indexOf("/settings") !== 0) return;
+        var s = document.querySelector(".settings.t-tg");
+        if (!s) return;
+        var menu = document.getElementById("tSetMenu");
+        if (!menu) return;
+        if (!document.getElementById("tSetLook")) s.appendChild(buildLook(s));
+        if (!menu.getAttribute("data-look-added")) {
+          var lb = [].slice.call(menu.querySelectorAll(".tset-row .lb"))
+            .find(function (x) { return (x.textContent || "").trim() === "پرمیوم"; });
+          if (lb) { lb.closest(".tset-group").appendChild(lookRow(s)); menu.setAttribute("data-look-added", "1"); }
+        }
+      }
+      setInterval(lookTick, 400);
+    })();
+    </script>
+  <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f2aa835df3d6e5',t:'MTc4NzQwOTk3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f"}' crossorigin="anonymous"></script>
+</body>
 
 
 </html>
