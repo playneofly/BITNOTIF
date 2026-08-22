@@ -3,199 +3,240 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0E1621" />
+<meta name="theme-color" content="#10141A" />
 <title>T اسپیک — اتاق گفتگوی صوتی</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230E1621'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='15' font-family='sans-serif' fill='%234C8DFF'%3E🎧%3C/text%3E%3C/svg%3E" />
+<link rel="manifest" href="/tSpeak-manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="T اسپیک" />
+<link rel="apple-touch-icon" href="/assets/icon-192.png" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%2310141A'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='15' font-family='sans-serif' fill='%234C8DFF'%3E🎧%3C/text%3E%3C/svg%3E" />
 <style>
   @font-face { font-family: "Vazirmatn"; src: url("/assets/Vazirmatn-T33.woff2") format("woff2"); font-display: swap; }
   :root {
-    --bg: #0E1621; --card: #16233A; --card2: #1B2A45;
-    --line: #243450; --line2: #1C2942;
-    --text: #E8EEF7; --sub: #8FA0BC; --mute2: #5C6E8C;
-    --blue: #4C8DFF; --blue2: #2E6BD8; --green: #3DDC84; --red: #FF7A7A; --gold: #E8B44C;
-    --radius: 14px;
+    --bg:#10141A; --bg2:#151A21; --panel:#1A2029; --panel2:#202834;
+    --line:#28303D; --line2:#20262F;
+    --text:#D9E0EA; --sub:#8C99AB; --dim:#5F6C7F;
+    --acc:#4C8DFF; --acc2:#2E6BD8; --green:#43C97B; --red:#E0696E; --gold:#D8A94E;
+    --mono: "SF Mono", Consolas, Menlo, monospace;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   body {
-    margin: 0; background: radial-gradient(1200px 700px at 50% -10%, #17253C 0%, var(--bg) 55%, #0A111C 100%);
-    color: var(--text); font-family: "Vazirmatn", Tahoma, "Segoe UI", sans-serif;
-    display: flex; align-items: center; justify-content: center; padding: 18px;
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Vazirmatn", Tahoma, "Segoe UI", sans-serif; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; padding: 14px;
   }
-  .shell { width: 100%; max-width: 560px; max-height: 100%; }
+  .shell { width: 100%; max-width: 560px; max-height: 100%; display: flex; flex-direction: column; }
   [hidden] { display: none !important; }
   button { font-family: inherit; cursor: pointer; }
+  .mono { font-family: var(--mono); direction: ltr; }
+
+  /* ===== دکمه‌های پایه ===== */
+  .btn {
+    border: 1px solid var(--line); background: var(--panel2); color: var(--text);
+    border-radius: 6px; height: 38px; padding: 0 14px; font-size: 12.5px; font-weight: 700;
+    transition: background .12s, border-color .12s;
+  }
+  .btn:hover { background: #263042; }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--acc2); border-color: var(--acc2); color: #fff; }
+  .btn.primary:hover { background: #3B79E6; }
+  .btn.danger { background: #8F3A40; border-color: #A3444B; color: #FFD9DB; }
+  .btn.on { border-color: var(--acc); color: var(--acc); background: rgba(76,141,255,.12); }
+  .field {
+    width: 100%; height: 38px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--bg2); color: var(--text); padding: 4px 11px; font-size: 13.5px; font-family: inherit;
+    outline: none;
+  }
+  .field:focus { border-color: var(--acc); }
 
   /* ===== ورود ===== */
   .card {
-    background: linear-gradient(170deg, var(--card) 0%, #121E33 100%);
-    border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 28px 24px; box-shadow: 0 30px 80px -30px rgba(0,0,0,.8);
-    display: flex; flex-direction: column; gap: 14px; align-items: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 26px 22px; display: flex; flex-direction: column; gap: 12px; align-items: center;
   }
   .logo { display: flex; align-items: center; gap: 10px; }
   .logo .mark {
-    width: 46px; height: 46px; border-radius: 13px; flex: none;
-    background: linear-gradient(150deg, var(--blue) 0%, var(--blue2) 100%);
-    display: flex; align-items: center; justify-content: center; font-size: 24px;
-    box-shadow: 0 8px 24px -8px rgba(76,141,255,.6);
+    width: 40px; height: 40px; border-radius: 7px; flex: none;
+    background: linear-gradient(150deg, var(--acc) 0%, var(--acc2) 100%);
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
   }
-  .logo b { font-size: 21px; font-weight: 800; }
-  .logo b small { display: block; font-size: 11px; color: var(--sub); font-weight: 500; }
-  .field {
-    width: 100%; height: 46px; border-radius: 11px; border: 1.5px solid var(--line);
-    background: #0F1A2C; color: var(--text); padding: 6px 14px; font-size: 15px; font-family: inherit;
-    outline: none; transition: border-color .15s, box-shadow .15s;
-  }
-  .field:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(76,141,255,.16); }
-  .btn {
-    height: 46px; border: none; border-radius: 11px; padding: 0 20px;
-    background: linear-gradient(135deg, #5C9BFF 0%, var(--blue2) 100%);
-    color: #fff; font-size: 14.5px; font-weight: 700; transition: transform .12s, filter .15s;
-  }
-  .btn:hover { filter: brightness(1.08); } .btn:active { transform: scale(.97); }
-  .btn.ghost { background: transparent; border: 1.5px solid var(--line); color: var(--sub); }
-  .btn.danger { background: linear-gradient(135deg, #E8636A, #C43B47); }
-  .btn:disabled { opacity: .5; cursor: default; }
-  .msg { font-size: 12.5px; color: var(--red); min-height: 16px; font-weight: 600; }
-  .hintlink { font-size: 12.5px; color: var(--sub); }
-  .hintlink a { color: var(--blue); text-decoration: none; font-weight: 700; }
+  .logo b { font-size: 17px; font-weight: 800; letter-spacing: .2px; }
+  .logo b small { display: block; font-size: 10.5px; color: var(--sub); font-weight: 500; }
+  .msg { font-size: 12px; color: var(--red); min-height: 15px; font-weight: 600; }
+  .hintlink { font-size: 11.5px; color: var(--sub); }
+  .hintlink a { color: var(--acc); text-decoration: none; font-weight: 700; }
 
-  /* ===== لابی ===== */
-  .top { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
-  .me-chip {
-    margin-inline-start: auto; display: flex; align-items: center; gap: 8px;
-    background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px 5px 8px;
-    font-size: 13px; font-weight: 700;
+  /* ===== نوار سرور ===== */
+  .srvbar {
+    display: flex; align-items: center; gap: 9px; padding: 9px 12px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px 8px 0 0;
+    border-bottom: 0;
   }
+  .srvbar .sname { flex: 1; min-width: 0; }
+  .srvbar .sname b { font-size: 13.5px; display: block; }
+  .srvbar .sname span { font-size: 10px; color: var(--dim); font-family: var(--mono); }
+  .me-chip { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: var(--sub); }
   .av {
-    width: 28px; height: 28px; border-radius: 50%; flex: none; color: #06101F;
-    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800;
-    background: linear-gradient(160deg, hsl(var(--h,220) 85% 72%), hsl(var(--h,220) 70% 48%));
+    width: 24px; height: 24px; border-radius: 50%; flex: none; color: #060B14;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;
+    background: linear-gradient(160deg, hsl(var(--h,220) 85% 70%), hsl(var(--h,220) 70% 46%));
   }
-  .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-  .panel-head {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 12px 16px; border-bottom: 1px solid var(--line2); font-size: 13px; color: var(--sub); font-weight: 700;
+  .tree { background: var(--panel); border: 1px solid var(--line); border-radius: 0 0 8px 8px; overflow: hidden; }
+  .tree-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid var(--line2);
+    font-size: 10.5px; color: var(--dim); font-weight: 700; letter-spacing: .4px;
   }
-  .newbtn { border: none; background: rgba(76,141,255,.14); color: var(--blue); font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 9px; }
-  .newbtn:hover { background: rgba(76,141,255,.24); }
+  .linkbtn { border: 0; background: none; color: var(--acc); font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 5px; }
+  .linkbtn:hover { background: rgba(76,141,255,.12); }
   .chan {
-    display: flex; align-items: center; gap: 10px; width: 100%; text-align: right;
-    background: none; border: 0; color: var(--text); padding: 12.5px 16px;
-    border-bottom: 1px solid var(--line2); transition: background .12s; font-size: 14.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: right;
+    background: none; border: 0; color: var(--text); padding: 9px 12px; font-size: 12.5px; font-weight: 600;
+    border-bottom: 1px solid var(--line2);
   }
-  .chan:last-child { border-bottom: 0; }
-  .chan:hover { background: rgba(76,141,255,.07); }
-  .chan .exp { color: var(--mute2); font-size: 11px; width: 14px; transition: transform .15s; }
+  .chan:hover { background: rgba(76,141,255,.05); }
+  .chan .exp { color: var(--dim); font-size: 9px; width: 10px; transition: transform .12s; }
   .chan.open .exp { transform: rotate(90deg); }
-  .chan .cic { font-size: 16px; width: 22px; text-align: center; }
+  .chan .cic { font-size: 13px; width: 18px; text-align: center; }
   .chan .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .chan .cnt {
-    font-size: 11px; color: var(--sub); background: #0F1A2C; border: 1px solid var(--line2);
-    padding: 2.5px 9px; border-radius: 999px; direction: ltr; flex: none;
-  }
-  .chan .full { color: var(--red); border-color: rgba(255,122,122,.3); }
+  .chan .cnt { font-size: 10px; color: var(--sub); font-family: var(--mono); flex: none; }
+  .chan .full { color: var(--red); }
   .chan .go {
-    flex: none; border: none; border-radius: 9px; padding: 7px 14px; font-size: 12.5px; font-weight: 800;
-    background: linear-gradient(135deg, #5C9BFF, var(--blue2)); color: #fff;
+    flex: none; border: 1px solid var(--acc2); background: var(--acc2); color: #fff;
+    border-radius: 5px; padding: 5px 11px; font-size: 11px; font-weight: 800;
   }
-  .sub-rows { border-bottom: 1px solid var(--line2); background: #111C2E; }
+  .sub-rows { border-bottom: 1px solid var(--line2); background: var(--bg2); }
   .sub-row {
-    display: flex; align-items: center; gap: 9px; padding: 8.5px 16px 8.5px 42px;
-    font-size: 12.5px; color: var(--sub); border-bottom: 1px solid rgba(36,52,80,.4);
+    display: flex; align-items: center; gap: 8px; padding: 6.5px 12px 6.5px 34px;
+    font-size: 11.5px; color: var(--sub);
   }
-  .sub-row:last-child { border-bottom: 0; }
-  .sub-row .spk { width: 7px; height: 7px; border-radius: 50%; background: var(--mute2); flex: none; }
-  .sub-row .spk.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
-  .sub-row .micoff { font-size: 11px; }
-  .empty { padding: 34px 16px; text-align: center; color: var(--mute2); font-size: 13px; }
-  .statusbar { margin-top: 12px; display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 11.5px; color: var(--mute2); }
-  .statusbar .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .sub-row .spk { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); flex: none; }
+  .sub-row .spk.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .empty { padding: 26px 14px; text-align: center; color: var(--dim); font-size: 12px; }
+
+  /* ===== نوار وضعیت ===== */
+  .statusbar {
+    display: flex; align-items: center; gap: 10px; margin-top: 8px;
+    background: var(--bg2); border: 1px solid var(--line2); border-radius: 6px;
+    padding: 6px 12px; font-size: 10px; color: var(--dim); font-family: var(--mono);
+    overflow: hidden; white-space: nowrap;
+  }
+  .statusbar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex: none; }
   .statusbar.off .dot { background: var(--red); }
+  .statusbar .sep { color: #333D4C; }
 
   /* ===== اتاق ===== */
-  .room-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .room-head .back {
-    border: 1.5px solid var(--line); background: var(--card); color: var(--text);
-    border-radius: 11px; padding: 9px 14px; font-size: 13px; font-weight: 700;
+  .roombar {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px 8px 0 0; border-bottom: 0;
   }
-  .room-title { flex: 1; min-width: 0; }
-  .room-title b { font-size: 16.5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .room-title span { font-size: 11.5px; color: var(--sub); }
-  .lockbtn { border: 1.5px solid var(--line); background: var(--card); border-radius: 11px; padding: 9px 12px; font-size: 15px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; }
-  .member {
-    background: var(--card); border: 1px solid var(--line); border-radius: 13px;
-    padding: 14px 10px 11px; display: flex; flex-direction: column; align-items: center; gap: 7px;
-    position: relative; transition: border-color .15s, box-shadow .15s;
+  .roombar .rname { flex: 1; min-width: 0; }
+  .roombar .rname b { font-size: 13.5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .roombar .rname span { font-size: 10px; color: var(--sub); font-family: var(--mono); }
+  .sq {
+    width: 34px; height: 34px; flex: none; border: 1px solid var(--line); background: var(--panel2);
+    border-radius: 6px; color: var(--sub); font-size: 14px; display: flex; align-items: center; justify-content: center;
   }
-  .member.speaking {
-    border-color: var(--green);
-    box-shadow: 0 0 0 2px rgba(61,220,132,.35), 0 10px 30px -12px rgba(61,220,132,.35);
-  }
-  .member .av2 {
-    width: 54px; height: 54px; border-radius: 50%; color: #06101F;
-    display: flex; align-items: center; justify-content: center; font-size: 23px; font-weight: 800;
-    background: linear-gradient(160deg, hsl(var(--h,220) 85% 72%), hsl(var(--h,220) 70% 48%));
-  }
-  .member .nm2 { font-size: 13.5px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .member .un2 { font-size: 10.5px; color: var(--sub); direction: ltr; }
-  .member .st { font-size: 15px; line-height: 1; }
-  .member .st.off { opacity: .45; }
-  .member .qual { position: absolute; top: 9px; inset-inline-end: 10px; font-size: 9px; }
-  .member .crown { position: absolute; top: 9px; inset-inline-start: 10px; font-size: 13px; }
-  .member .tools { display: flex; gap: 6px; }
-  .member .tools button {
-    border: 1px solid var(--line2); background: #0F1A2C; color: var(--sub);
-    border-radius: 8px; font-size: 11px; padding: 4px 9px; font-weight: 700;
-  }
-  .member .tools button:hover { color: var(--red); border-color: var(--red); }
-  .member.me-self { border-style: dashed; }
-  .member .vol {
-    width: 86%; display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--sub);
-  }
-  .member .vol input { flex: 1; accent-color: var(--blue); height: 14px; }
-  .meter { height: 5px; border-radius: 99px; background: #0F1A2C; overflow: hidden; margin-top: 14px; border: 1px solid var(--line2); }
-  .meter i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), var(--gold)); transition: width .08s linear; }
-  .controls { display: flex; gap: 8px; margin-top: 12px; align-items: stretch; }
-  .controls .btn { flex: 1; height: 52px; font-size: 13.5px; border-radius: 13px; padding: 0 8px; }
-  .mode-switch { display: flex; border: 1.5px solid var(--line); border-radius: 13px; overflow: hidden; flex: none; background: var(--card); }
-  .mode-switch button { border: 0; background: none; color: var(--sub); font-size: 11.5px; font-weight: 700; padding: 0 10px; }
-  .mode-switch button.on { background: rgba(76,141,255,.2); color: var(--blue); }
-  .ptt-hint { text-align: center; font-size: 11px; color: var(--mute2); margin-top: 9px; }
-  .btn.ptt-hold.holding { animation: pulse 1s infinite; background: linear-gradient(135deg, var(--green), #22A05C) !important; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(61,220,132,.45); } 70% { box-shadow: 0 0 0 14px rgba(61,220,132,0); } 100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); } }
-  .sens-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--sub); margin-top: 8px; }
-  .sens-row input { flex: 1; accent-color: var(--blue); }
+  .sq:hover { background: #263042; color: var(--text); }
+  .sq.on { border-color: var(--acc); color: var(--acc); background: rgba(76,141,255,.12); }
 
-  /* ===== چت متنی ===== */
-  #chatWrap {
-    margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 13px;
-    display: flex; flex-direction: column; overflow: hidden;
+  .members { background: var(--panel); border: 1px solid var(--line); border-radius: 0; overflow-y: auto; max-height: 46vh; }
+  .mrow {
+    display: flex; align-items: center; gap: 9px; padding: 7px 12px;
+    border-bottom: 1px solid var(--line2); cursor: pointer; border-inline-start: 2px solid transparent;
   }
-  #chatLog { max-height: 190px; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
-  .chat-msg { max-width: 82%; padding: 7px 11px; border-radius: 12px; font-size: 12.5px; line-height: 1.6; word-break: break-word; }
-  .chat-msg.others { align-self: flex-start; background: #101C30; border: 1px solid var(--line2); }
-  .chat-msg.own { align-self: flex-end; background: linear-gradient(135deg, #3F7BDB, #2E5FBE); color: #fff; }
-  .chat-msg .who { font-size: 10px; color: var(--blue); font-weight: 800; display: block; margin-bottom: 2px; }
-  .chat-msg.own .who { color: #DCEBFF; }
-  .chat-msg .tm { font-size: 9px; opacity: .65; display: block; margin-top: 2px; direction: ltr; text-align: left; }
-  .chat-form { display: flex; gap: 8px; padding: 9px; border-top: 1px solid var(--line2); }
-  .chat-form input { flex: 1; height: 40px; }
-  .chat-form .btn { height: 40px; padding: 0 16px; }
+  .mrow:hover { background: rgba(76,141,255,.04); }
+  .mrow.speaking { border-inline-start-color: var(--green); background: rgba(67,201,123,.07); }
+  .mrow .qual { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex: none; }
+  .mrow .qual.q2 { background: var(--green); } .mrow .qual.q1 { background: var(--gold); } .mrow .qual.q0 { background: var(--red); }
+  .mrow .av2 {
+    width: 26px; height: 26px; border-radius: 50%; flex: none; color: #060B14;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;
+    background: linear-gradient(160deg, hsl(var(--h,220) 85% 70%), hsl(var(--h,220) 70% 46%));
+  }
+  .mrow .who { flex: 1; min-width: 0; }
+  .mrow .who b { font-size: 12.5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mrow .who span { font-size: 9.5px; color: var(--dim); font-family: var(--mono); }
+  .mrow .micons { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .mrow .micons .off { opacity: .4; }
+  .mdetail {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    background: var(--bg2); border-bottom: 1px solid var(--line2); padding: 7px 12px;
+  }
+  .mdetail .vol { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 130px; font-size: 10px; color: var(--sub); }
+  .mdetail input[type="range"] { flex: 1; accent-color: var(--acc); height: 12px; }
+  .mini {
+    border: 1px solid var(--line); background: var(--panel2); color: var(--sub);
+    border-radius: 5px; font-size: 10.5px; font-weight: 700; padding: 4px 9px;
+  }
+  .mini:hover { color: var(--text); }
+  .mini.warn { color: var(--red); border-color: #5A3236; }
 
-  /* ===== مودال و توست ===== */
+  /* ===== نوار ابزار ===== */
+  .toolbar { display: flex; gap: 7px; padding: 9px 10px; background: var(--panel); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; align-items: stretch; }
+  .toolbar .btn { height: 40px; }
+  .toolbar .micbtn { flex: 1; min-width: 0; font-size: 12px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; flex: none; background: var(--bg2); }
+  .seg button { border: 0; background: none; color: var(--sub); font-size: 10.5px; font-weight: 700; padding: 0 9px; height: 38px; }
+  .seg button.on { background: rgba(76,141,255,.18); color: var(--acc); }
+  .sens-row { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--sub); margin-top: 7px; }
+  .sens-row input { flex: 1; accent-color: var(--acc); }
+  .ptt-hint { text-align: center; font-size: 10px; color: var(--dim); margin-top: 6px; }
+  .btn.holding { animation: pulse 1s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(67,201,123,.4); } 70% { box-shadow: 0 0 0 10px rgba(67,201,123,0); } 100% { box-shadow: 0 0 0 0 rgba(67,201,123,0); } }
+
+  /* ===== چت ===== */
+  #chatWrap { margin-top: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+  #chatLog { max-height: 170px; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
+  .chat-msg { max-width: 84%; padding: 6px 10px; border-radius: 7px; font-size: 12px; line-height: 1.6; word-break: break-word; }
+  .chat-msg.others { align-self: flex-start; background: var(--bg2); border: 1px solid var(--line2); }
+  .chat-msg.own { align-self: flex-end; background: var(--acc2); color: #fff; }
+  .chat-msg .who { font-size: 9.5px; color: var(--acc); font-weight: 800; display: block; margin-bottom: 1px; }
+  .chat-msg.own .who { color: #D6E6FF; }
+  .chat-msg .tm { font-size: 8.5px; opacity: .6; display: block; margin-top: 1px; direction: ltr; text-align: left; font-family: var(--mono); }
+  .chat-form { display: flex; gap: 7px; padding: 8px; border-top: 1px solid var(--line2); }
+  .chat-form input { flex: 1; height: 34px; }
+  .chat-form .btn { height: 34px; padding: 0 13px; }
+
+  /* ===== مودال پروفایل ===== */
+  #profWrap { position: fixed; inset: 0; background: rgba(6,10,16,.72); display: flex; align-items: center; justify-content: center; padding: 18px; z-index: 60; }
+  .prof-card {
+    width: 100%; max-width: 320px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 20px 18px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .prof-card .pav {
+    width: 62px; height: 62px; border-radius: 50%; color: #060B14;
+    display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800;
+    background: linear-gradient(160deg, hsl(var(--h,220) 85% 70%), hsl(var(--h,220) 70% 46%));
+  }
+  .prof-card .pn { font-size: 15px; font-weight: 800; }
+  .prof-card .pu { font-size: 11px; color: var(--acc); font-family: var(--mono); direction: ltr; }
+  .prof-card .pid { font-size: 9.5px; color: var(--dim); font-family: var(--mono); cursor: pointer; }
+  .prof-card .pbio { font-size: 11.5px; color: var(--sub); text-align: center; line-height: 1.7; min-height: 16px; border-top: 1px solid var(--line2); padding-top: 9px; width: 100%; }
+  .prof-card .prow { display: flex; gap: 7px; margin-top: 5px; }
+  .prof-card .prow .btn { height: 34px; font-size: 11.5px; }
+
+  .setrow { width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid var(--line2); padding:10px 0; }
+  .setrow .srow-t { flex:1; min-width:0; }
+  .setrow .srow-t b { font-size:12px; display:block; }
+  .setrow .srow-t small { font-size:9.5px; color:var(--sub); display:block; margin-top:2px; line-height:1.7; }
+  .setrow .srow-b { display:flex; gap:6px; align-items:center; flex:none; }
+  .setrow .srow-b .btn { min-width:96px; height:34px; font-size:11.5px; }
+  .btn.rec { border-color: var(--acc) !important; color: var(--acc) !important; animation: recblink 1s infinite; }
+  @keyframes recblink { 50% { background: rgba(76,141,255,.22); } }
+
   #toast {
-    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
-    background: #0F1A2C; border: 1px solid var(--line); color: var(--text);
-    font-size: 13px; font-weight: 700; padding: 11px 20px; border-radius: 12px;
-    box-shadow: 0 16px 40px -12px rgba(0,0,0,.7); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 99;
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #1C2530; border: 1px solid var(--line); color: var(--text);
+    font-size: 12px; font-weight: 700; padding: 10px 18px; border-radius: 7px;
+    box-shadow: 0 14px 34px -10px rgba(0,0,0,.7); opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 99;
     max-width: 86%; text-align: center;
   }
   #toast.show { opacity: 1; }
-  .unlock-tip { position: fixed; inset: 0; background: rgba(6,10,18,.85); display: flex; align-items: center; justify-content: center; z-index: 80; }
-  .unlock-tip button { font-size: 16px; font-weight: 800; }
+  .unlock-tip { position: fixed; inset: 0; background: rgba(6,10,16,.88); display: flex; align-items: center; justify-content: center; z-index: 80; }
+  .unlock-tip button { font-size: 14px; font-weight: 800; }
 </style>
 </head>
 <body>
@@ -205,32 +246,35 @@
       <div class="logo"><div class="mark">🎧</div><b>T اسپیک<small>اتاق گفتگوی صوتی پیام‌رسان T</small></b></div>
       <input class="field" id="lgUser" placeholder="نام کاربری" autocomplete="username" />
       <input class="field" id="lgPass" type="password" placeholder="رمز" autocomplete="current-password" />
-      <button class="btn" id="lgBtn" style="width:100%">ورود و اتصال</button>
+      <button class="btn primary" id="lgBtn" style="width:100%">ورود و اتصال</button>
       <div class="msg" id="lgMsg"></div>
-      <div class="hintlink">حساب نداری؟ <a href="/" target="_blank" rel="noopener">در سایت اصلی بساز</a></div>
+      <div class="hintlink">حساب نداری؟ <a href="/" target="_blank" rel="noopener">در پیام‌رسان T بساز</a></div>
     </div>
 
     <div id="lobby" hidden>
-      <div class="top">
-        <div class="logo"><div class="mark">🎧</div><b style="font-size:17px">T اسپیک</b></div>
+      <div class="srvbar">
+        <div class="logo"><div class="mark">🎧</div></div>
+        <div class="sname"><b>T اسپیک</b><span>playneofly.ir — server: main</span></div>
         <div class="me-chip"><div class="av" id="meAv">T</div><span id="meName">…</span></div>
       </div>
-      <div class="panel">
-        <div class="panel-head"><span>کانال‌های صوتی</span><button class="newbtn" id="btnNew">＋ کانال جدید</button></div>
-        <div id="chanList"><div class="empty">در حال بارگذاری…</div></div>
+      <div class="tree">
+        <div class="tree-head"><span>کانال‌های صوتی</span><button class="linkbtn" id="btnNew">＋ کانال جدید</button></div>
+        <div id="chanList"><div class="empty">در حال اتصال…</div></div>
       </div>
-      <div class="statusbar" id="lobStatus"><span class="dot"></span><span>اتصال برقرار است</span></div>
+      <div class="statusbar" id="lobStatus"><span class="dot"></span><span>متصل</span><span class="sep">|</span><span class="mono" id="lobPing">--</span></div>
     </div>
 
     <div id="room" hidden>
-      <div class="room-head">
-        <button class="back" id="btnLeave">✕ قطع</button>
-        <div class="room-title"><b id="roomName">…</b><span id="roomSub"></span></div>
-        <button class="lockbtn" id="btnChat" title="چت متنی">💬</button>
-        <button class="lockbtn" id="btnLock" hidden title="قفل کانال">🔓</button>
-        <button class="lockbtn" id="btnCopy" title="کپی لینک دعوت">🔗</button>
+      <div class="roombar">
+        <button class="sq" id="btnLeave" title="قطع اتصال">✕</button>
+        <div class="rname"><b id="roomName">…</b><span id="roomSub">…</span></div>
+        <button class="sq" id="btnSet" title="تنظیمات کلیدها">⚙</button>
+        <button class="sq" id="btnChat" title="چت متنی">💬</button>
+        <button class="sq" id="btnSpatial" title="صدای موقعیتی سه‌بعدی">🗺</button>
+        <button class="sq" id="btnLock" hidden title="قفل کانال">🔓</button>
+        <button class="sq" id="btnCopy" title="لینک دعوت">🔗</button>
       </div>
-      <div class="grid" id="memberGrid"></div>
+      <div class="members" id="memberList"></div>
       <div id="chatWrap" hidden>
         <div id="chatLog"></div>
         <form class="chat-form" id="chatForm">
@@ -238,21 +282,47 @@
           <button class="btn" type="submit">ارسال</button>
         </form>
       </div>
-      <div class="meter" id="meterWrap" hidden><i id="meterBar"></i></div>
-      <div class="controls">
-        <button class="btn" id="btnMic">🎙 میکروفن روشن</button>
-        <div class="mode-switch" id="modeSwitch">
+      <div class="toolbar">
+        <button class="btn micbtn" id="btnMic">🎙 میکروفن روشن</button>
+        <div class="seg" id="modeSwitch">
           <button data-m="open" class="on">آزاد</button>
           <button data-m="voice">با صدا</button>
           <button data-m="ptt">نگه‌دار</button>
         </div>
-        <button class="btn ghost ptt-hold" id="btnPtt" hidden>🗣 نگه دار</button>
+        <button class="btn" id="btnPtt" hidden>🗣 نگه دار</button>
       </div>
-      <div class="ptt-hint" id="pttHint" hidden>کلید Space را نگه دار تا صدات برسد</div>
-      <div class="sens-row" id="sensRow" hidden>
-        <span>حساسیت صدا</span><input type="range" id="sensRange" min="10" max="150" value="45" />
+      <div class="ptt-hint" id="pttHint" hidden>Space را نگه دار تا صدات برسد</div>
+      <div class="sens-row" id="sensRow" hidden><span>حساسیت</span><input type="range" id="sensRange" min="10" max="150" value="45" /></div>
+      <div class="statusbar" id="roomStatus"><span class="dot"></span><span id="roomStatusTxt">در حال اتصال…</span><span class="sep">|</span><span class="mono" id="roomPing">--</span></div>
+    </div>
+  </div>
+
+  <div id="profWrap" hidden>
+    <div class="prof-card">
+      <div class="pav" id="pAv">T</div>
+      <div class="pn" id="pName">…</div>
+      <div class="pu" id="pUser">@…</div>
+      <div class="pid" id="pId" title="کپی آیدی">…</div>
+      <div class="pbio" id="pBio">…</div>
+      <div class="prow">
+        <button class="btn" id="pMute">🔇 میوت شخصی</button>
+        <button class="btn" id="pClose">بستن</button>
       </div>
-      <div class="statusbar" id="roomStatus"><span class="dot"></span><span id="roomStatusTxt">در حال اتصال…</span></div>
+    </div>
+  </div>
+
+  <div id="setWrap" hidden>
+    <div class="prof-card">
+      <div class="pn">⚙️ تنظیمات کلیدها</div>
+      <div class="setrow">
+        <div class="srow-t"><b>دکمهٔ نگه‌دار (PTT)</b><small>در حالت «نگه‌دار» این دکمه را نگه دار تا صدات برسد — می‌توانی با Shift ترکیب کنی</small></div>
+        <div class="srow-b"><button class="btn" id="recPtt">🎧 Space</button><button class="mini" id="clrPtt">پیش‌فرض</button></div>
+      </div>
+      <div class="setrow">
+        <div class="srow-t"><b>کلید میان‌بر میکروفن</b><small>هر جا این ترکیب را بزنی، میکروفن به‌طور کامل باز یا بسته می‌شود — مثل Shift + C</small></div>
+        <div class="srow-b"><button class="btn" id="recMic">🎤 —</button><button class="mini" id="clrMic">پاک</button></div>
+      </div>
+      <div class="prow"><button class="btn" id="setClose">بستن</button></div>
     </div>
   </div>
 
@@ -288,6 +358,11 @@
       { urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"],
         username: "openrelayproject", credential: "openrelayproject" }
     ] };
+    function angleOf(cid) {
+      var h = 0;
+      for (var i = 0; i < cid.length; i++) h = (h * 31 + cid.charCodeAt(i)) % 360;
+      return h;
+    }
 
     var me = null;
     var lobbyTimer = 0, lobbyOpen = false;
@@ -317,9 +392,11 @@
     function leaveLobby() { lobbyOpen = false; if (lobbyTimer) { clearInterval(lobbyTimer); lobbyTimer = 0; } }
     function loadState() {
       if (!lobbyOpen) return;
+      var t0 = Date.now();
       api("/speak/state").then(function (r) {
         if (r.status === 401) { leaveLobby(); showLogin(); return; }
         if (!r.ok) { setLobStatus(false); return; }
+        $("lobPing").textContent = (Date.now() - t0) + "ms";
         setLobStatus(true);
         me = r.d.me;
         $("meName").textContent = me.displayName || me.username;
@@ -332,17 +409,17 @@
     function setLobStatus(on) {
       var s = $("lobStatus");
       s.classList.toggle("off", !on);
-      s.querySelector("span:last-child").textContent = on ? "اتصال برقرار است" : "ارتباط قطع؛ تلاش مجدد…";
+      s.children[1].textContent = on ? "متصل" : "قطع — تلاش مجدد…";
     }
     function renderChannels(chans) {
       var box = $("chanList");
-      if (!chans.length) { box.innerHTML = '<div class="empty">هنوز کانالی نیست. اولین کانال را بساز! 🎧</div>'; return; }
+      if (!chans.length) { box.innerHTML = '<div class="empty">هنوز کانالی نیست — اولین را بساز</div>'; return; }
       var html = "";
       chans.forEach(function (ch) {
         var full = ch.count >= 6 && ch.ownerId !== (me && me.id);
         var ic = ch.locked ? "🔒" : (ch.isPublic ? "🎧" : "🔐");
         html += '<button class="chan' + (expanded[ch.id] ? " open" : "") + '" data-id="' + ch.id + '">' +
-          '<span class="exp">◀</span><span class="cic">' + ic + '</span>' +
+          '<span class="exp">▶</span><span class="cic">' + ic + '</span>' +
           '<span class="nm">' + esc(ch.name) + '</span>' +
           '<span class="cnt' + (full ? " full" : "") + '">' + ch.count + "/6</span>" +
           '<span class="go" data-join="' + ch.id + '">ورود</span></button>';
@@ -369,16 +446,16 @@
         box.innerHTML = ms.length ? ms.map(function (m) {
           return '<div class="sub-row"><span class="spk' + (m.speaking ? " on" : "") + '"></span>' +
             '<span>' + esc(m.displayName || m.username) + '</span>' +
-            (m.mic ? "" : '<span class="micoff">🔇</span>') + '</div>';
+            (m.mic ? "" : '<span style="font-size:10px">🔇</span>') + '</div>';
         }).join("") : '<div class="sub-row">کسی داخل نیست</div>';
       });
     }
     $("btnNew").addEventListener("click", function () {
       var name = prompt("اسم کانال تازه:", "");
       if (!name) return;
-      var isPublic = confirm("کانال عمومی باشد؟ (اوکی = عمومی، لغو = خصوصی فقط با لینک دعوت)");
+      var isPublic = confirm("کانال عمومی باشد؟ (اوکی = عمومی، لغو = خصوصی با لینک دعوت)");
       api("/speak/channels", { name: name, isPublic: isPublic }).then(function (r) {
-        if (r.ok) { toast("کانال ساخته شد ✓"); expanded[r.d.channel.id] = false; loadState(); joinChannel(r.d.channel.id); }
+        if (r.ok) { toast("کانال ساخته شد"); expanded[r.d.channel.id] = false; loadState(); joinChannel(r.d.channel.id); }
         else toast((r.d && r.d.error) || "ساخته نشد");
       });
     });
@@ -388,15 +465,23 @@
       channelId: null, channel: null, clientId: null, joinedAt: 0,
       micMode: localStorage.getItem("t-speak-mode") || "open",
       sens: Number(localStorage.getItem("t-speak-sens") || 45) / 1000,
+      spatial: localStorage.getItem("t-speak-spatial") !== "0",
       micOn: true, holding: false, micDenied: false, voiceDetected: false,
-      localStream: null, audioCtx: null, analyser: null, meterRaf: 0,
+      localStream: null, audioCtx: null, localAn: null, meterRaf: 0,
       speaking: false, speakUntil: 0, lastPush: 0,
-      pcs: {}, remotes: {}, remoteAn: {}, pendingIce: {},
-      chat: [], chatCursor: 0, chatOpen: false,
+      pcs: {}, remotes: {}, graphs: {}, remoteAn: {}, pendingIce: {},
+      chat: [], chatCursor: 0, chatOpen: true,
+      pttKeys: ["Space"], micKeys: [], held: null, recTarget: null, micComboWas: false,
       cursor: 0, syncBusy: false, syncTm: 0, drain: false, errCount: 0,
-      forcedMuted: false, vols: {}
+      forcedMuted: false, vols: {}, pmuted: {}, openDetail: null, ping: 0
     };
     try { S.vols = JSON.parse(localStorage.getItem("t-speak-vols") || "{}") || {}; } catch (e) { S.vols = {}; }
+    try { S.pmuted = JSON.parse(localStorage.getItem("t-speak-pmuted") || "{}") || {}; } catch (e) { S.pmuted = {}; }
+    try { S.chatOpen = localStorage.getItem("t-speak-chat") !== "0"; } catch (e) {}
+    try { var pk = JSON.parse(localStorage.getItem("t-speak-ptt") || 'null'); if (pk && pk.length) S.pttKeys = pk; } catch (e) {}
+    try { var mk = JSON.parse(localStorage.getItem("t-speak-mickey") || "[]"); if (mk && mk.length) S.micKeys = mk; } catch (e) {}
+    S.held = new Set();
+    function savePmuted() { try { localStorage.setItem("t-speak-pmuted", JSON.stringify(S.pmuted)); } catch (e) {} }
 
     function joinChannel(id) {
       leaveRoomSilent();
@@ -413,20 +498,21 @@
         S.channelId = r.d.channel.id; S.channel = r.d.channel;
         S.clientId = r.d.clientId; S.joinedAt = Number(r.d.joinedAt || Date.now());
         S.cursor = 0; S.chatCursor = 0; S.chat = []; S.drain = true;
-        S.pcs = {}; S.remotes = {}; S.remoteAn = {}; S.pendingIce = {};
-        S.errCount = 0; S.forcedMuted = false; S.micOn = !S.micDenied;
+        S.pcs = {}; S.remotes = {}; S.graphs = {}; S.remoteAn = {}; S.pendingIce = {};
+        S.errCount = 0; S.forcedMuted = false; S.micOn = !S.micDenied; S.openDetail = null;
         leaveLobby();
         $("login").hidden = true; $("lobby").hidden = true; $("room").hidden = false;
         $("chatWrap").hidden = !S.chatOpen; renderChat();
         $("roomName").textContent = S.channel.name;
         $("btnLock").hidden = S.channel.ownerId !== me.id;
+        $("btnSpatial").classList.toggle("on", S.spatial);
         applyModeUI();
         setupLocalMeter();
         renderMembers(r.d.members || []);
         (r.d.members || []).forEach(function (m) { if (m.clientId !== S.clientId) ensurePeer(m, shouldInitiate(m)); });
-        setRoomStatus("متصل شد ✓" + (S.micDenied ? " — میکروفن اجازه نگرفت؛ فقط گوش می‌دهی" : ""));
+        setRoomStatus("متصل" + (S.micDenied ? " — میکروفن اجازه نگرفت؛ فقط شنونده" : ""));
         scheduleSync(60);
-        blip(880, 0.05);
+        blip(880, 0.03);
       }).catch(function () { toast("خطای اتصال به کانال"); });
     }
     function shouldInitiate(m) {
@@ -443,26 +529,20 @@
         try {
           S.localStream.getAudioTracks().forEach(function (t) { pc.addTrack(t, S.localStream); });
           var snd = pc.getSenders()[0];
-          if (snd && snd.setParameters) {
-            try { snd.setParameters({ encodings: [{ maxBitrate: 24000 }] }); } catch (e) {}
-          }
+          if (snd && snd.setParameters) { try { snd.setParameters({ encodings: [{ maxBitrate: 24000 }] }); } catch (e) {} }
         } catch (e) {}
       } else {
         try { pc.addTransceiver("audio", { direction: "recvonly" }); } catch (e) {}
       }
-      pc.onicecandidate = function (e) {
-        if (e.candidate) sendSignal(m.clientId, { t: "ice", c: e.candidate });
-      };
-      pc.ontrack = function (e) {
-        attachRemote(m, e.streams[0]);
-      };
+      pc.onicecandidate = function (e) { if (e.candidate) sendSignal(m.clientId, { t: "ice", c: e.candidate }); };
+      pc.ontrack = function (e) { attachRemote(m, e.streams[0]); };
       pc.onconnectionstatechange = function () {
         if (pc.connectionState === "failed") {
           setTimeout(function () {
             if (S.pcs[m.clientId] === pc) { dropPeer(m.clientId); if (shouldInitiate(m)) ensurePeer(m, true); }
           }, 2500);
         }
-        updateQual(m.clientId); updateRoomStatusByPeers();
+        refreshQual(m.clientId); updateRoomStatusByPeers();
       };
       if (initiator) {
         pc.createOffer().then(function (of) {
@@ -471,26 +551,68 @@
       }
       return pc;
     }
+    function volFor(userId, clientId) {
+      if (S.pmuted[userId]) return 0;
+      var v = S.vols[userId];
+      return v === undefined ? 1 : v;
+    }
     function attachRemote(m, stream) {
       var el = S.remotes[m.clientId];
       if (!el) {
         el = document.createElement("audio"); el.autoplay = true; el.setAttribute("playsinline", "");
-        var v = S.vols[m.userId];
-        if (v !== undefined) el.volume = Math.max(0, Math.min(1, v));
+        el.muted = true;
         $("audios").appendChild(el); S.remotes[m.clientId] = el;
       }
-      if (el.srcObject !== stream) { el.srcObject = stream; el.play().catch(function () { showUnlockTip(); }); }
+      if (el.srcObject !== stream) { el.srcObject = stream; el.play().catch(function () {}); }
+      el.muted = true; el.volume = 1;
+      try {
+        if (S.audioCtx.state === "suspended") S.audioCtx.resume();
+      } catch (e) {}
       try {
         S.audioCtx = S.audioCtx || new AudioContext();
-        var an = S.audioCtx.createAnalyser(); an.fftSize = 512;
-        S.audioCtx.createMediaStreamSource(stream).connect(an);
+        var ctx = S.audioCtx;
+        var g = S.graphs[m.clientId];
+        if (g) { try { g.src.disconnect(); } catch (e) {} }
+        var src = ctx.createMediaStreamSource(stream);
+        var gain = ctx.createGain();
+        gain.gain.value = volFor(m.userId, m.clientId);
+        var an = ctx.createAnalyser(); an.fftSize = 512;
+        src.connect(an);
+        if (S.spatial) {
+          var pan = ctx.createPanner();
+          pan.panningModel = "HRTF"; pan.distanceModel = "inverse";
+          pan.refDistance = 1; pan.maxDistance = 12; pan.rolloffFactor = 0.6;
+          var rad = angleOf(m.clientId) * Math.PI / 180;
+          if (pan.positionX) {
+            pan.positionX.value = Math.sin(rad) * 2.2;
+            pan.positionY.value = 0;
+            pan.positionZ.value = -Math.cos(rad) * 2.2;
+          } else {
+            pan.setPosition(Math.sin(rad) * 2.2, 0, -Math.cos(rad) * 2.2);
+          }
+          src.connect(gain); gain.connect(pan); pan.connect(ctx.destination);
+        } else {
+          src.connect(gain); gain.connect(ctx.destination);
+        }
+        S.graphs[m.clientId] = { src: src, gain: gain };
         S.remoteAn[m.clientId] = { an: an, buf: new Uint8Array(an.frequencyBinCount), speaking: false, until: 0 };
-      } catch (e) {}
+      } catch (e) {
+        el.muted = false; el.volume = volFor(m.userId, m.clientId);
+        el.play().catch(function () { showUnlockTip(); });
+      }
+    }
+    function rebuildGraph(cid, userId) {
+      var g = S.graphs[cid];
+      if (g && g.gain) { g.gain.gain.value = volFor(userId, cid); return; }
+      var el = S.remotes[cid];
+      if (el) { el.muted = false; el.volume = volFor(userId, cid); }
     }
     function dropPeer(cid) {
       try { S.pcs[cid] && S.pcs[cid].close(); } catch (e) {}
       delete S.pcs[cid];
       if (S.remotes[cid]) { try { S.remotes[cid].remove(); } catch (e) {} delete S.remotes[cid]; }
+      var g = S.graphs[cid];
+      if (g) { try { g.src.disconnect(); g.gain.disconnect(); } catch (e) {} delete S.graphs[cid]; }
       delete S.pendingIce[cid]; delete S.remoteAn[cid];
     }
     function sendSignal(to, data) {
@@ -502,8 +624,8 @@
       try { d = typeof sig.data === "string" ? JSON.parse(sig.data) : sig.data; } catch (e) { d = null; }
       if (!d || !d.t) return;
       if (d.t === "kick") { toast("توسط مدیر اخراج شدی"); leaveRoom(); return; }
-      if (d.t === "mute") { S.forcedMuted = true; applyMicState(); toast("مدیر میکروفنت را بست 🔇"); return; }
-      if (d.t === "unmute") { S.forcedMuted = false; applyMicState(); toast("میکروفن آزاد شد 🎙"); return; }
+      if (d.t === "mute") { S.forcedMuted = true; applyMicState(); toast("مدیر میکروفنت را بست"); return; }
+      if (d.t === "unmute") { S.forcedMuted = false; applyMicState(); toast("میکروفن آزاد شد"); return; }
       if (!hasRTC) return;
       var from = sig.fromCid;
       if (d.t === "offer") {
@@ -533,7 +655,7 @@
       delete S.pendingIce[cid];
     }
 
-    /* --- sync هوشمند: سریع موقع اتصال، آرام موقع ثبات --- */
+    /* --- sync --- */
     function scheduleSync(delay) {
       if (S.syncTm || !S.channelId) return;
       S.syncTm = setTimeout(function () { S.syncTm = 0; syncLoop(); }, delay);
@@ -546,14 +668,17 @@
     function syncLoop() {
       if (!S.channelId || S.syncBusy) return;
       S.syncBusy = true;
+      var t0 = Date.now();
       api("/speak/channels/" + S.channelId + "/sync", {
         clientId: S.clientId, speaking: S.speaking,
         mic: micBroadcast() ? true : false, since: S.cursor, chatSince: S.chatCursor
       }).then(function (r) {
         S.syncBusy = false;
+        S.ping = Date.now() - t0;
+        $("roomPing").textContent = S.ping + "ms";
         if (r.status === 401) { leaveRoom(); showLogin(); return; }
         if (r.status === 409) { toast("از کانال خارج شدی"); leaveRoom(); return; }
-        if (!r.ok) { if (++S.errCount > 4) setRoomStatus("ارتباط ضعیف است…"); scheduleSync(1500); return; }
+        if (!r.ok) { if (++S.errCount > 4) setRoomStatus("ارتباط ضعیف"); scheduleSync(1500); return; }
         S.errCount = 0;
         if (r.d.cursor) S.cursor = r.d.cursor;
         var ms = r.d.members || [];
@@ -568,13 +693,12 @@
         });
         var someoneLeft = false;
         Object.keys(S.pcs).forEach(function (cid) { if (!seen[cid]) { dropPeer(cid); someoneLeft = true; } });
-        if (someoneLeft) blip(520, 0.04);
+        if (someoneLeft) blip(520, 0.025);
         (r.d.signals || []).forEach(onSignal);
         S.drain = (r.d.signals || []).length > 0;
         if ((r.d.chat || []).length) {
-          var atBottom = true;
           var log = $("chatLog");
-          if (log) atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+          var atBottom = log ? log.scrollHeight - log.scrollTop - log.clientHeight < 60 : true;
           S.chat = S.chat.concat(r.d.chat || []).slice(-120);
           S.chatCursor = Math.max(S.chatCursor, Number(r.d.chatCursor || S.chatCursor));
           renderChat(atBottom);
@@ -583,11 +707,11 @@
           var wasLocked = S.channel && S.channel.locked;
           S.channel = r.d.channel;
           $("btnLock").textContent = r.d.locked ? "🔒" : "🔓";
-          if (wasLocked !== undefined && wasLocked !== r.d.locked) toast(r.d.locked ? "کانال قفل شد 🔒" : "قفل کانال باز شد 🔓");
+          if (wasLocked !== undefined && wasLocked !== r.d.locked) toast(r.d.locked ? "کانال قفل شد" : "قفل کانال باز شد");
         }
         updateRoomStatusByPeers();
         scheduleSync(S.drain ? 300 : 1000);
-      }).catch(function () { S.syncBusy = false; if (++S.errCount > 4) setRoomStatus("ارتباط قطع؛ تلاش مجدد…"); scheduleSync(1800); });
+      }).catch(function () { S.syncBusy = false; if (++S.errCount > 4) setRoomStatus("ارتباط قطع — تلاش مجدد"); scheduleSync(1800); });
     }
     var lastMembersSig = "";
     function membersChanged(ms) {
@@ -599,70 +723,149 @@
       var n = Object.keys(S.pcs).length;
       var conn = 0;
       Object.keys(S.pcs).forEach(function (cid) { var st = S.pcs[cid].connectionState; if (st === "connected" || st === "completed") conn++; });
-      var txt = n === 0 ? "تنهایی! منتظر بقیه…" : ("صدا با " + conn + " از " + n + " نفر برقرار است");
-      setRoomStatus(txt);
+      var spk = 0;
+      (S.lastMembers || []).forEach(function (m) { if (m.mic) spk++; });
+      setRoomStatus("اتاق " + ((S.lastMembers || []).length) + "/6 · گوینده " + spk + (n === 0 ? " · منتظر بقیه" : " · صدا " + conn + "/" + n));
       $("roomStatus").classList.toggle("off", n > 0 && conn === 0);
     }
-    function setRoomStatus(txt) { $("roomStatusTxt").textContent = txt; }
-    function qualIcon(cid) {
-      if (cid === S.clientId) return "🟣";
-      var p = S.pcs[cid]; if (!p) return "⚪";
-      var st = p.connectionState;
-      if (st === "connected" || st === "completed") return "🟢";
-      if (st === "failed" || st === "disconnected" || st === "closed") return "🔴";
-      return "🟡";
+    function setRoomStatus(txt) {
+      $("roomStatusTxt").textContent = txt;
+      $("roomSub").textContent = txt;
     }
-    function updateQual(cid) {
+    function qualCls(cid) {
+      if (cid === S.clientId) return "q2";
+      var p = S.pcs[cid]; if (!p) return "";
+      var st = p.connectionState;
+      if (st === "connected" || st === "completed") return "q2";
+      if (st === "failed" || st === "disconnected" || st === "closed") return "q0";
+      return "q1";
+    }
+    function refreshQual(cid) {
       var el = document.querySelector('[data-card="' + cid + '"] .qual');
-      if (el) el.textContent = qualIcon(cid);
+      if (el) el.className = "qual " + qualCls(cid);
     }
 
     /* --- اعضا --- */
     function renderMembers(ms) {
-      $("roomSub").textContent = ms.length + " نفر داخل کانال" + (S.micDenied ? " · فقط شنونده" : "");
       var html = "";
       ms.forEach(function (m) {
         var mine = m.clientId === S.clientId;
         var isOwner = S.channel && m.userId === S.channel.ownerId;
         var remoteSpk = S.remoteAn[m.clientId] && S.remoteAn[m.clientId].speaking;
         var speaking = m.speaking || remoteSpk;
-        var vol = S.vols[m.userId] !== undefined ? S.vols[m.userId] : 1;
-        html += '<div class="member' + (speaking ? " speaking" : "") + (mine ? " me-self" : "") + '" data-card="' + m.clientId + '" data-user="' + m.userId + '">' +
-          (isOwner ? '<span class="crown">👑</span>' : "") +
-          '<span class="qual">' + qualIcon(m.clientId) + "</span>" +
+        var pm = S.pmuted[m.userId];
+        html += '<div class="mrow' + (speaking ? " speaking" : "") + '" data-card="' + m.clientId + '" data-user="' + m.userId + '">' +
+          '<span class="qual ' + qualCls(m.clientId) + '"></span>' +
           '<div class="av2" style="--h:' + (m.hue || 220) + '">' + esc((m.displayName || m.username || "T").trim().charAt(0).toUpperCase()) + "</div>" +
-          '<div class="nm2">' + esc(m.displayName || m.username) + "</div>" +
-          '<div class="un2">@' + esc(m.username) + "</div>" +
-          '<span class="st' + (m.mic ? "" : " off") + '">' + (m.mic ? "🎙" : "🔇") + "</span>" +
-          (mine ? "" : '<div class="vol" title="تنظیم بلندی صدای این کاربر"><span>🔈</span><input type="range" min="0" max="100" step="5" value="' + Math.round(vol * 100) + '" data-vol="' + m.clientId + '" /><span>🔊</span></div>') +
-          ((!mine && amMod() && !isOwner) ?
-            '<div class="tools"><button data-mute="' + m.clientId + '">' + (m.mic ? "ساکت" : "بازکردن") + '</button><button data-kick="' + m.clientId + '">اخراج</button></div>' : "") +
+          '<div class="who"><b>' + esc(m.displayName || m.username) + (isOwner ? ' <span style="color:var(--gold);font-size:10px">👑</span>' : "") + (pm ? ' <span style="color:var(--red);font-size:10px" title="میوت شخصی">🔇</span>' : "") + "</b>" +
+          "<span>@" + esc(m.username) + "</span></div>" +
+          '<div class="micons"><span class="' + (m.mic ? "" : "off") + '">' + (m.mic ? "🎙" : "🔇") + "</span></div>" +
           "</div>";
+        if (S.openDetail === m.clientId) {
+          html += '<div class="mdetail" data-detail="' + m.clientId + '">';
+          if (!mine) {
+            var v = S.vols[m.userId] !== undefined ? S.vols[m.userId] : 1;
+            html += '<div class="vol"><span>🔈</span><input type="range" min="0" max="100" step="5" value="' + Math.round(v * 100) + '" data-vol="' + m.clientId + '" data-user="' + m.userId + '" /><span>🔊</span></div>';
+            html += '<button class="mini" data-prof="' + m.userId + '" data-un="' + esc(m.username) + '">پروفایل</button>';
+            html += '<button class="mini' + (pm ? " warn" : "") + '" data-pmute="' + m.userId + '">' + (pm ? "بازکردن صدا" : "میوت شخصی") + "</button>";
+            if (amMod() && !isOwner) {
+              html += '<button class="mini warn" data-smute="' + m.clientId + '">ساکت</button>';
+              html += '<button class="mini warn" data-kick="' + m.clientId + '">اخراج</button>';
+            }
+          } else {
+            html += '<span style="font-size:10.5px;color:var(--sub)">این جای توست</span>';
+          }
+          html += "</div>";
+        }
       });
-      $("memberGrid").innerHTML = html;
+      $("memberList").innerHTML = html;
     }
     function amMod() { return S.channel && me && S.channel.ownerId === me.id; }
-    $("memberGrid").addEventListener("click", function (e) {
+    $("memberList").addEventListener("click", function (e) {
       var t = e.target;
-      var kick = t.getAttribute && t.getAttribute("data-kick");
-      var mute = t.getAttribute && t.getAttribute("data-mute");
-      if (kick) { api("/speak/channels/" + S.channelId + "/mod", { action: "kick", target: kick }); return; }
-      if (mute) { api("/speak/channels/" + S.channelId + "/mod", { action: "mute", target: mute }); return; }
+      var act = t.getAttribute && (t.getAttribute("data-kick") || t.getAttribute("data-smute") || t.getAttribute("data-pmute") || t.getAttribute("data-prof"));
+      if (t.getAttribute && t.getAttribute("data-kick")) { api("/speak/channels/" + S.channelId + "/mod", { action: "kick", target: t.getAttribute("data-kick") }); return; }
+      if (t.getAttribute && t.getAttribute("data-smute")) { api("/speak/channels/" + S.channelId + "/mod", { action: "mute", target: t.getAttribute("data-smute") }); return; }
+      if (t.getAttribute && t.getAttribute("data-pmute")) {
+        var uid = t.getAttribute("data-pmute");
+        S.pmuted[uid] = !S.pmuted[uid];
+        savePmuted();
+        Object.keys(S.graphs).forEach(function (cid) {
+          var card = document.querySelector('[data-card="' + cid + '"]');
+          if (card && card.getAttribute("data-user") === uid) rebuildGraph(cid, uid);
+        });
+        toast(S.pmuted[uid] ? "صدای این کاربر برای همیشه بسته شد" : "صدای این کاربر باز شد");
+        renderMembers(S.lastMembers || []);
+        return;
+      }
+      if (t.getAttribute && t.getAttribute("data-prof")) { openProfile(t.getAttribute("data-prof"), t.getAttribute("data-un")); return; }
+      var row = t.closest ? t.closest(".mrow") : null;
+      if (!row) return;
+      var cid = row.getAttribute("data-card");
+      S.openDetail = S.openDetail === cid ? null : cid;
+      renderMembers(S.lastMembers || []);
     });
-    $("memberGrid").addEventListener("input", function (e) {
+    $("memberList").addEventListener("input", function (e) {
       var cid = e.target.getAttribute && e.target.getAttribute("data-vol");
       if (!cid) return;
-      var card = e.target.closest("[data-card]");
-      var userId = card ? card.getAttribute("data-user") : null;
+      var userId = e.target.getAttribute("data-user");
       var v = Number(e.target.value) / 100;
-      if (S.remotes[cid]) S.remotes[cid].volume = v;
-      if (userId) { S.vols[userId] = v; try { localStorage.setItem("t-speak-vols", JSON.stringify(S.vols)); } catch (err) {} }
+      if (S.pmuted[userId]) { S.pmuted[userId] = false; savePmuted(); }
+      S.vols[userId] = v;
+      try { localStorage.setItem("t-speak-vols", JSON.stringify(S.vols)); } catch (err) {}
+      rebuildGraph(cid, userId);
     });
 
-    /* --- چت متنی --- */
+    /* --- کارت پروفایل --- */
+    var profUid = null;
+    function openProfile(userId, username) {
+      profUid = userId;
+      $("pUser").textContent = "@" + (username || "");
+      $("pName").textContent = "…"; $("pBio").textContent = "…"; $("pId").textContent = "";
+      var av = $("pAv"); av.style.setProperty("--h", "220"); av.textContent = "?";
+      var card = document.querySelector('[data-user="' + userId + '"]');
+      if (card) {
+        var nm = card.querySelector(".who b");
+        $("pName").textContent = nm ? nm.textContent.replace(/[🔇👑]/g, "").trim() : username;
+        var av2 = card.querySelector(".av2");
+        if (av2) { var h = av2.style.getPropertyValue("--h"); if (h) av.style.setProperty("--h", h); av.textContent = av2.textContent; }
+      }
+      $("pMute").textContent = S.pmuted[userId] ? "🔊 بازکردن صدا" : "🔇 میوت شخصی";
+      $("pMute").classList.toggle("warn", !!S.pmuted[userId]);
+      $("profWrap").hidden = false;
+      if (username) api("/users/" + encodeURIComponent(username)).then(function (r) {
+        if (!r.ok || profUid !== userId) return;
+        var u = r.d.user || r.d;
+        if (u && u.id) $("pId").textContent = "ID: " + u.id;
+        if (u && u.bio) $("pBio").textContent = u.bio;
+        else if (u) $("pBio").textContent = "بیویی ننوشته.";
+      }).catch(function () {});
+    }
+    $("pClose").addEventListener("click", function () { $("profWrap").hidden = true; });
+    $("profWrap").addEventListener("click", function (e) { if (e.target === this) $(this.id).hidden = true; });
+    $("pId").addEventListener("click", function () {
+      if (!this.textContent) return;
+      var self = this;
+      (navigator.clipboard ? navigator.clipboard.writeText(this.textContent.replace("ID: ", "")) : Promise.reject())
+        .then(function () { toast("آیدی کپی شد"); }).catch(function () {});
+    });
+    $("pMute").addEventListener("click", function () {
+      if (!profUid) return;
+      S.pmuted[profUid] = !S.pmuted[profUid];
+      savePmuted();
+      Object.keys(S.graphs).forEach(function (cid) {
+        var card = document.querySelector('[data-card="' + cid + '"]');
+        if (card && card.getAttribute("data-user") === profUid) rebuildGraph(cid, profUid);
+      });
+      this.textContent = S.pmuted[profUid] ? "🔊 بازکردن صدا" : "🔇 میوت شخصی";
+      renderMembers(S.lastMembers || []);
+      toast(S.pmuted[profUid] ? "میوت شخصی فعال شد" : "صدا باز شد");
+    });
+
+    /* --- چت --- */
     function renderChat(atBottom) {
       var log = $("chatLog"); if (!log) return;
-      if (!S.chat.length) { log.innerHTML = '<div class="empty" style="padding:14px">پیامی نیست. اولین را بنویس ✍️</div>'; return; }
+      if (!S.chat.length) { log.innerHTML = '<div class="empty" style="padding:12px">پیامی نیست</div>'; return; }
       log.innerHTML = S.chat.map(function (m) {
         var own = m.clientId === S.clientId;
         var hhmm = new Date(Number(m.createdAt || 0)).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
@@ -674,6 +877,7 @@
     }
     $("btnChat").addEventListener("click", function () {
       S.chatOpen = !S.chatOpen;
+      try { localStorage.setItem("t-speak-chat", S.chatOpen ? "1" : "0"); } catch (e) {}
       $("chatWrap").hidden = !S.chatOpen;
       if (S.chatOpen) renderChat();
     });
@@ -688,15 +892,30 @@
       });
     });
 
+    /* --- صدای موقعیتی --- */
+    $("btnSpatial").addEventListener("click", function () {
+      S.spatial = !S.spatial;
+      try { localStorage.setItem("t-speak-spatial", S.spatial ? "1" : "0"); } catch (e) {}
+      this.classList.toggle("on", S.spatial);
+      toast(S.spatial ? "صدای موقعیتی سه‌بعدی روشن — هر نفر از یه جهت میاد" : "صدای معمولی");
+      S.graphs = {};
+      Object.keys(S.remotes).forEach(function (cid) {
+        var card = document.querySelector('[data-card="' + cid + '"]');
+        var uid = card ? card.getAttribute("data-user") : null;
+        var st = S.remotes[cid].srcObject;
+        if (st && uid !== null) attachRemote({ clientId: cid, userId: uid }, st);
+      });
+    });
+
     /* --- میکروفن --- */
     function micBroadcast() {
       if (S.micDenied || S.forcedMuted || !S.localStream) return false;
-      if (S.micMode === "ptt") return S.holding;
-      if (S.micMode === "voice") return true;
+      if (S.micMode === "ptt") return S.holding && S.micOn;
+      if (S.micMode === "voice") return S.micOn;
       return S.micOn;
     }
     function micEffective() {
-      if (S.micMode === "voice") return S.voiceDetected;
+      if (S.micMode === "voice") return S.voiceDetected && S.micOn;
       return micBroadcast();
     }
     var lastBroadcast = null;
@@ -705,10 +924,10 @@
         S.localStream.getAudioTracks().forEach(function (t) { t.enabled = micEffective(); });
       }
       var b = $("btnMic");
-      if (S.micMode === "ptt") { b.textContent = "🗣 نگه‌دار فعال"; b.classList.add("ghost"); }
-      else if (S.micMode === "voice") { b.textContent = S.micDenied ? "🔇 میکروفن اجازه نگرفت" : "🎙 ارسال با صدا"; b.classList.toggle("ghost", S.micDenied); }
-      else { b.textContent = micBroadcast() ? "🎙 میکروفن روشن" : "🔇 میکروفن بسته"; b.classList.toggle("ghost", !micBroadcast()); }
-      b.classList.toggle("danger", S.forcedMuted);
+      if (S.forcedMuted) { b.textContent = "🔇 بسته توسط مدیر"; b.classList.add("danger"); }
+      else if (S.micMode === "ptt") { b.textContent = S.micOn ? "🗣 حالت نگه‌دار" : "🔇 میکروفن بسته"; b.classList.remove("danger"); }
+      else if (S.micMode === "voice") { b.textContent = S.micOn ? "🎙 ارسال با صدا" : "🔇 میکروفن بسته"; b.classList.remove("danger"); }
+      else { b.textContent = micBroadcast() ? "🎙 میکروفن روشن" : "🔇 میکروفن بسته"; b.classList.remove("danger"); }
       $("btnPtt").classList.toggle("holding", S.micMode === "ptt" && S.holding);
       var nowBc = micBroadcast();
       if (nowBc !== lastBroadcast) { lastBroadcast = nowBc; pushFlags(); }
@@ -716,7 +935,7 @@
     $("btnMic").addEventListener("click", function () {
       if (S.forcedMuted) { toast("مدیر میکروفنت را بسته است"); return; }
       if (S.micMode === "ptt") { toast("در حالت نگه‌دار، دکمهٔ «نگه دار» را فشار بده"); return; }
-      if (S.micMode === "voice") { toast("در این حالت صدا خودش میکروفن را باز می‌کند — حساسیت را تنظیم کن"); return; }
+      if (S.micMode === "voice") { toast("در این حالت صدا خودش میکروفن را باز می‌کند — یا با کلید میان‌بر ببند"); return; }
       S.micOn = !S.micOn; applyMicState();
     });
     function applyModeUI() {
@@ -725,6 +944,7 @@
       $("btnPtt").hidden = m !== "ptt";
       $("pttHint").hidden = m !== "ptt";
       $("sensRow").hidden = m !== "voice";
+      refreshKeyUI();
       applyMicState();
     }
     $("modeSwitch").addEventListener("click", function (e) {
@@ -742,36 +962,97 @@
     var pb = $("btnPtt");
     pb.addEventListener("pointerdown", function (e) { e.preventDefault(); holdPTT(true); });
     ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) { pb.addEventListener(ev, function () { holdPTT(false); }); });
+    var MODS = { ShiftLeft:1, ShiftRight:1, ControlLeft:1, ControlRight:1, AltLeft:1, AltRight:1, MetaLeft:1, MetaRight:1 };
+    function keyLabel(code) {
+      var map = { Space:"Space", ShiftLeft:"Shift", ShiftRight:"Shift", ControlLeft:"Ctrl", ControlRight:"Ctrl", AltLeft:"Alt", AltRight:"Alt", Tab:"Tab", CapsLock:"Caps", Enter:"Enter", ArrowUp:"↑", ArrowDown:"↓", ArrowLeft:"←", ArrowRight:"→", Minus:"-", Equal:"=", BracketLeft:"[", BracketRight:"]", Semicolon:";", Quote:"'", Comma:",", Period:".", Slash:"/", Insert:"Ins", Delete:"Del", Home:"Home", End:"End", PageUp:"PgUp", PageDown:"PgDn" };
+      if (map[code]) return map[code];
+      if (code.indexOf("Key") === 0) return code.slice(3);
+      if (code.indexOf("Digit") === 0) return code.slice(5);
+      if (code.indexOf("Numpad") === 0) return "Num" + code.slice(6);
+      return code;
+    }
+    function comboLabel(arr) { return (arr && arr.length) ? arr.map(keyLabel).join(" + ") : "—"; }
+    function allHeld(arr) { return arr.every(function (c) { return S.held.has(c); }); }
+    function refreshKeyUI() {
+      var rp = $("recPtt"), rm = $("recMic");
+      if (rp) rp.textContent = "🎧 " + comboLabel(S.pttKeys);
+      if (rm) rm.textContent = "🎤 " + (S.micKeys.length ? comboLabel(S.micKeys) : "خاموش");
+      if (S.pttKeys.length) $("pttHint").textContent = comboLabel(S.pttKeys) + " را نگه دار تا صدات برسد";
+    }
+    function startRec(which) {
+      stopRec2(); S.recTarget = which;
+      var b = which === "ptt" ? $("recPtt") : $("recMic");
+      b.classList.add("rec"); b.textContent = "… دکمه را بزن";
+    }
+    function stopRec2() {
+      if (S.recTarget === "ptt") $("recPtt").classList.remove("rec");
+      if (S.recTarget === "mic") $("recMic").classList.remove("rec");
+      S.recTarget = null; refreshKeyUI();
+    }
+    $("btnSet").addEventListener("click", function () { refreshKeyUI(); $("setWrap").hidden = false; });
+    $("setClose").addEventListener("click", function () { stopRec2(); $("setWrap").hidden = true; });
+    $("setWrap").addEventListener("click", function (e) { if (e.target === this) { stopRec2(); this.hidden = true; } });
+    $("recPtt").addEventListener("click", function () { if (S.recTarget !== "ptt") startRec("ptt"); else stopRec2(); });
+    $("recMic").addEventListener("click", function () { if (S.recTarget !== "mic") startRec("mic"); else stopRec2(); });
+    $("clrPtt").addEventListener("click", function () { S.pttKeys = ["Space"]; try { localStorage.setItem("t-speak-ptt", JSON.stringify(S.pttKeys)); } catch (err) {} stopRec2(); toast("پیش‌فرض: Space"); });
+    $("clrMic").addEventListener("click", function () { S.micKeys = []; try { localStorage.setItem("t-speak-mickey", "[]"); } catch (err) {} stopRec2(); toast("میان‌بر میکروفن خاموش شد"); });
     document.addEventListener("keydown", function (e) {
-      if (e.code !== "Space") return;
-      var tg = e.target; if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA")) return;
-      e.preventDefault(); holdPTT(true);
+      var tg = e.target;
+      var typing = tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA");
+      if (S.recTarget) {
+        e.preventDefault();
+        if (!MODS[e.code]) {
+          var mods = [];
+          S.held.forEach(function (c) { if (MODS[c] && mods.indexOf(c) === -1) mods.push(c); });
+          var combo = mods.concat([e.code]).slice(0, 3);
+          if (S.recTarget === "ptt") { S.pttKeys = combo; try { localStorage.setItem("t-speak-ptt", JSON.stringify(combo)); } catch (err) {} }
+          else { S.micKeys = combo; try { localStorage.setItem("t-speak-mickey", JSON.stringify(combo)); } catch (err) {} }
+          var done = combo.slice();
+          stopRec2(); toast("ذخیره شد: " + comboLabel(done));
+        } else { S.held.add(e.code); }
+        return;
+      }
+      if (typing) return;
+      if (!S.held.has(e.code)) S.held.add(e.code);
+      if (S.micMode === "ptt") holdPTT(allHeld(S.pttKeys));
+      if (S.micKeys.length) {
+        var micNow = allHeld(S.micKeys);
+        if (micNow && !S.micComboWas && !e.repeat && S.channelId) {
+          S.micOn = !S.micOn; applyMicState(); pushFlags();
+          toast(S.micOn ? "میکروفن باز شد 🎙" : "میکروفن بسته شد 🔇");
+        }
+        S.micComboWas = micNow;
+      }
+      if (S.pttKeys.indexOf(e.code) !== -1 || MODS[e.code]) e.preventDefault();
     });
-    document.addEventListener("keyup", function (e) { if (e.code === "Space") holdPTT(false); });
+    document.addEventListener("keyup", function (e) {
+      S.held.delete(e.code);
+      if (S.micMode === "ptt") holdPTT(allHeld(S.pttKeys));
+      if (S.micKeys.length) S.micComboWas = allHeld(S.micKeys);
+    });
+    window.addEventListener("blur", function () { S.held.clear(); holdPTT(false); S.micComboWas = false; });
 
-    /* --- سطح صدا و تشخیص صحبت (محلی + ریموت) --- */
+    /* --- تحلیل صدای محلی و ریموت --- */
     function setupLocalMeter() {
       cancelAnimationFrame(S.meterRaf);
-      if (!S.localStream || typeof AudioContext === "undefined") { $("meterWrap").hidden = true; return; }
-      $("meterWrap").hidden = false;
+      if (!S.localStream || typeof AudioContext === "undefined") { $("meterWrap") && ($("meterWrap").hidden = true); return; }
       try {
         S.audioCtx = S.audioCtx || new AudioContext();
         if (S.audioCtx.state === "suspended") S.audioCtx.resume();
         var src = S.audioCtx.createMediaStreamSource(S.localStream);
         var an = S.audioCtx.createAnalyser(); an.fftSize = 512;
         src.connect(an);
-        S.analyser = { an: an, buf: new Uint8Array(an.frequencyBinCount) };
-      } catch (e) { $("meterWrap").hidden = true; return; }
+        S.localAn = { an: an, buf: new Uint8Array(an.frequencyBinCount) };
+      } catch (e) { return; }
       var loop = function () {
-        if (S.analyser) {
-          S.analyser.an.getByteTimeDomainData(S.analyser.buf);
+        if (S.localAn) {
+          S.localAn.an.getByteTimeDomainData(S.localAn.buf);
           var sum = 0;
-          for (var i = 0; i < S.analyser.buf.length; i++) { var v = (S.analyser.buf[i] - 128) / 128; sum += v * v; }
-          var rms = Math.sqrt(sum / S.analyser.buf.length);
-          $("meterBar").style.width = Math.min(100, Math.round(rms * 260)) + "%";
+          for (var i = 0; i < S.localAn.buf.length; i++) { var v = (S.localAn.buf[i] - 128) / 128; sum += v * v; }
+          var rms = Math.sqrt(sum / S.localAn.buf.length);
           var now = Date.now();
           var det = rms > S.sens;
-          if (det) { S.speakUntil = now + 600; }
+          if (det) S.speakUntil = now + 600;
           var speaking = now < S.speakUntil;
           if (speaking !== S.speaking) {
             S.speaking = speaking;
@@ -812,13 +1093,13 @@
       Object.keys(S.pcs).forEach(dropPeer);
       S.remoteAn = {};
       if (S.localStream) { try { S.localStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.localStream = null; }
-      S.channelId = null; S.channel = null; S.speaking = false; S.lastMembersSig = "";
+      S.channelId = null; S.channel = null; S.speaking = false; S.lastMembersSig = ""; S.openDetail = null;
     }
     function leaveRoom() {
       var id = S.channelId, cid = S.clientId;
       leaveRoomSilent();
       if (id && cid) api("/speak/channels/" + id + "/leave", { clientId: cid });
-      blip(440, 0.05);
+      blip(440, 0.03);
       enterLobby();
     }
     $("btnLeave").addEventListener("click", leaveRoom);
@@ -839,20 +1120,20 @@
       if (!S.channel) return;
       var lock = !S.channel.locked;
       api("/speak/channels/" + S.channelId + "/mod", { action: lock ? "lock" : "unlock" }).then(function (r) {
-        if (r.ok) { S.channel.locked = lock; $("btnLock").textContent = lock ? "🔒" : "🔓"; toast(lock ? "کانال قفل شد 🔒" : "قفل برداشته شد 🔓"); }
+        if (r.ok) { S.channel.locked = lock; $("btnLock").textContent = lock ? "🔒" : "🔓"; toast(lock ? "کانال قفل شد" : "قفل برداشته شد"); }
       });
     });
     $("btnCopy").addEventListener("click", function () {
       var link = location.origin + "/tSpeak#join=" + S.channelId;
       (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject())
-        .then(function () { toast("لینک دعوت کپی شد ✓"); })
+        .then(function () { toast("لینک دعوت کپی شد"); })
         .catch(function () { prompt("لینک دعوت:", link); });
     });
     function blip(freq, vol) {
       try {
         S.audioCtx = S.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
         var o = S.audioCtx.createOscillator(), g = S.audioCtx.createGain();
-        o.frequency.value = freq; g.gain.value = vol || 0.05;
+        o.frequency.value = freq; g.gain.value = vol || 0.03;
         o.connect(g); g.connect(S.audioCtx.destination);
         o.start(); o.stop(S.audioCtx.currentTime + 0.09);
       } catch (e) {}
@@ -862,9 +1143,9 @@
       window._unlockTip = true;
       var d = document.createElement("div");
       d.className = "unlock-tip";
-      d.innerHTML = '<button class="btn">🔊 برای شنیدن صدا، اینجا ضربه بزن</button>';
+      d.innerHTML = '<button class="btn">برای شنیدن صدا، اینجا ضربه بزن</button>';
       d.addEventListener("click", function () {
-        Object.keys(S.remotes).forEach(function (k) { S.remotes[k].play().catch(function () {}); });
+        Object.keys(S.remotes).forEach(function (k) { S.remotes[k].muted = false; S.remotes[k].play().catch(function () {}); });
         document.body.removeChild(d); window._unlockTip = false;
       });
       document.body.appendChild(d);
