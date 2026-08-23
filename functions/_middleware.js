@@ -9401,6 +9401,8 @@ app.post("/speak/channels/:id/join", async (c) => {
   await speakSweep(db, c.req.param("id"));
   const ch = await one(db, `SELECT * FROM speak_channels WHERE id = ?`, c.req.param("id"));
   if (!ch) return jsonError(c, "کانال پیدا نشد", 404);
+  const callGate = await one(db, `SELECT from_user, to_user FROM calls WHERE id = ?`, ch.id).catch(() => null);
+  if (callGate && user.id !== callGate.from_user && user.id !== callGate.to_user) return jsonError(c, "این تماس خصوصی است", 403);
   const isOwner = ch.owner_id === user.id;
   const ownerLike = isOwner ? "owner" : await requireOwnerLike(user, db);
   if (ch.locked && !isOwner && !ownerLike) return jsonError(c, "کانال قفل است", 403);
@@ -9627,11 +9629,16 @@ app.post("/call/dial", async (c) => {
   if (blk) return jsonError(c, "این تماس ممکن نیست", 403);
   const busy = await one(db, `SELECT id FROM calls WHERE ((to_user = ? OR from_user = ?) AND status IN ('ringing','active')) LIMIT 1`, target.id, target.id);
   if (busy) return jsonError(c, "کاربر مورد نظر مشغول است — لطفاً بعداً تماس بگیرید", 409);
+  await speakInit(db);
+  await speakSweep(db, null);
+  const inRoom = await one(db, `SELECT m.channel_id FROM speak_members m WHERE m.user_id = ? AND m.last_seen > ? LIMIT 1`, target.id, Date.now() - 16000);
+  if (inRoom) return jsonError(c, "کاربر مورد نظر مشغول است — لطفاً بعداً تماس بگیرید", 409);
   const now = Date.now();
   await run(db, `UPDATE calls SET status='cancelled', ended_at=? WHERE from_user = ? AND status='ringing'`, now, user.id).catch(() => {});
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
   const clientId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   await run(db, `INSERT INTO calls (id, from_user, to_user, kind, status, from_client, started_at, last_ping) VALUES (?,?,?,?, 'ringing', ?, ?, ?)`, id, user.id, target.id, kind, clientId, now, now);
+  await run(db, `INSERT INTO speak_channels (id, name, is_public, owner_id, owner_name, locked, created_at) VALUES (?,?,?,?,?,0,?)`, id, "تماس " + (kind === "video" ? "تصویری" : "صوتی"), 0, user.id, user.displayName || user.username, now).catch(() => {});
   pushToUser(db, target.id).catch(() => {});
   return c.json({ ok: true, clientId: clientId, call: { id, kind, status: "ringing", outgoing: true, startedAt: now, peer: callPeer(target) } });
 });
@@ -9667,6 +9674,15 @@ app.post("/call/answer", async (c) => {
   const peerCid = isCallee ? (row.from_client || null) : (row.to_client || null);
   const fresh = await one(db, `SELECT * FROM calls WHERE id = ?`, row.id);
   return c.json({ ok: true, clientId: clientId, peerClientId: peerCid, call: await callHydrate(db, fresh, user.id) });
+});
+app.get("/call/status", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  const row = await one(db, `SELECT status, kind FROM calls WHERE id = ? AND (from_user = ? OR to_user = ?)`, c.req.query("callId") || "", user.id, user.id);
+  if (!row) return jsonError(c, "تماس پیدا نشد", 404);
+  return c.json({ status: row.status, kind: row.kind });
 });
 app.post("/call/decline", async (c) => {
   const user = await auth(c);
