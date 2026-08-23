@@ -9584,7 +9584,9 @@ async function callUserInfo(db, uid) { return await one(db, `SELECT id, username
 async function callHydrate(db, row, meId) {
   const peerId = row.from_user === meId ? row.to_user : row.from_user;
   const peer = await callUserInfo(db, peerId);
-  return { id: row.id, kind: row.kind || "audio", status: row.status, outgoing: row.from_user === meId, startedAt: row.started_at, answeredAt: row.answered_at, endedAt: row.ended_at, peer: callPeer(peer) };
+  let peerNumber = null;
+  try { const pn = await one(db, `SELECT number FROM call_numbers WHERE user_id = ?`, peerId); peerNumber = pn ? pn.number : null; } catch (e) {}
+  return { id: row.id, kind: row.kind || "audio", status: row.status, outgoing: row.from_user === meId, startedAt: row.started_at, answeredAt: row.answered_at, endedAt: row.ended_at, peerNumber: peerNumber, peer: callPeer(peer) };
 }
 async function callTargetUser(db, q) {
   q = String(q || "").trim().replace(/^@/, "");
@@ -9623,8 +9625,8 @@ app.post("/call/dial", async (c) => {
   if (target.id === user.id) return jsonError(c, "به خودت نمی‌توانی زنگ بزنی 🙂");
   const blk = await one(db, `SELECT 1 AS x FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)`, target.id, user.id, user.id, target.id);
   if (blk) return jsonError(c, "این تماس ممکن نیست", 403);
-  const busy = await one(db, `SELECT id FROM calls WHERE ((to_user = ? AND status = 'ringing') OR ((to_user = ? OR from_user = ?) AND status = 'active')) LIMIT 1`, target.id, target.id, target.id);
-  if (busy) return jsonError(c, "مشغول است — بعداً امتحان کن", 409);
+  const busy = await one(db, `SELECT id FROM calls WHERE ((to_user = ? OR from_user = ?) AND status IN ('ringing','active')) LIMIT 1`, target.id, target.id);
+  if (busy) return jsonError(c, "کاربر مورد نظر مشغول است — لطفاً بعداً تماس بگیرید", 409);
   const now = Date.now();
   await run(db, `UPDATE calls SET status='cancelled', ended_at=? WHERE from_user = ? AND status='ringing'`, now, user.id).catch(() => {});
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);

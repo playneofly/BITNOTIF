@@ -264,7 +264,7 @@
     <div id="ovActive" class="overlay" hidden>
       <video id="remoteVideo" hidden autoplay playsinline></video>
       <video id="localVideo" hidden autoplay playsinline muted></video>
-      <audio id="remoteAudio" autoplay hidden></audio>
+      <audio id="remoteAudio" autoplay style="position:fixed;width:0;height:0;opacity:0;pointer-events:none"></audio>
       <div class="callui">
         <div class="top">
           <div class="cname" id="aName" style="color:#fff">…</div>
@@ -359,7 +359,7 @@
     });
 
     /* ============ کیپد ============ */
-    var keys = [["1",""],["2","ABC"],["3","DEF"],["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],["*",""],["0","+"],["#",""]];
+    var keys = [["1",""],["2",""],["3",""],["4",""],["5",""],["6",""],["7",""],["8",""],["9",""],["0",""]];
     var dial = "";
     (function buildPad() {
       var h = "";
@@ -371,15 +371,14 @@
     function renderDial() {
       var el = $("numDisp");
       if (dial) { el.textContent = dial; el.className = ""; }
-      else { el.textContent = "شماره یا @آیدی…"; el.className = "empty"; }
-      $("btnAudio").disabled = !dial;
-      $("btnVideo").disabled = !dial;
+      else { el.textContent = "شمارهٔ ۱۰ رقمی…"; el.className = "empty"; }
+      $("btnAudio").disabled = !/^[0-9]{10}$/.test(dial);
+      $("btnVideo").disabled = !/^[0-9]{10}$/.test(dial);
     }
     $("keypad").addEventListener("click", function (e) {
       var k = e.target.getAttribute && e.target.getAttribute("data-k");
       if (!k) return;
-      if (dial.length < 24) { dial += k; renderDial(); }
-      beep(1200, 0.02, 0.02);
+      if (/^[0-9]$/.test(k) && dial.length < 10) { dial += k; renderDial(); beep(1200, 0.02, 0.02); }
     });
     $("btnClr").addEventListener("click", function () { dial = dial.slice(0, -1); renderDial(); });
     document.addEventListener("keydown", function (e) {
@@ -387,9 +386,9 @@
         if (S.mode !== "idle") return;
         var tg = e.target;
         if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA")) return;
-        if (/^[0-9]$/.test(e.key)) { if (dial.length < 24) { dial += e.key; renderDial(); } }
+        if (/^[0-9]$/.test(e.key)) { if (dial.length < 10) { dial += e.key; renderDial(); } }
         else if (e.key === "Backspace") { dial = dial.slice(0, -1); renderDial(); }
-        else if (e.key === "Enter" && dial) { startCall("audio"); }
+        else if (e.key === "Enter" && /^[0-9]{10}$/.test(dial)) { startCall("audio"); }
       }
     });
     $("btnAudio").addEventListener("click", function () { startCall("audio"); });
@@ -412,7 +411,7 @@
           var cls = c.status === "missed" ? "miss" : (c.outgoing ? "out" : "in");
           var dir = c.status === "missed" ? "✖" : (c.outgoing ? "↗" : "↙");
           var tm = new Date(c.startedAt || 0).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
-          return '<div class="rrow ' + cls + '" data-peer="' + esc(c.peer.username) + '">' +
+          return '<div class="rrow ' + cls + '" data-peer="' + esc(c.peerNumber || c.peer.username) + '">' +
             '<span class="dir">' + dir + "</span>" +
             '<div class="av" style="--h:' + (c.peer.hue || 215) + '">' + esc((c.peer.displayName || c.peer.username || "?").trim().charAt(0).toUpperCase()) + "</div>" +
             '<div class="mid"><b>' + esc(c.peer.displayName || c.peer.username) + (c.kind === "video" ? ' <span style="font-size:10px">🎥</span>' : "") + "</b>" +
@@ -425,7 +424,9 @@
     $("recents").addEventListener("click", function (e) {
       var row = e.target.closest ? e.target.closest(".rrow") : null;
       if (!row) return;
-      dial = row.getAttribute("data-peer"); renderDial(); startCall("audio");
+      var num = row.getAttribute("data-peer");
+      if (!/^[0-9]{10}$/.test(num)) { toast("شمارهٔ این کاربر در دسترس نیست"); return; }
+      dial = num; renderDial(); startCall("audio");
     });
     $("tabDial").addEventListener("click", function () { switchTab("dial"); });
     $("tabRecent").addEventListener("click", function () { switchTab("recent"); });
@@ -467,11 +468,12 @@
     /* ============ شروع تماس ============ */
     function startCall(kind) {
       var target = dial.trim();
-      if (!target) return;
+      if (!/^[0-9]{10}$/.test(target)) { toast("شمارهٔ ۱۰ رقمی را کامل بزن"); return; }
       api("/call/dial", { target: target, kind: kind }).then(function (r) {
         if (!r.ok) { toast((r.d && r.d.error) || "زنگ نخورد"); return; }
         S.mode = "outgoing"; S.call = r.d.call; S.kind = r.d.call.kind; S.outgoing = true;
         S.clientId = r.d.clientId; S.cursor = 0; S.peerClientId = null;
+        getMedia(function () {});
         $("oAv").textContent = (r.d.call.peer.displayName || "?").trim().charAt(0);
         $("oAv").style.setProperty("--h", r.d.call.peer.hue || 215);
         $("oName").textContent = r.d.call.peer.displayName || r.d.call.peer.username;
@@ -505,7 +507,7 @@
           pollIncoming();
           return;
         }
-        if (r.d.current) { toast("یه تماست در جریانه — از همین صفحه ادامه بده"); }
+        if (r.d.current && !S.warnedCurrent) { S.warnedCurrent = true; toast("یه تماست در جریانه — از همین صفحه ادامه بده"); }
       }).catch(function () {});
     }
     function pollIncoming() {
@@ -520,7 +522,7 @@
           }
           pollIncoming();
         }).catch(function () { pollIncoming(); });
-      }, 900);
+      }, 800);
     }
     $("iDecline").addEventListener("click", function () {
       api("/call/decline", { callId: S.call && S.call.id });
@@ -556,41 +558,52 @@
           if (r.d.status !== "ringing") { finish("تماس قطع شد"); return; }
           pollOutgoing();
         }).catch(function () { pollOutgoing(); });
-      }, 700);
+      }, 350);
     }
 
     /* ============ در تماس ============ */
     function getMedia(cb) {
       var wantVideo = S.kind === "video";
+      if (S.localStream && S.localStream.getTracks().length) {
+        var hasV = S.localStream.getVideoTracks().length > 0;
+        if (!wantVideo || hasV) { cb(true); return; }
+      }
       var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-      if (!gmd) { S.localStream = null; cb(true); return; }
+      if (!gmd) { S.localStream = null; S.mediaReady = true; cb(false); return; }
+      if (S.mediaBusy) { S.mediaQueue = S.mediaQueue || []; S.mediaQueue.push(cb); return; }
+      S.mediaBusy = true;
       gmd.call(navigator.mediaDevices, {
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: wantVideo ? { facingMode: S.facing, width: { ideal: 640 }, height: { ideal: 480 } } : false
       }).then(function (st) {
-        S.localStream = st;
+        S.mediaBusy = false; S.localStream = st;
         if (wantVideo && st.getVideoTracks().length === 0) { S.kind = "audio"; toast("دوربین اجازه نداد — تماس صوتی ادامه می‌یابد"); }
         if (!wantVideo) S.kind = "audio";
-        cb(true);
+        (S.mediaQueue || []).forEach(function (f) { f(true); }); S.mediaQueue = [];
+        S.mediaReady = true; cb(true);
       }).catch(function () {
         if (wantVideo) {
           gmd.call(navigator.mediaDevices, { audio: true }).then(function (st) {
-            S.localStream = st; S.kind = "audio";
+            S.mediaBusy = false; S.localStream = st; S.kind = "audio";
             toast("دوربین اجازه نداد — تماس صوتی شد");
-            cb(true);
-          }).catch(function () { S.localStream = null; cb(false); });
-        } else { S.localStream = null; cb(false); }
+            (S.mediaQueue || []).forEach(function (f) { f(true); }); S.mediaQueue = [];
+            S.mediaReady = true; cb(true);
+          }).catch(function () { S.mediaBusy = false; S.localStream = null; S.mediaReady = true; cb(false); (S.mediaQueue || []).forEach(function (f) { f(false); }); S.mediaQueue = []; });
+        } else { S.mediaBusy = false; S.localStream = null; S.mediaReady = true; cb(false); (S.mediaQueue || []).forEach(function (f) { f(false); }); S.mediaQueue = []; }
       });
     }
+    var getMediaOld = null;
     function enterActive() {
       S.mode = "active";
       $("ovIncoming").hidden = true; $("ovOutgoing").hidden = true; $("ovActive").hidden = false;
       stopRing();
       $("aName").textContent = S.call.peer.displayName || S.call.peer.username;
       $("aNum").textContent = "@" + S.call.peer.username;
-      $("aState").textContent = "در حال اتصال…";
+      $("aState").textContent = S.pendingOffer ? "آماده‌سازی…" : "در حال اتصال…";
       $("aTime").textContent = "00:00";
       $("aMute").classList.remove("off");
+      $("aMute").textContent = "🎙";
+      $("aCam").classList.remove("off");
       $("aCam").hidden = S.kind !== "video";
       $("aFlip").hidden = S.kind !== "video";
       $("remoteVideo").hidden = S.kind !== "video";
@@ -602,6 +615,7 @@
           try { $("localVideo").srcObject = S.localStream; } catch (e) {}
         }
         if (S.outgoing) makePC(true);
+        else if (S.pendingOffer) { var po = S.pendingOffer; S.pendingOffer = null; handleOffer(po); }
         startTimer();
         syncLoop();
       });
@@ -628,10 +642,12 @@
         try {
           if (S.kind === "video" || (e.streams[0] && e.streams[0].getVideoTracks().length)) {
             $("remoteVideo").srcObject = e.streams[0]; $("remoteVideo").hidden = false;
-            $("remoteVideo").play().catch(function () {});
+            $("remoteVideo").play().catch(function () { showUnlock(); });
+            $("remoteAudio").srcObject = null;
+          } else {
             $("remoteAudio").srcObject = e.streams[0];
-          } else { $("remoteAudio").srcObject = e.streams[0]; }
-          $("remoteAudio").play().catch(function () {});
+            $("remoteAudio").play().catch(function () { showUnlock(); });
+          }
         } catch (err) {}
         $("aState").textContent = "متصل";
       };
@@ -649,19 +665,25 @@
     function sig(to, data) {
       if (!to) return;
       api("/call/signal", { callId: S.call.id, from: S.clientId, to: to, data: data });
-      scheduleSync(80);
+      scheduleSync(60);
+    }
+    function handleOffer(d) {
+      if (!hasRTC) return;
+      var pc = makePC(false);
+      pc.setRemoteDescription(new RTCSessionDescription(d.s)).then(function () {
+        return pc.createAnswer();
+      }).then(function (an) {
+        return pc.setLocalDescription(an).then(function () { sig(S.lastOfferFrom || S.peerClientId, { t: "answer", s: pc.localDescription }); });
+      }).catch(function () {});
     }
     function onSignal(sg) {
       var d = null;
       try { d = typeof sg.data === "string" ? JSON.parse(sg.data) : sg.data; } catch (e) { d = null; }
       if (!d || !d.t || !hasRTC) return;
       if (d.t === "offer") {
-        var pc = makePC(false);
-        pc.setRemoteDescription(new RTCSessionDescription(d.s)).then(function () {
-          return pc.createAnswer();
-        }).then(function (an) {
-          return pc.setLocalDescription(an).then(function () { sig(sg.fromCid || S.peerClientId, { t: "answer", s: pc.localDescription }); });
-        }).catch(function () {});
+        S.lastOfferFrom = sg.fromCid || S.peerClientId;
+        if (!S.localStream && !S.mediaReady) { S.pendingOffer = d; $("aState").textContent = "آماده‌سازی…"; return; }
+        handleOffer(d);
       } else if (d.t === "answer") {
         var p2 = S.pc;
         if (p2 && p2.signalingState !== "stable") p2.setRemoteDescription(new RTCSessionDescription(d.s)).catch(function () {});
@@ -690,7 +712,7 @@
         }
         (r.d.signals || []).forEach(onSignal);
         if (r.d.status !== "active") { finish(r.d.status === "declined" ? "رد شد" : "تماس تمام شد"); return; }
-        scheduleSync((r.d.signals || []).length ? 250 : 450);
+        scheduleSync((r.d.signals || []).length ? 180 : 300);
       }).catch(function () { S.pollBusy = false; scheduleSync(1500); });
     }
 
@@ -727,6 +749,17 @@
     });
 
     /* ============ پایان ============ */
+    function showUnlock() {
+      if (window._unlockTip) return;
+      window._unlockTip = true;
+      toast("برای شنیدن صدا، یک ضربه بزن");
+      var handler = function () {
+        try { $("remoteAudio").play().catch(function () {}); $("remoteVideo").play().catch(function () {}); } catch (e) {}
+        document.removeEventListener("click", handler);
+        window._unlockTip = false;
+      };
+      setTimeout(function () { document.addEventListener("click", handler); }, 50);
+    }
     function finish(reason) {
       var wasCall = !!S.call;
       stopRing(); stopTimer();
@@ -734,7 +767,7 @@
       if (S.pc) { try { S.pc.close(); } catch (e) {} S.pc = null; }
       if (S.localStream) { try { S.localStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.localStream = null; }
       try { $("remoteVideo").srcObject = null; $("remoteAudio").srcObject = null; $("localVideo").srcObject = null; } catch (e) {}
-      S.mode = "idle"; S.call = null; S.cursor = 0; S.answeredAt = 0;
+      S.mode = "idle"; S.call = null; S.cursor = 0; S.answeredAt = 0; S.pendingOffer = null; S.mediaReady = false; S.warnedCurrent = false;
       $("ovOutgoing").hidden = true; $("ovIncoming").hidden = true; $("ovActive").hidden = true;
       if (wasCall) { toast(reason || "تماس پایان یافت"); loadRecents(); }
       pollInbox();
@@ -744,8 +777,9 @@
     function boot() {
       $("login").hidden = true; $("app").hidden = false;
       loadNumber();
+      S.warnedCurrent = false;
       pollInbox();
-      setInterval(pollInbox, 2000);
+      setInterval(pollInbox, 1200);
     }
     var m = location.hash.match(/#dial=([A-Za-z0-9@_]+)/);
     api("/me").then(function (r) {
