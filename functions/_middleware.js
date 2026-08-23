@@ -8383,6 +8383,15 @@ app.post("/push/unsubscribe", async (c) => {
 app.get("/push/latest", async (c) => {
   const user = await auth(c);
   if (user instanceof Response) return user;
+  const ring = await one(c.env.DB, `SELECT c.kind, u.display_name, u.username FROM calls c JOIN users u ON u.id = c.from_user WHERE c.to_user = ? AND c.status = 'ringing' ORDER BY c.started_at DESC LIMIT 1`, user.id).catch(() => null);
+  if (ring) {
+    return c.json({
+      title: "📞 تماس ورودی از " + (ring.display_name || ring.username || "T"),
+      body: ring.kind === "video" ? "تماس تصویری — برای پاسخ ضربه بزن" : "تماس صوتی — برای پاسخ ضربه بزن",
+      url: "/call",
+      call: true
+    });
+  }
   const row = await one(
     c.env.DB,
     `SELECT m.body, m.type, m.conversation_id as cid, m.created_at,
@@ -9308,6 +9317,7 @@ async function speakInit(db) {
     created_at INTEGER
   )`).catch(() => {});
   await run(db, `ALTER TABLE speak_channels ADD COLUMN emptied_at INTEGER`).catch(() => {});
+  await run(db, `ALTER TABLE speak_members ADD COLUMN forced INTEGER DEFAULT 0`).catch(() => {});
   speakReady = true;
 }
 async function speakSweep(db, channelId) {
@@ -9333,7 +9343,7 @@ function speakChan(r, n) {
   return { id: r.id, name: r.name, isPublic: !!r.is_public, locked: !!r.locked, ownerId: r.owner_id, ownerName: r.owner_name || "", count: n || 0 };
 }
 function speakMem(r) {
-  return { clientId: r.client_id, userId: r.user_id, username: r.username, displayName: r.display_name, hue: r.hue || 220, mic: !!r.mic, speaking: !!r.speaking, joinedAt: r.joined_at };
+  return { clientId: r.client_id, userId: r.user_id, username: r.username, displayName: r.display_name, hue: r.hue || 220, mic: !!r.mic, speaking: !!r.speaking, forced: !!Number(r.forced || 0), joinedAt: r.joined_at };
 }
 app.get("/speak/state", async (c) => {
   const user = await auth(c);
@@ -9418,7 +9428,8 @@ app.post("/speak/channels/:id/sync", async (c) => {
   if (!me) return jsonError(c, "عضو نیستی؛ دوباره وارد شو", 409);
   const now = Date.now();
   const newSpk = b.speaking ? 1 : 0;
-  const newMic = b.mic === false ? 0 : 1;
+  let newMic = b.mic === false ? 0 : 1;
+  if (Number(me.forced || 0) === 1) newMic = 0;
   if (newSpk !== Number(me.speaking || 0) || newMic !== Number(me.mic || 0) || now - Number(me.last_seen || 0) > 5000) {
     await run(db, `UPDATE speak_members SET last_seen = ?, speaking = ?, mic = ? WHERE channel_id = ? AND client_id = ?`, now, newSpk, newMic, c.req.param("id"), cid).catch(() => {});
   }
@@ -9500,7 +9511,7 @@ app.post("/speak/channels/:id/mod", async (c) => {
     return c.json({ ok: true });
   }
   if (action === "mute" || action === "unmute") {
-    await run(db, `UPDATE speak_members SET mic = ? WHERE channel_id = ? AND client_id = ?`, action === "mute" ? 0 : 1, ch.id, target).catch(() => {});
+    await run(db, `UPDATE speak_members SET mic = ?, forced = ? WHERE channel_id = ? AND client_id = ?`, action === "mute" ? 0 : 1, action === "mute" ? 1 : 0, ch.id, target).catch(() => {});
     await run(db, `INSERT INTO speak_signals (channel_id, from_cid, to_cid, data, created_at) VALUES (?,?,?,?,?)`, ch.id, "srv", target, JSON.stringify({ t: action === "mute" ? "mute" : "unmute" }), Date.now());
     return c.json({ ok: true, muted: action === "mute" });
   }
@@ -9545,6 +9556,166 @@ app.get("/admin/speak", async (c) => {
     channels: chans.map((r) => ({ ...speakChan(r, (byChan[r.id] || []).length), createdAt: r.created_at, members: byChan[r.id] || [] })),
     online: online
   });
+});
+
+
+// ===== T کال — تماس صوتی/تصویری یک‌به‌یک (فاز ۱: P2P + زنگ با پوش) =====
+var CALL_RING_TTL = 45000;
+var CALL_PING_TTL = 25000;
+var callReady = false;
+async function callRows(db, sql, ...params) {
+  try { const r = await db.prepare(sql).bind(...params).all(); return r.results || []; } catch (e) { return []; }
+}
+async function callInit(db) {
+  if (callReady) return;
+  await run(db, `CREATE TABLE IF NOT EXISTS call_numbers (number TEXT PRIMARY KEY, user_id TEXT UNIQUE NOT NULL, created_at INTEGER)`).catch(() => {});
+  await run(db, `CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, from_user TEXT NOT NULL, to_user TEXT NOT NULL, kind TEXT DEFAULT 'audio', status TEXT DEFAULT 'ringing', from_client TEXT, to_client TEXT, started_at INTEGER, answered_at INTEGER, ended_at INTEGER, last_ping INTEGER)`).catch(() => {});
+  await run(db, `CREATE TABLE IF NOT EXISTS call_signals (id INTEGER PRIMARY KEY AUTOINCREMENT, call_id TEXT, from_cid TEXT, to_cid TEXT, data TEXT, created_at INTEGER)`).catch(() => {});
+  callReady = true;
+}
+async function callSweep(db) {
+  const now = Date.now();
+  await run(db, `UPDATE calls SET status='missed', ended_at=started_at WHERE status='ringing' AND started_at < ?`, now - CALL_RING_TTL).catch(() => {});
+  await run(db, `UPDATE calls SET status='ended', ended_at=? WHERE status='active' AND last_ping < ?`, now, now - CALL_PING_TTL).catch(() => {});
+  await run(db, `DELETE FROM call_signals WHERE created_at < ?`, now - 60000).catch(() => {});
+}
+function callPeer(u) { return u ? { id: u.id, username: u.username, displayName: u.display_name || u.username, hue: u.hue || 220, premium: !!u.premium } : null; }
+async function callUserInfo(db, uid) { return await one(db, `SELECT id, username, display_name, hue, premium FROM users WHERE id = ?`, uid); }
+async function callHydrate(db, row, meId) {
+  const peerId = row.from_user === meId ? row.to_user : row.from_user;
+  const peer = await callUserInfo(db, peerId);
+  return { id: row.id, kind: row.kind || "audio", status: row.status, outgoing: row.from_user === meId, startedAt: row.started_at, answeredAt: row.answered_at, endedAt: row.ended_at, peer: callPeer(peer) };
+}
+async function callTargetUser(db, q) {
+  q = String(q || "").trim().replace(/^@/, "");
+  if (!q) return null;
+  if (/^[0-9]{10}$/.test(q)) {
+    const n = await one(db, `SELECT user_id FROM call_numbers WHERE number = ?`, q);
+    if (!n) return null;
+    return await one(db, `SELECT * FROM users WHERE id = ? AND deleted_at IS NULL`, n.user_id);
+  }
+  return await one(db, `SELECT * FROM users WHERE username = ? AND deleted_at IS NULL`, q.toLowerCase());
+}
+app.get("/call/number", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  let row = await one(db, `SELECT number FROM call_numbers WHERE user_id = ?`, user.id);
+  if (!row) {
+    for (let i = 0; i < 8; i++) {
+      const n = String(Math.floor(2000000000 + Math.random() * 6999999999));
+      try { await run(db, `INSERT INTO call_numbers (number, user_id, created_at) VALUES (?,?,?)`, n, user.id, Date.now()); row = { number: n }; break; } catch (e) {}
+    }
+  }
+  return c.json({ me: callPeer(user), number: row ? row.number : null });
+});
+app.post("/call/dial", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  await callSweep(db);
+  const b = await c.req.json().catch(() => ({}));
+  const kind = b.kind === "video" ? "video" : "audio";
+  const target = await callTargetUser(db, b.target);
+  if (!target) return jsonError(c, "این شماره یا آیدی توی T پیدا نشد", 404);
+  if (target.id === user.id) return jsonError(c, "به خودت نمی‌توانی زنگ بزنی 🙂");
+  const blk = await one(db, `SELECT 1 AS x FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)`, target.id, user.id, user.id, target.id);
+  if (blk) return jsonError(c, "این تماس ممکن نیست", 403);
+  const busy = await one(db, `SELECT id FROM calls WHERE ((to_user = ? AND status = 'ringing') OR ((to_user = ? OR from_user = ?) AND status = 'active')) LIMIT 1`, target.id, target.id, target.id);
+  if (busy) return jsonError(c, "مشغول است — بعداً امتحان کن", 409);
+  const now = Date.now();
+  await run(db, `UPDATE calls SET status='cancelled', ended_at=? WHERE from_user = ? AND status='ringing'`, now, user.id).catch(() => {});
+  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+  const clientId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  await run(db, `INSERT INTO calls (id, from_user, to_user, kind, status, from_client, started_at, last_ping) VALUES (?,?,?,?, 'ringing', ?, ?, ?)`, id, user.id, target.id, kind, clientId, now, now);
+  pushToUser(db, target.id).catch(() => {});
+  return c.json({ ok: true, clientId: clientId, call: { id, kind, status: "ringing", outgoing: true, startedAt: now, peer: callPeer(target) } });
+});
+app.get("/call/inbox", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  await callSweep(db);
+  const inc = await one(db, `SELECT * FROM calls WHERE to_user = ? AND status = 'ringing' ORDER BY started_at DESC LIMIT 1`, user.id);
+  const cur = await one(db, `SELECT * FROM calls WHERE (from_user = ? OR to_user = ?) AND status = 'active' ORDER BY answered_at DESC LIMIT 1`, user.id, user.id);
+  return c.json({
+    incoming: inc ? await callHydrate(db, inc, user.id) : null,
+    current: cur ? await callHydrate(db, cur, user.id) : null
+  });
+});
+app.post("/call/answer", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  const b = await c.req.json().catch(() => ({}));
+  const row = await one(db, `SELECT * FROM calls WHERE id = ? AND to_user = ? AND status = 'ringing'`, String(b.callId || ""), user.id);
+  if (!row) return jsonError(c, "تماس دیگه در دسترس نیست", 409);
+  const clientId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  await run(db, `UPDATE calls SET status='active', to_client=?, answered_at=?, last_ping=? WHERE id = ?`, clientId, Date.now(), Date.now(), row.id);
+  return c.json({ ok: true, clientId: clientId, peerClientId: row.from_client || null, call: await callHydrate(db, { ...row, status: "active" }, user.id) });
+});
+app.post("/call/decline", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  const b = await c.req.json().catch(() => ({}));
+  await run(db, `UPDATE calls SET status='declined', ended_at=? WHERE id = ? AND to_user = ? AND status='ringing'`, Date.now(), String(b.callId || ""), user.id).catch(() => {});
+  return c.json({ ok: true });
+});
+app.post("/call/end", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  const b = await c.req.json().catch(() => ({}));
+  await run(db, `UPDATE calls SET status='ended', ended_at=? WHERE id = ? AND (from_user = ? OR to_user = ?) AND status IN ('active','ringing')`, Date.now(), String(b.callId || ""), user.id, user.id).catch(() => {});
+  return c.json({ ok: true });
+});
+app.get("/call/sync", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  const callId = c.req.query("callId") || "";
+  const cid = c.req.query("clientId") || "";
+  const since = Number(c.req.query("since") || 0);
+  const row = await one(db, `SELECT * FROM calls WHERE id = ? AND (from_user = ? OR to_user = ?)`, callId, user.id, user.id);
+  if (!row) return jsonError(c, "تماس پیدا نشد", 404);
+  await run(db, `UPDATE calls SET last_ping=? WHERE id = ?`, Date.now(), row.id).catch(() => {});
+  const sigs = await callRows(db, `SELECT id, from_cid AS fromCid, data FROM call_signals WHERE call_id = ? AND to_cid = ? AND id > ? ORDER BY id ASC LIMIT 60`, callId, cid, since);
+  let top = since;
+  for (const s of sigs) top = Math.max(top, Number(s.id));
+  if (sigs.length) await run(db, `DELETE FROM call_signals WHERE call_id = ? AND to_cid = ? AND id <= ?`, callId, cid, top).catch(() => {});
+  const peerCid = row.from_user === user.id ? (row.to_client || null) : (row.from_client || null);
+  return c.json({ status: row.status, kind: row.kind, peerClientId: peerCid, answeredAt: row.answered_at, signals: sigs, cursor: top });
+});
+app.post("/call/signal", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  const b = await c.req.json().catch(() => ({}));
+  const row = await one(db, `SELECT * FROM calls WHERE id = ? AND (from_user = ? OR to_user = ?)`, String(b.callId || ""), user.id, user.id);
+  if (!row || row.status !== "active") return jsonError(c, "تماس فعال نیست", 409);
+  const data = JSON.stringify(b.data == null ? null : b.data).slice(0, 60000);
+  await run(db, `INSERT INTO call_signals (call_id, from_cid, to_cid, data, created_at) VALUES (?,?,?,?,?)`, row.id, String(b.from || ""), String(b.to || ""), data, Date.now());
+  return c.json({ ok: true });
+});
+app.get("/call/recents", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  await callSweep(db);
+  const rows = await callRows(db, `SELECT * FROM calls WHERE from_user = ? OR to_user = ? ORDER BY started_at DESC LIMIT 50`, user.id, user.id);
+  const out = [];
+  for (const r of rows) out.push(await callHydrate(db, r, user.id));
+  return c.json({ calls: out });
 });
 
 app.all("*", (c) => jsonError(c, "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u062F\u0627 \u0646\u0634\u062F", 404));
@@ -9663,6 +9834,21 @@ ${body}
 // functions/_middleware.ts
 async function onRequest(context) {
   const url = new URL(context.request.url);
+  if (url.pathname === "/call" || url.pathname.startsWith("/call/")) {
+    const assetUrl = new URL(context.request.url);
+    assetUrl.pathname = "/call.html";
+    assetUrl.search = "";
+    try {
+      const res = await context.env.ASSETS.fetch(new Request(assetUrl.toString(), { method: "GET" }));
+      if (res && res.status < 300) {
+        const headers = new Headers(res.headers);
+        headers.set("Cache-Control", "no-cache");
+        return new Response(res.body, { status: 200, headers });
+      }
+    } catch (e) {
+    }
+    return context.next();
+  }
   if (url.pathname === "/tSpeak" || url.pathname.startsWith("/tSpeak/")) {
     const assetUrl = new URL(context.request.url);
     assetUrl.pathname = url.pathname === "/tSpeak/13899831a" ? "/tSpeakAdmin.html" : "/tSpeak.html";

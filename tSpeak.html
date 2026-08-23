@@ -836,6 +836,16 @@
         S.errCount = 0;
         if (r.d.cursor) S.cursor = r.d.cursor;
         var ms = r.d.members || [];
+        ms.forEach(function (m) {
+          if (m.clientId === S.clientId) {
+            var f = !!m.forced;
+            if (f !== S.forcedMuted) {
+              S.forcedMuted = f;
+              applyMicState();
+              toast(f ? "مدیر میکروفنت را بست 🔇" : "میکروفن آزاد شد 🎙");
+            }
+          }
+        });
         var changed = membersChanged(ms);
         S.lastMembers = ms;
         if (changed) renderMembers(ms);
@@ -935,12 +945,13 @@
         var remoteSpk = S.remoteAn[m.clientId] && S.remoteAn[m.clientId].speaking;
         var speaking = m.speaking || remoteSpk;
         var pm = S.pmuted[m.userId];
+        var fzd = !!m.forced;
         html += '<div class="mrow' + (speaking ? " speaking" : "") + '" data-card="' + m.clientId + '" data-user="' + m.userId + '">' +
           '<span class="qual ' + qualCls(m.clientId) + '"></span>' +
           '<div class="av2" style="--h:' + (m.hue || 220) + '">' + esc((m.displayName || m.username || "T").trim().charAt(0).toUpperCase()) + "</div>" +
           '<div class="who"><b>' + esc(m.displayName || m.username) + (isOwner ? ' <span style="color:var(--gold);font-size:10px">👑</span>' : "") + (pm ? ' <span style="color:var(--red);font-size:10px" title="میوت شخصی">🔇</span>' : "") + "</b>" +
           "<span>@" + esc(m.username) + "</span></div>" +
-          '<div class="micons"><span class="' + (m.mic ? "" : "off") + '">' + (m.mic ? "🎙" : "🔇") + "</span></div>" +
+          '<div class="micons"><span class="' + (m.mic ? "" : "off") + '">' + (m.mic ? "🎙" : "🔇") + "</span>" + (fzd ? '<span style="font-size:9px;color:var(--gold)" title="ساکت‌شده توسط مدیر">⛔</span>' : "") + "</div>" +
           "</div>";
         if (S.openDetail === m.clientId) {
           html += '<div class="mdetail" data-detail="' + m.clientId + '">';
@@ -950,7 +961,7 @@
             html += '<button class="mini" data-prof="' + m.userId + '" data-un="' + esc(m.username) + '">پروفایل</button>';
             html += '<button class="mini' + (pm ? " warn" : "") + '" data-pmute="' + m.userId + '">' + (pm ? "بازکردن صدا" : "میوت شخصی") + "</button>";
             if (amMod() && !isOwner) {
-              html += '<button class="mini sun" data-smute="' + m.clientId + '" data-mm="' + (m.mic ? 1 : 0) + '">' + (m.mic ? "🔇 ساکت" : "🔊 بازکردن صدا") + '</button>';
+              html += '<button class="mini ' + (m.mic ? "warn" : "sun") + '" data-smute="' + m.clientId + '" data-mm="' + (m.mic ? 1 : 0) + '">' + (m.mic ? "🔇 ساکت کردن" : "🔊 از سکوت درآوردن") + '</button>';
               html += '<button class="mini warn" data-kick="' + m.clientId + '">اخراج</button>';
             }
           } else {
@@ -970,7 +981,9 @@
         var act = t.getAttribute("data-mm") === "1" ? "mute" : "unmute";
         api("/speak/channels/" + S.channelId + "/mod", { action: act, target: t.getAttribute("data-smute") }).then(function () { scheduleSync(30); });
         t.setAttribute("data-mm", act === "mute" ? "0" : "1");
-        t.textContent = act === "mute" ? "🔊 بازکردن صدا" : "🔇 ساکت";
+        t.textContent = act === "mute" ? "🔊 از سکوت درآوردن" : "🔇 ساکت کردن";
+        t.classList.toggle("sun", act === "mute");
+        t.classList.toggle("warn", act !== "mute");
         return;
       }
       if (t.getAttribute && t.getAttribute("data-pmute")) {

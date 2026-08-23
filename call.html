@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#10141A" />
+<title>T کال — تماس صوتی و تصویری</title>
+<link rel="manifest" href="/call-manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="T کال" />
+<link rel="apple-touch-icon" href="/assets/icon-192.png" />
+<link rel="icon" type="image/png" href="/assets/icon-192.png" />
+<style>
+  @font-face { font-family: "Vazirmatn"; src: url("/assets/Vazirmatn-T33.woff2") format("woff2"); font-display: swap; }
+  :root {
+    --bg:#10141A; --bg2:#151A21; --panel:#1A2029; --panel2:#202834;
+    --line:#28303D; --line2:#20262F;
+    --text:#D9E0EA; --sub:#8C99AB; --dim:#5F6C7F;
+    --acc:#4C8DFF; --acc2:#2E6BD8; --green:#43C97B; --red:#E0696E; --gold:#D8A94E;
+    --mono: "SF Mono", Consolas, Menlo, monospace;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Vazirmatn", Tahoma, "Segoe UI", sans-serif; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; padding: 12px;
+  }
+  [hidden] { display: none !important; }
+  button { font-family: inherit; cursor: pointer; }
+  .shell { width: 100%; max-width: 420px; height: 100%; max-height: 780px; display: flex; flex-direction: column; }
+
+  /* ===== ورود ===== */
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 26px 22px; display: flex; flex-direction: column; gap: 12px; align-items: center; margin: auto; width: 100%; max-width: 340px;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo .mark {
+    width: 42px; height: 42px; border-radius: 10px; flex: none; color: #fff; font-size: 19px;
+    background: linear-gradient(150deg, var(--acc), var(--acc2));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo b { font-size: 17px; font-weight: 800; }
+  .logo b small { display: block; font-size: 10.5px; color: var(--sub); font-weight: 500; }
+  .field {
+    width: 100%; height: 40px; border-radius: 7px; border: 1px solid var(--line);
+    background: var(--bg2); color: var(--text); padding: 4px 12px; font-size: 13.5px; font-family: inherit; outline: none;
+  }
+  .field:focus { border-color: var(--acc); }
+  .btn {
+    border: 1px solid var(--line); background: var(--panel2); color: var(--text);
+    border-radius: 7px; height: 40px; padding: 0 16px; font-size: 13px; font-weight: 700;
+  }
+  .btn.primary { background: var(--acc2); border-color: var(--acc2); color: #fff; }
+  .msg { font-size: 12px; color: var(--red); min-height: 15px; font-weight: 600; }
+  .hintlink { font-size: 11.5px; color: var(--sub); }
+  .hintlink a { color: var(--acc); text-decoration: none; font-weight: 700; }
+
+  /* ===== هدر ===== */
+  .topbar {
+    display: flex; align-items: center; gap: 9px; padding: 10px 12px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  }
+  .topbar .tt { flex: 1; min-width: 0; }
+  .topbar .tt b { font-size: 14.5px; display: block; }
+  .topbar .tt span { font-size: 9px; color: var(--dim); font-family: var(--mono); }
+  .mynum {
+    font-family: var(--mono); font-size: 11.5px; color: var(--acc); direction: ltr;
+    background: rgba(76,141,255,.1); border: 1px solid rgba(76,141,255,.3);
+    padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  }
+
+  /* ===== نماها ===== */
+  .view { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-top: 10px; }
+
+  /* کیپد */
+  .numdisp {
+    height: 58px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px;
+  }
+  .numdisp b { font-family: var(--mono); font-size: 24px; letter-spacing: 2px; direction: ltr; color: var(--text); }
+  .numdisp b.empty { color: var(--dim); font-size: 13px; letter-spacing: 0; }
+  .numdisp .clr { border: 0; background: none; color: var(--dim); font-size: 18px; }
+  .keypad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px 6px; align-content: center; }
+  .key {
+    border: 1px solid var(--line2); background: var(--panel); border-radius: 14px;
+    height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    color: var(--text); font-size: 21px; font-weight: 700; font-family: var(--mono);
+    transition: background .1s, transform .06s;
+  }
+  .key small { font-size: 8px; color: var(--dim); font-family: inherit; letter-spacing: 1px; }
+  .key:active { transform: scale(.94); background: var(--panel2); }
+  .dialrow { display: flex; gap: 10px; padding: 0 6px 10px; }
+  .callbtn {
+    flex: 1; height: 52px; border: 0; border-radius: 12px; color: #fff; font-size: 14px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .callbtn.audio { background: linear-gradient(135deg, #3FCE84, #22A05C); }
+  .callbtn.video { background: linear-gradient(135deg, #5C9BFF, var(--acc2)); }
+  .callbtn:active { transform: scale(.98); }
+  .callbtn:disabled { opacity: .35; }
+
+  /* اخیر */
+  .recents { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow-y: auto; }
+  .rrow {
+    display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-bottom: 1px solid var(--line2); cursor: pointer;
+  }
+  .rrow:hover { background: rgba(76,141,255,.05); }
+  .rrow .dir {
+    width: 32px; height: 32px; border-radius: 9px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 14px;
+    background: var(--bg2); border: 1px solid var(--line2);
+  }
+  .rrow.in .dir { color: var(--green); }
+  .rrow.miss .dir { color: var(--red); }
+  .rrow.out .dir { color: var(--acc); }
+  .av {
+    width: 38px; height: 38px; border-radius: 50%; flex: none; color: #060B14; font-size: 15px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, hsl(var(--h,215) 80% 65%), hsl(var(--h,215) 70% 44%));
+  }
+  .rrow .mid { flex: 1; min-width: 0; }
+  .rrow .mid b { font-size: 13px; display: flex; gap: 5px; align-items: center; }
+  .rrow .mid span { display: block; font-size: 10px; color: var(--dim); margin-top: 2px; font-family: var(--mono); direction: ltr; text-align: right; }
+  .rrow .side { text-align: left; flex: none; }
+  .rrow .side .tm { font-size: 9.5px; color: var(--dim); font-family: var(--mono); display: block; }
+  .rrow .side .st { font-size: 9.5px; font-weight: 700; }
+  .empty { padding: 30px 14px; text-align: center; color: var(--dim); font-size: 12px; }
+
+  /* تب‌ها */
+  .tabs {
+    display: flex; gap: 8px; margin-top: 10px;
+  }
+  .tabs button {
+    flex: 1; height: 44px; border: 1px solid var(--line); background: var(--panel); color: var(--sub);
+    border-radius: 10px; font-size: 13px; font-weight: 800;
+  }
+  .tabs button.on { color: var(--acc); border-color: var(--acc); background: rgba(76,141,255,.1); }
+
+  /* ===== صفحه‌های تماس ===== */
+  .overlay {
+    position: absolute; inset: 0; z-index: 30; background: #0C1017;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; border-radius: 10px; overflow: hidden;
+  }
+  .shell { position: relative; }
+  .bigav {
+    width: 96px; height: 96px; border-radius: 50%; color: #060B14; font-size: 38px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, hsl(var(--h,215) 80% 65%), hsl(var(--h,215) 70% 44%));
+  }
+  .ringing .bigav { animation: ringpulse 1.2s ease-in-out infinite; }
+  @keyframes ringpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(76,141,255,.45); } 50% { box-shadow: 0 0 0 22px rgba(76,141,255,0); } }
+  .cname { font-size: 19px; font-weight: 800; }
+  .cnum { font-size: 11px; color: var(--sub); font-family: var(--mono); direction: ltr; }
+  .cstate { font-size: 12px; color: var(--sub); }
+  .ctime { font-family: var(--mono); font-size: 15px; color: var(--green); direction: ltr; }
+  .answerrow { display: flex; gap: 60px; margin-top: 18px; }
+  .bigbtn {
+    width: 66px; height: 66px; border-radius: 50%; border: 0; color: #fff; font-size: 26px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bigbtn.decline { background: linear-gradient(135deg, #E8636A, #C43B47); }
+  .bigbtn.accept { background: linear-gradient(135deg, #3FCE84, #22A05C); animation: ringpulse2 1.2s infinite; }
+  @keyframes ringpulse2 { 0%,100% { box-shadow: 0 0 0 0 rgba(67,201,123,.5); } 50% { box-shadow: 0 0 0 18px rgba(67,201,123,0); } }
+  .bigbtn.end { background: linear-gradient(135deg, #E8636A, #C43B47); width: 60px; height: 60px; font-size: 22px; }
+
+  /* تصویر */
+  #remoteVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+  #localVideo {
+    position: absolute; top: 14px; inset-inline-start: 14px; width: 96px; height: 132px;
+    object-fit: cover; border-radius: 10px; border: 2px solid rgba(255,255,255,.25); background: #000; z-index: 3;
+  }
+  .callui { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; z-index: 4; }
+  .callui .top { padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: linear-gradient(180deg, rgba(6,10,16,.75), transparent); }
+  .callui .ctrls {
+    display: flex; gap: 14px; justify-content: center; padding: 16px; background: linear-gradient(0deg, rgba(6,10,16,.85), transparent);
+  }
+  .cbtn {
+    width: 52px; height: 52px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25);
+    background: rgba(20,26,38,.8); color: #fff; font-size: 19px;
+  }
+  .cbtn.off { background: rgba(255,255,255,.9); color: #14202E; }
+  .cbtn.hang { background: linear-gradient(135deg, #E8636A, #C43B47); border: 0; width: 60px; height: 60px; }
+
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #1C2530; border: 1px solid var(--line); color: var(--text);
+    font-size: 12.5px; font-weight: 700; padding: 10px 18px; border-radius: 8px;
+    opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 99; max-width: 86%; text-align: center;
+  }
+  #toast.show { opacity: 1; }
+  @media (max-width: 430px) {
+    body { padding: 6px; }
+    .key { height: 54px; }
+    .shell { max-height: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- ورود -->
+    <div id="login" class="card" hidden>
+      <div class="logo"><div class="mark">📞</div><b>T کال<small>تماس صوتی و تصویری پیام‌رسان T</small></b></div>
+      <input class="field" id="lgUser" placeholder="نام کاربری" autocomplete="username" />
+      <input class="field" id="lgPass" type="password" placeholder="رمز" autocomplete="current-password" />
+      <button class="btn primary" id="lgBtn" style="width:100%">ورود</button>
+      <div class="msg" id="lgMsg"></div>
+      <div class="hintlink">حساب نداری؟ <a href="/" target="_blank" rel="noopener">در پیام‌رسان T بساز</a></div>
+    </div>
+
+    <!-- اپ -->
+    <div id="app" hidden style="display:flex;flex-direction:column;height:100%">
+      <div class="topbar">
+        <div class="logo"><div class="mark">📞</div></div>
+        <div class="tt"><b>T کال</b><span>playneofly.ir/call</span></div>
+        <span class="mynum" id="myNum" title="کپی شمارهٔ من">—</span>
+      </div>
+
+      <!-- کیپد -->
+      <div class="view" id="viewDial">
+        <div class="numdisp"><b id="numDisp" class="empty">شماره یا @آیدی…</b><button class="clr" id="btnClr">⌫</button></div>
+        <div class="keypad" id="keypad"></div>
+        <div class="dialrow">
+          <button class="callbtn video" id="btnVideo">🎥 تماس تصویری</button>
+          <button class="callbtn audio" id="btnAudio">📞 تماس صوتی</button>
+        </div>
+      </div>
+
+      <!-- اخیر -->
+      <div class="view" id="viewRecent" hidden>
+        <div class="recents" id="recents"><div class="empty">…</div></div>
+      </div>
+
+      <div class="tabs">
+        <button id="tabDial" class="on">⌨️ کیپد</button>
+        <button id="tabRecent">🕐 اخیر</button>
+      </div>
+    </div>
+
+    <!-- تماس خروجی -->
+    <div id="ovOutgoing" class="overlay ringing" hidden>
+      <div class="bigav" id="oAv">?</div>
+      <div class="cname" id="oName">…</div>
+      <div class="cnum" id="oNum"></div>
+      <div class="cstate">🔔 در حال زنگ خوردن…</div>
+      <button class="bigbtn decline" id="oCancel">✕</button>
+    </div>
+
+    <!-- تماس ورودی -->
+    <div id="ovIncoming" class="overlay ringing" hidden>
+      <div class="bigav" id="iAv">?</div>
+      <div class="cname" id="iName">…</div>
+      <div class="cnum" id="iNum"></div>
+      <div class="cstate" id="iKind">📞 تماس صوتی ورودی</div>
+      <div class="answerrow">
+        <button class="bigbtn decline" id="iDecline">✕</button>
+        <button class="bigbtn accept" id="iAccept">✓</button>
+      </div>
+    </div>
+
+    <!-- تماس برقرار -->
+    <div id="ovActive" class="overlay" hidden>
+      <video id="remoteVideo" hidden autoplay playsinline></video>
+      <video id="localVideo" hidden autoplay playsinline muted></video>
+      <audio id="remoteAudio" autoplay hidden></audio>
+      <div class="callui">
+        <div class="top">
+          <div class="cname" id="aName" style="color:#fff">…</div>
+          <div class="cnum" id="aNum" style="color:rgba(255,255,255,.7)"></div>
+          <div class="ctime" id="aTime">00:00</div>
+          <div class="cstate" id="aState" style="color:rgba(255,255,255,.75)">در حال اتصال…</div>
+        </div>
+        <div class="ctrls">
+          <button class="cbtn" id="aMute" title="میکروفن">🎙</button>
+          <button class="cbtn" id="aCam" title="دوربین" hidden>🎥</button>
+          <button class="cbtn" id="aFlip" title="عوض کردن دوربین" hidden>🔄</button>
+          <button class="cbtn hang" id="aEnd" title="قطع">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+  (function () {
+    "use strict";
+    var $ = function (id) { return document.getElementById(id); };
+    function toast(t) {
+      var x = $("toast"); x.textContent = t; x.classList.add("show");
+      clearTimeout(x._tm); x._tm = setTimeout(function () { x.classList.remove("show"); }, 2600);
+    }
+    function api(path, body, method) {
+      return fetch("/api" + path, {
+        method: method || (body ? "POST" : "GET"),
+        credentials: "include",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; });
+      });
+    }
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function fmtDur(s) {
+      s = Math.max(0, Math.floor(s));
+      var m = Math.floor(s / 60), ss = s % 60;
+      return (m < 10 ? "0" : "") + m + ":" + (ss < 10 ? "0" : "") + ss;
+    }
+    var hasRTC = typeof RTCPeerConnection !== "undefined";
+    var ICE = { iceServers: [
+      { urls: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"] },
+      { urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"],
+        username: "openrelayproject", credential: "openrelayproject" }
+    ] };
+
+    var me = null, myNumber = null;
+    var S = {
+      mode: "idle",
+      call: null, clientId: null, peerClientId: null, cursor: 0,
+      kind: "audio", outgoing: false,
+      localStream: null, pc: null, remoteStream: null,
+      micOn: true, camOn: true, facing: "user",
+      timer: 0, pollTm: 0, pollBusy: false,
+      ringTm: 0, ringStop: null, vibTm: 0, answeredAt: 0
+    };
+
+    /* ============ ورود ============ */
+    function showLogin() { $("login").hidden = false; $("app").hidden = true; }
+    $("lgBtn").addEventListener("click", function () {
+      var u = $("lgUser").value.trim(), p = $("lgPass").value;
+      if (!u || !p) { $("lgMsg").textContent = "نام کاربری و رمز لازم است"; return; }
+      $("lgBtn").disabled = true; $("lgMsg").textContent = "";
+      api("/auth/login", { username: u, password: p }).then(function (r) {
+        $("lgBtn").disabled = false;
+        if (r.ok) boot(); else $("lgMsg").textContent = (r.d && r.d.error) || "ورود نشد";
+      }).catch(function () { $("lgBtn").disabled = false; $("lgMsg").textContent = "خطای اتصال"; });
+    });
+
+    /* ============ شمارهٔ من ============ */
+    function loadNumber() {
+      api("/call/number").then(function (r) {
+        if (!r.ok) return;
+        me = r.d.me; myNumber = r.d.number;
+        $("myNum").textContent = myNumber || "—";
+        loadRecents();
+      });
+    }
+    $("myNum").addEventListener("click", function () {
+      if (!myNumber) return;
+      (navigator.clipboard ? navigator.clipboard.writeText(myNumber) : Promise.reject())
+        .then(function () { toast("شمارهٔ تو کپی شد: " + myNumber); })
+        .catch(function () { prompt("شمارهٔ تو:", myNumber); });
+    });
+
+    /* ============ کیپد ============ */
+    var keys = [["1",""],["2","ABC"],["3","DEF"],["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],["*",""],["0","+"],["#",""]];
+    var dial = "";
+    (function buildPad() {
+      var h = "";
+      keys.forEach(function (k) {
+        h += '<button class="key" data-k="' + k[0] + '">' + k[0] + (k[1] ? "<small>" + k[1] + "</small>" : "") + "</button>";
+      });
+      $("keypad").innerHTML = h;
+    })();
+    function renderDial() {
+      var el = $("numDisp");
+      if (dial) { el.textContent = dial; el.className = ""; }
+      else { el.textContent = "شماره یا @آیدی…"; el.className = "empty"; }
+      $("btnAudio").disabled = !dial;
+      $("btnVideo").disabled = !dial;
+    }
+    $("keypad").addEventListener("click", function (e) {
+      var k = e.target.getAttribute && e.target.getAttribute("data-k");
+      if (!k) return;
+      if (dial.length < 24) { dial += k; renderDial(); }
+      beep(1200, 0.02, 0.02);
+    });
+    $("btnClr").addEventListener("click", function () { dial = dial.slice(0, -1); renderDial(); });
+    document.addEventListener("keydown", function (e) {
+      if (!$("app").hidden || $("login").hidden) {
+        if (S.mode !== "idle") return;
+        var tg = e.target;
+        if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA")) return;
+        if (/^[0-9]$/.test(e.key)) { if (dial.length < 24) { dial += e.key; renderDial(); } }
+        else if (e.key === "Backspace") { dial = dial.slice(0, -1); renderDial(); }
+        else if (e.key === "Enter" && dial) { startCall("audio"); }
+      }
+    });
+    $("btnAudio").addEventListener("click", function () { startCall("audio"); });
+    $("btnVideo").addEventListener("click", function () { startCall("video"); });
+
+    /* ============ اخیر ============ */
+    function statusTxt(c) {
+      if (c.status === "missed") return c.outgoing ? "بی‌پاسخ" : "از دست رفته";
+      if (c.status === "declined") return c.outgoing ? "رد شد" : "رد کردی";
+      if (c.status === "cancelled") return "لغو شد";
+      if (c.status === "ended") return fmtDur(((c.endedAt || 0) - (c.answeredAt || c.startedAt || 0)) / 1000);
+      return c.status === "ringing" ? "زنگ می‌خورد" : "…";
+    }
+    function loadRecents() {
+      api("/call/recents").then(function (r) {
+        if (!r.ok) return;
+        var cs = r.d.calls || [];
+        if (!cs.length) { $("recents").innerHTML = '<div class="empty">هنوز تماسی نداشتی — اولین زنگ را بزن! 📞</div>'; return; }
+        $("recents").innerHTML = cs.map(function (c) {
+          var cls = c.status === "missed" ? "miss" : (c.outgoing ? "out" : "in");
+          var dir = c.status === "missed" ? "✖" : (c.outgoing ? "↗" : "↙");
+          var tm = new Date(c.startedAt || 0).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
+          return '<div class="rrow ' + cls + '" data-peer="' + esc(c.peer.username) + '">' +
+            '<span class="dir">' + dir + "</span>" +
+            '<div class="av" style="--h:' + (c.peer.hue || 215) + '">' + esc((c.peer.displayName || c.peer.username || "?").trim().charAt(0).toUpperCase()) + "</div>" +
+            '<div class="mid"><b>' + esc(c.peer.displayName || c.peer.username) + (c.kind === "video" ? ' <span style="font-size:10px">🎥</span>' : "") + "</b>" +
+            "<span>@" + esc(c.peer.username) + "</span></div>" +
+            '<div class="side"><span class="tm">' + tm + '</span><span class="st">' + statusTxt(c) + "</span></div>" +
+            "</div>";
+        }).join("");
+      });
+    }
+    $("recents").addEventListener("click", function (e) {
+      var row = e.target.closest ? e.target.closest(".rrow") : null;
+      if (!row) return;
+      dial = row.getAttribute("data-peer"); renderDial(); startCall("audio");
+    });
+    $("tabDial").addEventListener("click", function () { switchTab("dial"); });
+    $("tabRecent").addEventListener("click", function () { switchTab("recent"); });
+    function switchTab(t) {
+      $("tabDial").classList.toggle("on", t === "dial");
+      $("tabRecent").classList.toggle("on", t === "recent");
+      $("viewDial").hidden = t !== "dial";
+      $("viewRecent").hidden = t !== "recent";
+      if (t === "recent") loadRecents();
+    }
+
+    /* ============ صداها ============ */
+    function beep(freq, vol, dur) {
+      try {
+        S.audioCtx = S.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        var o = S.audioCtx.createOscillator(), g = S.audioCtx.createGain();
+        o.frequency.value = freq; g.gain.value = vol || 0.04;
+        o.connect(g); g.connect(S.audioCtx.destination);
+        o.start(); o.stop(S.audioCtx.currentTime + (dur || 0.06));
+      } catch (e) {}
+    }
+    function startRing(kind) {
+      stopRing();
+      var toggle = function () {
+        beep(880, 0.055, 0.32);
+        setTimeout(function () { beep(660, 0.055, 0.32); }, 380);
+      };
+      toggle();
+      S.ringTm = setInterval(toggle, 1900);
+      if (kind === "in") {
+        try { navigator.vibrate && navigator.vibrate([600, 400, 600, 400]); S.vibTm = setInterval(function () { navigator.vibrate && navigator.vibrate([600, 400, 600, 400]); }, 2000); } catch (e) {}
+      }
+    }
+    function stopRing() {
+      if (S.ringTm) { clearInterval(S.ringTm); S.ringTm = 0; }
+      if (S.vibTm) { clearInterval(S.vibTm); S.vibTm = 0; try { navigator.vibrate && navigator.vibrate(0); } catch (e) {} }
+    }
+
+    /* ============ شروع تماس ============ */
+    function startCall(kind) {
+      var target = dial.trim();
+      if (!target) return;
+      api("/call/dial", { target: target, kind: kind }).then(function (r) {
+        if (!r.ok) { toast((r.d && r.d.error) || "زنگ نخورد"); return; }
+        S.mode = "outgoing"; S.call = r.d.call; S.kind = r.d.call.kind; S.outgoing = true;
+        S.clientId = r.d.clientId; S.cursor = 0; S.peerClientId = null;
+        $("oAv").textContent = (r.d.call.peer.displayName || "?").trim().charAt(0);
+        $("oAv").style.setProperty("--h", r.d.call.peer.hue || 215);
+        $("oName").textContent = r.d.call.peer.displayName || r.d.call.peer.username;
+        $("oNum").textContent = "@" + r.d.call.peer.username;
+        $("ovOutgoing").hidden = false;
+        startRing("out");
+        pollOutgoing();
+      });
+    }
+    $("oCancel").addEventListener("click", function () {
+      api("/call/end", { callId: S.call && S.call.id });
+      finish("لغو شد");
+    });
+
+    /* ============ ورودی ============ */
+    function pollInbox() {
+      if (S.mode !== "idle") return;
+      api("/call/inbox").then(function (r) {
+        if (!r.ok || S.mode !== "idle") return;
+        var inc = r.d.incoming;
+        if (inc) {
+          S.mode = "incoming"; S.call = inc; S.kind = inc.kind; S.outgoing = false;
+          S.cursor = 0; S.clientId = null; S.peerClientId = null;
+          $("iAv").textContent = (inc.peer.displayName || "?").trim().charAt(0);
+          $("iAv").style.setProperty("--h", inc.peer.hue || 215);
+          $("iName").textContent = inc.peer.displayName || inc.peer.username;
+          $("iNum").textContent = "@" + inc.peer.username;
+          $("iKind").textContent = inc.kind === "video" ? "🎥 تماس تصویری ورودی" : "📞 تماس صوتی ورودی";
+          $("ovIncoming").hidden = false;
+          startRing("in");
+          pollIncoming();
+          return;
+        }
+        if (r.d.current) { toast("یه تماست در جریانه — از همین صفحه ادامه بده"); }
+      }).catch(function () {});
+    }
+    function pollIncoming() {
+      if (S.mode !== "incoming") return;
+      setTimeout(function () {
+        if (S.mode !== "incoming") return;
+        api("/call/inbox").then(function (r) {
+          if (S.mode !== "incoming") return;
+          if (r.ok && (!r.d.incoming || (r.d.incoming && r.d.incoming.id !== S.call.id))) {
+            finish("تماس قطع شد");
+            return;
+          }
+          pollIncoming();
+        }).catch(function () { pollIncoming(); });
+      }, 900);
+    }
+    $("iDecline").addEventListener("click", function () {
+      api("/call/decline", { callId: S.call && S.call.id });
+      finish("رد شد");
+    });
+    $("iAccept").addEventListener("click", function () {
+      api("/call/answer", { callId: S.call.id }).then(function (r) {
+        if (!r.ok) { toast((r.d && r.d.error) || "تماس در دسترس نیست"); finish("تماس قطع شد"); return; }
+        S.clientId = r.d.clientId;
+        S.peerClientId = r.d.peerClientId;
+        S.answeredAt = r.d.call.answeredAt || Date.now();
+        enterActive();
+      });
+    });
+
+    /* ============ خروجی: صبر برای جواب ============ */
+    function pollOutgoing() {
+      if (S.mode !== "outgoing") return;
+      setTimeout(function () {
+        if (S.mode !== "outgoing") return;
+        api("/call/sync?callId=" + S.call.id + "&clientId=" + S.clientId + "&since=" + S.cursor).then(function (r) {
+          if (S.mode !== "outgoing") return;
+          if (!r.ok) { finish("تماس قطع شد"); return; }
+          if (r.d.status === "active") {
+            S.mode = "active"; S.peerClientId = r.d.peerClientId;
+            S.answeredAt = r.d.answeredAt || Date.now();
+            stopRing();
+            enterActive();
+            return;
+          }
+          if (r.d.status === "declined") { finish("رد شد"); return; }
+          if (r.d.status === "missed") { finish("بی‌پاسخ"); return; }
+          if (r.d.status !== "ringing") { finish("تماس قطع شد"); return; }
+          pollOutgoing();
+        }).catch(function () { pollOutgoing(); });
+      }, 700);
+    }
+
+    /* ============ در تماس ============ */
+    function getMedia(cb) {
+      var wantVideo = S.kind === "video";
+      var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+      if (!gmd) { S.localStream = null; cb(true); return; }
+      gmd.call(navigator.mediaDevices, {
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: wantVideo ? { facingMode: S.facing, width: { ideal: 640 }, height: { ideal: 480 } } : false
+      }).then(function (st) {
+        S.localStream = st;
+        if (wantVideo && st.getVideoTracks().length === 0) { S.kind = "audio"; toast("دوربین اجازه نداد — تماس صوتی ادامه می‌یابد"); }
+        if (!wantVideo) S.kind = "audio";
+        cb(true);
+      }).catch(function () {
+        if (wantVideo) {
+          gmd.call(navigator.mediaDevices, { audio: true }).then(function (st) {
+            S.localStream = st; S.kind = "audio";
+            toast("دوربین اجازه نداد — تماس صوتی شد");
+            cb(true);
+          }).catch(function () { S.localStream = null; cb(false); });
+        } else { S.localStream = null; cb(false); }
+      });
+    }
+    function enterActive() {
+      S.mode = "active";
+      $("ovIncoming").hidden = true; $("ovOutgoing").hidden = true; $("ovActive").hidden = false;
+      stopRing();
+      $("aName").textContent = S.call.peer.displayName || S.call.peer.username;
+      $("aNum").textContent = "@" + S.call.peer.username;
+      $("aState").textContent = "در حال اتصال…";
+      $("aTime").textContent = "00:00";
+      $("aMute").classList.remove("off");
+      $("aCam").hidden = S.kind !== "video";
+      $("aFlip").hidden = S.kind !== "video";
+      $("remoteVideo").hidden = S.kind !== "video";
+      $("localVideo").hidden = S.kind !== "video";
+      S.micOn = true; S.camOn = true;
+      getMedia(function (ok) {
+        if (!ok) { toast("به میکروفن و دوربین دسترسی نیست"); }
+        if (S.localStream && S.kind === "video") {
+          try { $("localVideo").srcObject = S.localStream; } catch (e) {}
+        }
+        if (S.outgoing) makePC(true);
+        startTimer();
+        syncLoop();
+      });
+    }
+    function startTimer() {
+      stopTimer();
+      S.timer = setInterval(function () {
+        $("aTime").textContent = fmtDur((Date.now() - (S.answeredAt || Date.now())) / 1000);
+      }, 1000);
+    }
+    function stopTimer() { if (S.timer) { clearInterval(S.timer); S.timer = 0; } }
+    function makePC(initiator) {
+      if (!hasRTC || S.pc) return S.pc;
+      var pc = new RTCPeerConnection(ICE);
+      S.pc = pc;
+      if (S.localStream) {
+        try { S.localStream.getTracks().forEach(function (t) { pc.addTrack(t, S.localStream); }); } catch (e) {}
+      } else {
+        try { pc.addTransceiver("audio", { direction: "recvonly" }); if (S.kind === "video") pc.addTransceiver("video", { direction: "recvonly" }); } catch (e) {}
+      }
+      pc.onicecandidate = function (e) { if (e.candidate) sig(S.peerClientId, { t: "ice", c: e.candidate }); };
+      pc.ontrack = function (e) {
+        S.remoteStream = e.streams[0];
+        try {
+          if (S.kind === "video" || (e.streams[0] && e.streams[0].getVideoTracks().length)) {
+            $("remoteVideo").srcObject = e.streams[0]; $("remoteVideo").hidden = false;
+            $("remoteVideo").play().catch(function () {});
+            $("remoteAudio").srcObject = e.streams[0];
+          } else { $("remoteAudio").srcObject = e.streams[0]; }
+          $("remoteAudio").play().catch(function () {});
+        } catch (err) {}
+        $("aState").textContent = "متصل";
+      };
+      pc.onconnectionstatechange = function () {
+        if (pc.connectionState === "connected") $("aState").textContent = "متصل";
+        if (pc.connectionState === "failed" || pc.connectionState === "disconnected") $("aState").textContent = "اتصال ضعیف…";
+      };
+      if (initiator && S.peerClientId) {
+        pc.createOffer().then(function (of) {
+          return pc.setLocalDescription(of).then(function () { sig(S.peerClientId, { t: "offer", s: pc.localDescription }); });
+        }).catch(function () {});
+      }
+      return pc;
+    }
+    function sig(to, data) {
+      if (!to) return;
+      api("/call/signal", { callId: S.call.id, from: S.clientId, to: to, data: data });
+      scheduleSync(80);
+    }
+    function onSignal(sg) {
+      var d = null;
+      try { d = typeof sg.data === "string" ? JSON.parse(sg.data) : sg.data; } catch (e) { d = null; }
+      if (!d || !d.t || !hasRTC) return;
+      if (d.t === "offer") {
+        var pc = makePC(false);
+        pc.setRemoteDescription(new RTCSessionDescription(d.s)).then(function () {
+          return pc.createAnswer();
+        }).then(function (an) {
+          return pc.setLocalDescription(an).then(function () { sig(sg.fromCid || S.peerClientId, { t: "answer", s: pc.localDescription }); });
+        }).catch(function () {});
+      } else if (d.t === "answer") {
+        var p2 = S.pc;
+        if (p2 && p2.signalingState !== "stable") p2.setRemoteDescription(new RTCSessionDescription(d.s)).catch(function () {});
+      } else if (d.t === "ice") {
+        var p3 = S.pc;
+        if (p3 && p3.remoteDescription) p3.addIceCandidate(new RTCIceCandidate(d.c)).catch(function () {});
+      }
+    }
+    function scheduleSync(delay) {
+      if (S.pollTm || S.mode !== "active") return;
+      S.pollTm = setTimeout(function () { S.pollTm = 0; syncLoop(); }, delay);
+    }
+    function syncLoop() {
+      if (S.mode !== "active" || S.pollBusy) return;
+      S.pollBusy = true;
+      api("/call/sync?callId=" + S.call.id + "&clientId=" + S.clientId + "&since=" + S.cursor).then(function (r) {
+        S.pollBusy = false;
+        if (S.mode !== "active") return;
+        if (!r.ok) { scheduleSync(1200); return; }
+        if (r.d.cursor) S.cursor = r.d.cursor;
+        if (r.d.peerClientId && !S.peerClientId) {
+          S.peerClientId = r.d.peerClientId;
+          if (S.outgoing && S.pc && S.pc.localDescription && !S.pc.remoteDescription) {
+            sig(S.peerClientId, { t: "offer", s: S.pc.localDescription });
+          }
+        }
+        (r.d.signals || []).forEach(onSignal);
+        if (r.d.status !== "active") { finish(r.d.status === "declined" ? "رد شد" : "تماس تمام شد"); return; }
+        scheduleSync((r.d.signals || []).length ? 250 : 450);
+      }).catch(function () { S.pollBusy = false; scheduleSync(1500); });
+    }
+
+    /* کنترل‌ها */
+    $("aMute").addEventListener("click", function () {
+      S.micOn = !S.micOn;
+      if (S.localStream) S.localStream.getAudioTracks().forEach(function (t) { t.enabled = S.micOn; });
+      this.classList.toggle("off", !S.micOn);
+      this.textContent = S.micOn ? "🎙" : "🔇";
+    });
+    $("aCam").addEventListener("click", function () {
+      S.camOn = !S.camOn;
+      if (S.localStream) S.localStream.getVideoTracks().forEach(function (t) { t.enabled = S.camOn; });
+      this.classList.toggle("off", !S.camOn);
+    });
+    $("aFlip").addEventListener("click", function () {
+      if (!S.localStream || !S.pc) return;
+      S.facing = S.facing === "user" ? "environment" : "user";
+      var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+      if (!gmd) return;
+      gmd.call(navigator.mediaDevices, { video: { facingMode: S.facing } }).then(function (st) {
+        var nt = st.getVideoTracks()[0];
+        var sender = S.pc.getSenders().filter(function (x) { return x.track && x.track.kind === "video"; })[0];
+        if (sender) sender.replaceTrack(nt);
+        var old = S.localStream.getVideoTracks()[0];
+        if (old) old.stop();
+        S.localStream.removeTrack(old); S.localStream.addTrack(nt);
+        try { $("localVideo").srcObject = S.localStream; } catch (e) {}
+      }).catch(function () { toast("دوربین عوض نشد"); });
+    });
+    $("aEnd").addEventListener("click", function () {
+      api("/call/end", { callId: S.call && S.call.id });
+      finish("تماس تمام شد");
+    });
+
+    /* ============ پایان ============ */
+    function finish(reason) {
+      var wasCall = !!S.call;
+      stopRing(); stopTimer();
+      if (S.pollTm) { clearTimeout(S.pollTm); S.pollTm = 0; }
+      if (S.pc) { try { S.pc.close(); } catch (e) {} S.pc = null; }
+      if (S.localStream) { try { S.localStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.localStream = null; }
+      try { $("remoteVideo").srcObject = null; $("remoteAudio").srcObject = null; $("localVideo").srcObject = null; } catch (e) {}
+      S.mode = "idle"; S.call = null; S.cursor = 0; S.answeredAt = 0;
+      $("ovOutgoing").hidden = true; $("ovIncoming").hidden = true; $("ovActive").hidden = true;
+      if (wasCall) { toast(reason || "تماس پایان یافت"); loadRecents(); }
+      pollInbox();
+    }
+
+    /* ============ شروع ============ */
+    function boot() {
+      $("login").hidden = true; $("app").hidden = false;
+      loadNumber();
+      pollInbox();
+      setInterval(pollInbox, 2000);
+    }
+    var m = location.hash.match(/#dial=([A-Za-z0-9@_]+)/);
+    api("/me").then(function (r) {
+      if (r.ok) {
+        boot();
+        if (m) { dial = m[1]; renderDial(); startCall("audio"); }
+      } else showLogin();
+    }).catch(showLogin);
+    renderDial();
+  })();
+  </script>
+</body>
+</html>

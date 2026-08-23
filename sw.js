@@ -1,5 +1,5 @@
 /* T Messenger — service worker: پوستهٔ آفلاین + نوتیفیکیشن */
-var VERSION = "t-sw-v2";
+var VERSION = "t-sw-v3";
 var SHELL = [
   "/",
   "/assets/index-Dk7welQn.js",
@@ -67,9 +67,10 @@ self.addEventListener("push", function (e) {
           badge: "/assets/icon-192.png",
           dir: "rtl",
           lang: "fa",
-          tag: "t-msg",
+          tag: d && d.call ? "t-call" : "t-msg",
           renotify: true,
-          data: { url: d && d.convId ? "/c/" + d.convId : "/" }
+          requireInteraction: !!(d && d.call),
+          data: { url: (d && d.url) || (d && d.convId ? "/c/" + d.convId : "/") }
         });
       })
   );
