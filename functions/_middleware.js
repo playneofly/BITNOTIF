@@ -9658,13 +9658,12 @@ app.post("/call/answer", async (c) => {
   if (!row) return jsonError(c, "تماس دیگه در دسترس نیست", 409);
   const clientId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const isCallee = row.to_user === user.id;
-  const wasRinging = row.status === "ringing";
-  if (wasRinging) {
-    await run(db, `UPDATE calls SET status='active', answered_at=?, last_ping=? WHERE id = ?`, Date.now(), Date.now(), row.id);
+  const now = Date.now();
+  if (row.status === "ringing") {
+    await run(db, `UPDATE calls SET status = 'active', answered_at = ?, last_ping = ?, ` + (isCallee ? "to_client" : "from_client") + ` = ? WHERE id = ?`, now, now, clientId, row.id);
   } else {
-    await run(db, `UPDATE calls SET last_ping=? WHERE id = ?`, Date.now(), row.id);
+    await run(db, `UPDATE calls SET last_ping = ?, ` + (isCallee ? "to_client" : "from_client") + ` = ? WHERE id = ?`, now, clientId, row.id);
   }
-  await run(db, `UPDATE calls SET ` + (isCallee ? "to_client" : "from_client") + ` = ? WHERE id = ?`, clientId, row.id);
   const peerCid = isCallee ? (row.from_client || null) : (row.to_client || null);
   const fresh = await one(db, `SELECT * FROM calls WHERE id = ?`, row.id);
   return c.json({ ok: true, clientId: clientId, peerClientId: peerCid, call: await callHydrate(db, fresh, user.id) });
