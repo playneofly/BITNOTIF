@@ -735,7 +735,7 @@
     });
     $("btnClr").addEventListener("click", function () { dial = dial.slice(0, -1); renderDial(); });
     $("btnAudio").addEventListener("click", function () { startCall("audio"); });
-    $("btnVideo").addEventListener("click", function () { startCall("video"); });
+    $("btnVideo").addEventListener("click", function () { toast("🎥 تماس تصویری به‌زودی می‌آید!"); });
 
     /* --- تب‌ها --- */
     $("tabDial").addEventListener("click", function () { switchTab("dial"); });
@@ -785,8 +785,9 @@
       var cc = t.getAttribute && t.getAttribute("data-cc");
       var ck = t.getAttribute && t.getAttribute("data-ck");
       if (cc !== null && cc !== undefined && ck) {
+        if (ck === "video") { toast("🎥 تماس تصویری به‌زودی می‌آید!"); return; }
         var c = contacts[Number(cc)];
-        if (c && /^[0-9]{10}$/.test(c.number)) { dial = c.number; renderDial(); startCall(ck); }
+        if (c && /^[0-9]{10}$/.test(c.number)) { dial = c.number; renderDial(); startCall("audio"); }
         return;
       }
       var row = t.closest ? t.closest(".contact") : null;
@@ -842,9 +843,18 @@
       if (S.callId || !dial) return;
       var target = dial.trim();
       if (!/^[0-9]{10}$/.test(target)) { toast("شمارهٔ ۱۰ رقمی را کامل بزن"); return; }
-      api("/call/dial", { target: target, kind: kind }).then(function (r) {
-        if (!r.ok) { toast((r.d && r.d.error) || "زنگ نخورد"); return; }
-        S.callId = r.d.call.id; S.callRole = "caller"; S.callKind = r.d.call.kind || kind;
+      var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+      if (gmd && !S.preStream) {
+        gmd.call(navigator.mediaDevices, { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } })
+          .then(function (st) { if (S.callRole === "caller" && !S.channelId) S.preStream = st; else { try { st.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} } })
+          .catch(function () {});
+      }
+      api("/call/dial", { target: target, kind: "audio" }).then(function (r) {
+        if (!r.ok) {
+          if (S.preStream) { try { S.preStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.preStream = null; }
+          toast((r.d && r.d.error) || "زنگ نخورد"); return;
+        }
+        S.callId = r.d.call.id; S.callRole = "caller"; S.callKind = "audio";
         S.callPeer = r.d.call.peer; S.answeredAt = 0; S.callTimerOn = false;
         addContact(r.d.call.peer, target);
         joinChannel(r.d.call.id);
@@ -867,8 +877,8 @@
         if ($("ovOutgoing").hidden) return;
         api("/call/status?callId=" + S.callId).then(function (r) {
           if (S.callRole !== "caller" || $("ovOutgoing").hidden) return;
-          if (r.ok && (r.d.status === "declined")) { stopRing(); toast("رد شد"); leaveRoom(); return; }
-          if (r.ok && (r.d.status === "missed" || r.d.status === "ended")) { stopRing(); toast("بی‌پاسخ"); leaveRoom(); return; }
+          if (r.ok && r.d.status === "declined") { stopRing(); toast("رد شد"); leaveRoom(); return; }
+          if (r.ok && r.d.status === "missed") { stopRing(); toast("بی‌پاسخ"); leaveRoom(); return; }
           pollCallStatus();
         }).catch(function () { pollCallStatus(); });
       }, 800);
@@ -921,12 +931,12 @@
       leaveRoom();
     });
     $("iAccept").addEventListener("click", function () {
-      api("/call/answer", { callId: S.callId }).then(function (r) {
-        if (!r.ok) { toast((r.d && r.d.error) || "تماس در دسترس نیست"); leaveRoom(); return; }
-        stopRing();
-        $("ovIncoming").hidden = true;
-        S.answeredAt = r.d.call.answeredAt || Date.now();
-        joinChannel(S.callId);
+      var cid3 = S.callId;
+      stopRing();
+      $("ovIncoming").hidden = true;
+      joinChannel(cid3);
+      api("/call/answer", { callId: cid3 }).then(function (r) {
+        if (r.ok && r.d.call && r.d.call.answeredAt) S.answeredAt = r.d.call.answeredAt;
       });
     });
 
@@ -956,31 +966,18 @@
 
     function joinChannel(id) {
       leaveRoomSilent();
-      var wantVideo = S.callKind === "video";
       var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-      if (!gmd) { S.micDenied = true; S.localStream = null; _join(id); return; }
       var pre = S.preStream;
       if (pre && pre.getAudioTracks && pre.getAudioTracks().length) {
         S.preStream = null;
-        if (!wantVideo) { S.localStream = pre; _join(id); return; }
-        gmd.call(navigator.mediaDevices, { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } })
-          .then(function (vst) {
-            try { vst.addTrack(pre.getAudioTracks()[0]); } catch (e) {}
-            S.localStream = vst; _join(id);
-          })
-          .catch(function () { S.callKind = "audio"; S.localStream = pre; _join(id); });
+        S.localStream = pre;
+        _join(id);
         return;
       }
-      var p = gmd.call(navigator.mediaDevices, {
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
-        video: wantVideo ? { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } : false
-      });
-      if (wantVideo) p = p.catch(function () { return gmd.call(navigator.mediaDevices, { audio: true, video: true }); });
-      p.then(function (st) {
-        S.localStream = st;
-        if (wantVideo && st && st.getVideoTracks().length === 0) { S.callKind = "audio"; toast("دوربین اجازه نداد — تماس صوتی شد"); }
-        _join(id);
-      }).catch(function () { S.micDenied = true; S.localStream = null; _join(id); });
+      if (!gmd) { S.micDenied = true; S.localStream = null; _join(id); return; }
+      gmd.call(navigator.mediaDevices, { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } })
+        .then(function (st) { S.localStream = st; _join(id); })
+        .catch(function () { S.micDenied = true; S.localStream = null; _join(id); });
     }
     function _join(id) {
       api("/speak/channels/" + id + "/join", {}).then(function (r) {
@@ -1225,11 +1222,14 @@
         if (someoneLeft) blip(520, 0.025);
         var peersNow = 0;
         ms.forEach(function (m) { if (m.clientId !== S.clientId) peersNow++; });
-        if (S.callId && S.hadPeer && peersNow === 0) {
-          S.hadPeer = false;
-          setTimeout(function () { if (S.callId) { toast("تماس تمام شد"); leaveRoom(); } }, 400);
+        if (peersNow > 0) { S.hadPeer = true; S.emptyTicks = 0; }
+        else if (S.callId && S.hadPeer) {
+          S.emptyTicks = (S.emptyTicks || 0) + 1;
+          if (S.emptyTicks >= 2) {
+            S.hadPeer = false; S.emptyTicks = 0;
+            setTimeout(function () { if (S.callId) { toast("تماس تمام شد"); leaveRoom(); } }, 300);
+          }
         }
-        if (peersNow > 0) S.hadPeer = true;
         (r.d.signals || []).forEach(onSignal);
         S.drain = (r.d.signals || []).length > 0;
         if ((r.d.chat || []).length) {
