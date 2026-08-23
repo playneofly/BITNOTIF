@@ -559,7 +559,9 @@
       });
     }
     $("oCancel").addEventListener("click", function () {
-      api("/call/end", { callId: S.call && S.call.id });
+      var id = S.call && S.call.id;
+      api("/call/end", { callId: id });
+      if (id) S.handled[id] = 1;
       finish("لغو شد");
     });
 
@@ -676,7 +678,7 @@
         ? { facingMode: S.facing, width: { ideal: 640 }, height: { ideal: 480 } }
         : false;
       var attempt = gmd.call(navigator.mediaDevices, {
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
         video: tryVideo
       });
       if (wantVideo) {
@@ -688,6 +690,7 @@
         S.mediaBusy = false; S.localStream = st;
         if (wantVideo && st.getVideoTracks().length === 0) { S.kind = "audio"; toast("دوربین اجازه نداد — تماس صوتی ادامه می‌یابد"); }
         if (!wantVideo) S.kind = "audio";
+        if (S.mode === "active") attachLocalTracks();
         (S.mediaQueue || []).forEach(function (f) { f(true); }); S.mediaQueue = [];
         S.mediaReady = true; cb(true);
       }).catch(function () {
@@ -736,6 +739,19 @@
       }, 1000);
     }
     function stopTimer() { if (S.timer) { clearInterval(S.timer); S.timer = 0; } }
+    function attachLocalTracks() {
+      if (!S.pc || !S.localStream) return;
+      var senders = S.pc.getSenders();
+      S.localStream.getTracks().forEach(function (t) {
+        var snd = senders.filter(function (x) { return x.track && x.track.kind === t.kind; })[0];
+        if (snd) {
+          if (snd.track !== t) { try { snd.replaceTrack(t); } catch (e) {} }
+          t.enabled = t.kind === "audio" ? S.micOn : S.camOn;
+        } else {
+          try { S.pc.addTrack(t, S.localStream); } catch (e) {}
+        }
+      });
+    }
     function attachRemoteStream(stream) {
       var hasVideo = S.kind === "video" || (stream && stream.getVideoTracks && stream.getVideoTracks().length > 0);
       if (hasVideo) {
@@ -747,14 +763,18 @@
       try {
         S.audioCtx = S.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
         if (S.audioCtx.state === "suspended") S.audioCtx.resume();
-        if (S.graph) { try { S.graph.src.disconnect(); S.graph.gain.disconnect(); } catch (e) {} }
+        if (S.graph && S.graphStream === stream) return;
+        if (S.graph) { try { S.graph.src.disconnect(); } catch (e1) {} try { S.graph.gain.disconnect(); } catch (e2) {} }
         var srcNode = S.audioCtx.createMediaStreamSource(stream);
         var gain = S.audioCtx.createGain();
         gain.gain.value = 1;
-        srcNode.connect(gain); gain.connect(S.audioCtx.destination);
+        var analyser = S.audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        srcNode.connect(analyser);
+        srcNode.connect(gain);
+        gain.connect(S.audioCtx.destination);
         S.graph = { src: srcNode, gain: gain };
-        var ra = $("remoteAudio");
-        ra.muted = true; ra.srcObject = stream;
+        S.graphStream = stream;
       } catch (e) {
         var ra2 = $("remoteAudio");
         ra2.muted = false; ra2.srcObject = stream;
@@ -766,7 +786,16 @@
       var pc = new RTCPeerConnection(ICE);
       S.pc = pc;
       if (S.localStream) {
-        try { S.localStream.getTracks().forEach(function (t) { pc.addTrack(t, S.localStream); }); } catch (e) {}
+        try {
+          S.localStream.getTracks().forEach(function (t) {
+            t.enabled = t.kind === "audio" ? S.micOn : S.camOn;
+            pc.addTrack(t, S.localStream);
+          });
+          pc.getSenders().forEach(function (snd) {
+            if (!snd || !snd.setParameters || !snd.track) return;
+            try { snd.setParameters({ encodings: [{ maxBitrate: snd.track.kind === "video" ? 500000 : 32000 }] }); } catch (e2) {}
+          });
+        } catch (e) {}
       } else {
         try { pc.addTransceiver("audio", { direction: "recvonly" }); if (S.kind === "video") pc.addTransceiver("video", { direction: "recvonly" }); } catch (e) {}
       }
@@ -814,6 +843,10 @@
       if (!hasRTC) return;
       var pc = makePC(false);
       pc.setRemoteDescription(new RTCSessionDescription(d.s)).then(function () {
+        if (S.pendingIce) {
+          S.pendingIce.forEach(function (cc) { try { pc.addIceCandidate(new RTCIceCandidate(cc)).catch(function () {}); } catch (e4) {} });
+          S.pendingIce = null;
+        }
         return pc.createAnswer();
       }).then(function (an) {
         return pc.setLocalDescription(an).then(function () { sig(S.lastOfferFrom || S.peerClientId, { t: "answer", s: pc.localDescription }); });
@@ -829,10 +862,16 @@
         handleOffer(d);
       } else if (d.t === "answer") {
         var p2 = S.pc;
-        if (p2 && p2.signalingState !== "stable") p2.setRemoteDescription(new RTCSessionDescription(d.s)).catch(function () {});
+        if (p2 && p2.signalingState !== "stable") p2.setRemoteDescription(new RTCSessionDescription(d.s)).then(function () {
+          if (S.pendingIce) {
+            S.pendingIce.forEach(function (cc) { try { p2.addIceCandidate(new RTCIceCandidate(cc)).catch(function () {}); } catch (e5) {} });
+            S.pendingIce = null;
+          }
+        }).catch(function () {});
       } else if (d.t === "ice") {
         var p3 = S.pc;
-        if (p3 && p3.remoteDescription) p3.addIceCandidate(new RTCIceCandidate(d.c)).catch(function () {});
+        if (p3 && p3.remoteDescription) { try { p3.addIceCandidate(new RTCIceCandidate(d.c)).catch(function () {}); } catch (e3) {} }
+        else { (S.pendingIce = S.pendingIce || []).push(d.c); }
       }
     }
     function scheduleSync(delay) {
@@ -863,12 +902,14 @@
     $("aMute").addEventListener("click", function () {
       S.micOn = !S.micOn;
       if (S.localStream) S.localStream.getAudioTracks().forEach(function (t) { t.enabled = S.micOn; });
+      if (S.pc) S.pc.getSenders().forEach(function (x) { if (x.track && x.track.kind === "audio") x.track.enabled = S.micOn; });
       this.classList.toggle("off", !S.micOn);
       this.textContent = S.micOn ? "🎙" : "🔇";
     });
     $("aCam").addEventListener("click", function () {
       S.camOn = !S.camOn;
       if (S.localStream) S.localStream.getVideoTracks().forEach(function (t) { t.enabled = S.camOn; });
+      if (S.pc) S.pc.getSenders().forEach(function (x) { if (x.track && x.track.kind === "video") x.track.enabled = S.camOn; });
       this.classList.toggle("off", !S.camOn);
     });
     $("aFlip").addEventListener("click", function () {
@@ -911,6 +952,7 @@
       if (S.wdTm) { clearInterval(S.wdTm); S.wdTm = 0; }
       if (S.pc) { try { S.pc.close(); } catch (e) {} S.pc = null; }
       if (S.graph) { try { S.graph.src.disconnect(); S.graph.gain.disconnect(); } catch (e) {} S.graph = null; }
+      S.graphStream = null; S.pendingIce = null;
       if (S.localStream) { try { S.localStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.localStream = null; }
       try { $("remoteVideo").srcObject = null; $("remoteAudio").srcObject = null; $("localVideo").srcObject = null; } catch (e) {}
       S.mode = "idle"; S.call = null; S.cursor = 0; S.answeredAt = 0; S.pendingOffer = null; S.mediaReady = false; S.warnedCurrent = false;
