@@ -9561,7 +9561,7 @@ app.get("/admin/speak", async (c) => {
 
 // ===== T کال — تماس صوتی/تصویری یک‌به‌یک (فاز ۱: P2P + زنگ با پوش) =====
 var CALL_RING_TTL = 45000;
-var CALL_PING_TTL = 25000;
+var CALL_PING_TTL = 40000;
 var callReady = false;
 async function callRows(db, sql, ...params) {
   try { const r = await db.prepare(sql).bind(...params).all(); return r.results || []; } catch (e) { return []; }
@@ -9654,11 +9654,20 @@ app.post("/call/answer", async (c) => {
   const db = c.env.DB;
   await callInit(db);
   const b = await c.req.json().catch(() => ({}));
-  const row = await one(db, `SELECT * FROM calls WHERE id = ? AND to_user = ? AND status = 'ringing'`, String(b.callId || ""), user.id);
+  const row = await one(db, `SELECT * FROM calls WHERE id = ? AND (to_user = ? OR from_user = ?) AND status IN ('ringing','active')`, String(b.callId || ""), user.id, user.id);
   if (!row) return jsonError(c, "تماس دیگه در دسترس نیست", 409);
   const clientId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-  await run(db, `UPDATE calls SET status='active', to_client=?, answered_at=?, last_ping=? WHERE id = ?`, clientId, Date.now(), Date.now(), row.id);
-  return c.json({ ok: true, clientId: clientId, peerClientId: row.from_client || null, call: await callHydrate(db, { ...row, status: "active" }, user.id) });
+  const isCallee = row.to_user === user.id;
+  const wasRinging = row.status === "ringing";
+  if (wasRinging) {
+    await run(db, `UPDATE calls SET status='active', answered_at=?, last_ping=? WHERE id = ?`, Date.now(), Date.now(), row.id);
+  } else {
+    await run(db, `UPDATE calls SET last_ping=? WHERE id = ?`, Date.now(), row.id);
+  }
+  await run(db, `UPDATE calls SET ` + (isCallee ? "to_client" : "from_client") + ` = ? WHERE id = ?`, clientId, row.id);
+  const peerCid = isCallee ? (row.from_client || null) : (row.to_client || null);
+  const fresh = await one(db, `SELECT * FROM calls WHERE id = ?`, row.id);
+  return c.json({ ok: true, clientId: clientId, peerClientId: peerCid, call: await callHydrate(db, fresh, user.id) });
 });
 app.post("/call/decline", async (c) => {
   const user = await auth(c);

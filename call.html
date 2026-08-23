@@ -83,7 +83,8 @@
   .numdisp b { font-family: var(--mono); font-size: 24px; letter-spacing: 2px; direction: ltr; color: var(--text); }
   .numdisp b.empty { color: var(--dim); font-size: 13px; letter-spacing: 0; }
   .numdisp .clr { border: 0; background: none; color: var(--dim); font-size: 18px; }
-  .keypad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px 6px; align-content: center; }
+  .keypad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px 6px; align-content: center; direction: ltr; }
+  .key.zero { grid-column: 2; }
   .key {
     border: 1px solid var(--line2); background: var(--panel); border-radius: 14px;
     height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -102,25 +103,16 @@
   .callbtn:active { transform: scale(.98); }
   .callbtn:disabled { opacity: .35; }
 
-  /* مخاطبین کنار کیپد */
-  .dialwrap { flex: 1; display: flex; gap: 10px; min-height: 0; }
-  .dialcol { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-  .contacts { width: 148px; flex: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow-y: auto; padding: 7px; }
-  .chead { font-size: 10px; color: var(--dim); font-weight: 800; padding: 4px 5px 8px; letter-spacing: .3px; }
-  .contact { border: 1px solid var(--line2); background: var(--bg2); border-radius: 8px; padding: 8px; margin-bottom: 6px; cursor: pointer; }
-  .contact:hover { border-color: var(--acc); }
-  .contact .crow { display: flex; align-items: center; gap: 7px; }
-  .contact .cav {
-    width: 26px; height: 26px; border-radius: 50%; flex: none; color: #060B14; font-size: 12px; font-weight: 800;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(160deg, hsl(var(--h,215) 80% 65%), hsl(var(--h,215) 70% 44%));
-  }
-  .contact .cnm { font-size: 11px; font-weight: 800; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .copts { display: flex; gap: 5px; margin-top: 7px; }
-  .copts button { flex: 1; border: 0; border-radius: 6px; height: 30px; font-size: 10px; font-weight: 800; color: #fff; }
+  /* مخاطبین (تب جدا) */
+  .contact { border-bottom: 1px solid var(--line2); padding: 11px 13px; cursor: pointer; }
+  .contact:hover { background: rgba(76,141,255,.05); }
+  .contact .crow { display: flex; align-items: center; gap: 10px; }
+  .contact .cnm { font-size: 13px; font-weight: 800; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .contact .cnum2 { display: block; font-size: 10px; color: var(--dim); font-family: var(--mono); direction: ltr; text-align: right; margin-top: 2px; }
+  .copts { display: flex; gap: 8px; margin-top: 10px; }
+  .copts button { flex: 1; border: 0; border-radius: 8px; height: 38px; font-size: 12px; font-weight: 800; color: #fff; }
   .copts .cv { background: linear-gradient(135deg, #5C9BFF, var(--acc2)); }
   .copts .ca { background: linear-gradient(135deg, #3FCE84, #22A05C); }
-  .cempty { font-size: 9.5px; color: var(--dim); padding: 8px 5px; line-height: 1.8; }
 
   /* اخیر */
   .recents { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow-y: auto; }
@@ -214,8 +206,6 @@
     body { padding: 6px; }
     .key { height: 50px; }
     .shell { max-height: none; }
-    .dialwrap { flex-direction: column-reverse; }
-    .contacts { width: 100%; max-height: 118px; }
   }
 </style>
 </head>
@@ -240,22 +230,19 @@
         <span class="mynum" id="myNum" title="کپی شمارهٔ من">—</span>
       </div>
 
-      <!-- کیپد + مخاطبین -->
+      <!-- کیپد -->
       <div class="view" id="viewDial">
-        <div class="dialwrap">
-        <div class="contacts" id="contactsBox">
-          <div class="chead">👥 مخاطبین</div>
-          <div id="cList"><div class="cempty">هرکی بهش زنگ بزنی، همین‌جا ثبت میشه</div></div>
-        </div>
-        <div class="dialcol">
         <div class="numdisp"><b id="numDisp" class="empty">شماره یا @آیدی…</b><button class="clr" id="btnClr">⌫</button></div>
         <div class="keypad" id="keypad"></div>
         <div class="dialrow">
           <button class="callbtn video" id="btnVideo">🎥 تماس تصویری</button>
           <button class="callbtn audio" id="btnAudio">📞 تماس صوتی</button>
         </div>
-        </div>
-        </div>
+      </div>
+
+      <!-- مخاطبین -->
+      <div class="view" id="viewContacts" hidden>
+        <div class="recents" id="cList"><div class="empty">…</div></div>
       </div>
 
       <!-- اخیر -->
@@ -265,6 +252,7 @@
 
       <div class="tabs">
         <button id="tabDial" class="on">⌨️ کیپد</button>
+        <button id="tabContacts">👥 مخاطبین</button>
         <button id="tabRecent">🕐 اخیر</button>
       </div>
     </div>
@@ -356,7 +344,7 @@
       kind: "audio", outgoing: false,
       localStream: null, pc: null, remoteStream: null,
       micOn: true, camOn: true, facing: "user",
-      timer: 0, pollTm: 0, pollBusy: false,
+      timer: 0, pollTm: 0, pollBusy: false, handled: {},
       ringTm: 0, ringStop: null, vibTm: 0, answeredAt: 0
     };
 
@@ -389,13 +377,14 @@
     });
 
     /* ============ کیپد ============ */
-    var keys = [["1",""],["2",""],["3",""],["4",""],["5",""],["6",""],["7",""],["8",""],["9",""],["0",""]];
+    var keys = [["1",""],["2",""],["3",""],["4",""],["5",""],["6",""],["7",""],["8",""],["9",""]];
     var dial = "";
     (function buildPad() {
       var h = "";
       keys.forEach(function (k) {
         h += '<button class="key" data-k="' + k[0] + '">' + k[0] + (k[1] ? "<small>" + k[1] + "</small>" : "") + "</button>";
       });
+      h += '<div></div><button class="key zero" data-k="0">0</button><div></div>';
       $("keypad").innerHTML = h;
     })();
     function renderDial() {
@@ -428,30 +417,31 @@
     var contacts = [];
     try { contacts = JSON.parse(localStorage.getItem("t-call-contacts") || "[]") || []; } catch (e) { contacts = []; }
     function saveContacts() { try { localStorage.setItem("t-call-contacts", JSON.stringify(contacts.slice(0, 40))); } catch (e) {} }
-    function addContact(peer, number) {
+    function addContact(peer, number, silent) {
       if (!peer || !peer.username || !/^[0-9]{10}$/.test(String(number || ""))) return;
       contacts = contacts.filter(function (c) { return c.username !== peer.username; });
       contacts.unshift({ username: peer.username, displayName: peer.displayName || peer.username, hue: peer.hue || 215, number: String(number) });
       contacts = contacts.slice(0, 40);
-      saveContacts(); renderContacts();
+      saveContacts();
+      if (!silent) renderContacts();
     }
     var openContact = null;
     function renderContacts() {
       var box = $("cList");
-      if (!contacts.length) { box.innerHTML = '<div class="cempty">هرکی بهش زنگ بزنی، همین‌جا ثبت میشه</div>'; return; }
+      if (!contacts.length) { box.innerHTML = '<div class="empty">هرکی بهش زنگ بزنی یا بهت زنگ بزنه، همین‌جا ثبت میشه</div>'; return; }
       box.innerHTML = contacts.map(function (c, i) {
         var h = '<div class="contact" data-ci="' + i + '"><div class="crow">' +
-          '<span class="cav" style="--h:' + (c.hue || 215) + '">' + esc((c.displayName || "?").trim().charAt(0).toUpperCase()) + "</span>" +
-          '<span class="cnm">' + esc(c.displayName) + "</span></div>";
+          '<div class="av" style="--h:' + (c.hue || 215) + '">' + esc((c.displayName || "?").trim().charAt(0).toUpperCase()) + "</div>" +
+          '<span class="cnm">' + esc(c.displayName) + '<span class="cnum2">' + esc(c.number) + "</span></span></div>";
         if (openContact === i) {
           h += '<div class="copts">' +
-            '<button class="cv" data-cc="' + i + '" data-ck="video">🎥 تصویری</button>' +
-            '<button class="ca" data-cc="' + i + '" data-ck="audio">📞 صوتی</button></div>';
+            '<button class="cv" data-cc="' + i + '" data-ck="video">🎥 تماس تصویری</button>' +
+            '<button class="ca" data-cc="' + i + '" data-ck="audio">📞 تماس صوتی</button></div>';
         }
         return h + "</div>";
       }).join("");
     }
-    $("contactsBox").addEventListener("click", function (e) {
+    $("cList").addEventListener("click", function (e) {
       var t = e.target;
       var cc = t.getAttribute && t.getAttribute("data-cc");
       var ck = t.getAttribute && t.getAttribute("data-ck");
@@ -479,6 +469,13 @@
       api("/call/recents").then(function (r) {
         if (!r.ok) return;
         var cs = r.d.calls || [];
+        var changed2 = false;
+        cs.forEach(function (c) {
+          var before = contacts.length;
+          addContact(c.peer, c.peerNumber, true);
+          if (contacts.length !== before) changed2 = true;
+        });
+        if (changed2) renderContacts();
         if (!cs.length) { $("recents").innerHTML = '<div class="empty">هنوز تماسی نداشتی — اولین زنگ را بزن! 📞</div>'; return; }
         $("recents").innerHTML = cs.map(function (c) {
           var cls = c.status === "missed" ? "miss" : (c.outgoing ? "out" : "in");
@@ -502,13 +499,17 @@
       dial = num; renderDial(); startCall("audio");
     });
     $("tabDial").addEventListener("click", function () { switchTab("dial"); });
+    $("tabContacts").addEventListener("click", function () { switchTab("contacts"); });
     $("tabRecent").addEventListener("click", function () { switchTab("recent"); });
     function switchTab(t) {
       $("tabDial").classList.toggle("on", t === "dial");
+      $("tabContacts").classList.toggle("on", t === "contacts");
       $("tabRecent").classList.toggle("on", t === "recent");
       $("viewDial").hidden = t !== "dial";
+      $("viewContacts").hidden = t !== "contacts";
       $("viewRecent").hidden = t !== "recent";
       if (t === "recent") loadRecents();
+      if (t === "contacts") renderContacts();
     }
 
     /* ============ صداها ============ */
@@ -568,9 +569,12 @@
       api("/call/inbox").then(function (r) {
         if (!r.ok || S.mode !== "idle") return;
         var inc = r.d.incoming;
+        if (inc && (inc.status !== "ringing" || S.handled[inc.id])) inc = null;
         if (inc) {
+          S.handled[inc.id] = 1;
           S.mode = "incoming"; S.call = inc; S.kind = inc.kind; S.outgoing = false;
           S.cursor = 0; S.clientId = null; S.peerClientId = null;
+          addContact(inc.peer, inc.peerNumber, true); renderContacts();
           $("iAv").textContent = (inc.peer.displayName || "?").trim().charAt(0);
           $("iAv").style.setProperty("--h", inc.peer.hue || 215);
           $("iName").textContent = inc.peer.displayName || inc.peer.username;
@@ -581,7 +585,16 @@
           pollIncoming();
           return;
         }
-        if (r.d.current && !S.warnedCurrent) { S.warnedCurrent = true; toast("یه تماست در جریانه — از همین صفحه ادامه بده"); }
+        if (r.d.current) {
+          if (!S.warnedCurrent) {
+            S.warnedCurrent = true;
+            var cur = r.d.current;
+            toast("بازگشت به تماس…");
+            resumeCall(cur);
+          }
+          return;
+        }
+        S.warnedCurrent = false;
       }).catch(function () {});
     }
     function pollIncoming() {
@@ -637,6 +650,17 @@
       }, 350);
     }
 
+    function resumeCall(cur) {
+      S.mode = "resuming"; S.call = cur; S.kind = cur.kind; S.outgoing = !!cur.outgoing; S.cursor = 0; S.peerClientId = null;
+      api("/call/answer", { callId: cur.id }).then(function (r) {
+        if (!r.ok) { S.call = null; S.mode = "idle"; S.warnedCurrent = false; return; }
+        S.clientId = r.d.clientId;
+        S.peerClientId = r.d.peerClientId;
+        S.answeredAt = r.d.call.answeredAt || Date.now();
+        enterActive();
+      });
+    }
+
     /* ============ در تماس ============ */
     function getMedia(cb) {
       var wantVideo = S.kind === "video";
@@ -648,10 +672,19 @@
       if (!gmd) { S.localStream = null; S.mediaReady = true; cb(false); return; }
       if (S.mediaBusy) { S.mediaQueue = S.mediaQueue || []; S.mediaQueue.push(cb); return; }
       S.mediaBusy = true;
-      gmd.call(navigator.mediaDevices, {
+      var tryVideo = wantVideo
+        ? { facingMode: S.facing, width: { ideal: 640 }, height: { ideal: 480 } }
+        : false;
+      var attempt = gmd.call(navigator.mediaDevices, {
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: wantVideo ? { facingMode: S.facing, width: { ideal: 640 }, height: { ideal: 480 } } : false
-      }).then(function (st) {
+        video: tryVideo
+      });
+      if (wantVideo) {
+        attempt = attempt.catch(function () {
+          return gmd.call(navigator.mediaDevices, { audio: true, video: true });
+        });
+      }
+      attempt.then(function (st) {
         S.mediaBusy = false; S.localStream = st;
         if (wantVideo && st.getVideoTracks().length === 0) { S.kind = "audio"; toast("دوربین اجازه نداد — تماس صوتی ادامه می‌یابد"); }
         if (!wantVideo) S.kind = "audio";
@@ -685,6 +718,8 @@
       $("remoteVideo").hidden = S.kind !== "video";
       $("localVideo").hidden = S.kind !== "video";
       S.micOn = true; S.camOn = true;
+      startTimer();
+      syncLoop();
       getMedia(function (ok) {
         if (!ok) { toast("به میکروفن و دوربین دسترسی نیست"); }
         if (S.localStream && S.kind === "video") {
@@ -692,8 +727,6 @@
         }
         if (S.outgoing) makePC(true);
         else if (S.pendingOffer) { var po = S.pendingOffer; S.pendingOffer = null; handleOffer(po); }
-        startTimer();
-        syncLoop();
       });
     }
     function startTimer() {
@@ -743,14 +776,27 @@
         attachRemoteStream(e.streams[0]);
         $("aState").textContent = "متصل";
       };
-      setTimeout(function () {
-        if (S.pc === pc && S.mode === "active" && pc.connectionState !== "connected" && pc.connectionState !== "completed") {
-          try { $("aState").textContent = "بازسازی اتصال…"; pc.restartIce(); } catch (e2) {}
+      if (S.wdTm) clearInterval(S.wdTm);
+      S.wdTm = setInterval(function () {
+        if (S.pc !== pc || S.mode !== "active") { clearInterval(S.wdTm); return; }
+        var st = pc.connectionState;
+        if (st === "failed" || st === "disconnected") {
+          try { pc.restartIce(); } catch (e2) {}
         }
-      }, 7000);
+      }, 9000);
       pc.onconnectionstatechange = function () {
-        if (pc.connectionState === "connected") $("aState").textContent = "متصل";
-        if (pc.connectionState === "failed" || pc.connectionState === "disconnected") $("aState").textContent = "اتصال ضعیف…";
+        var st = pc.connectionState;
+        if (st === "connected" || st === "completed") { $("aState").textContent = "متصل"; return; }
+        if (st === "disconnected") {
+          setTimeout(function () {
+            if (S.pc === pc && pc.connectionState === "disconnected" && S.mode === "active") $("aState").textContent = "اتصال ضعیف…";
+          }, 3500);
+          return;
+        }
+        if (st === "failed") {
+          $("aState").textContent = "بازسازی اتصال…";
+          try { pc.restartIce(); } catch (e2) {}
+        }
       };
       if (initiator && S.peerClientId) {
         pc.createOffer().then(function (of) {
@@ -799,7 +845,7 @@
       api("/call/sync?callId=" + S.call.id + "&clientId=" + S.clientId + "&since=" + S.cursor).then(function (r) {
         S.pollBusy = false;
         if (S.mode !== "active") return;
-        if (!r.ok) { scheduleSync(1200); return; }
+        if (!r.ok || !r.d || r.d.status === undefined) { scheduleSync(1200); return; }
         if (r.d.cursor) S.cursor = r.d.cursor;
         if (r.d.peerClientId && !S.peerClientId) {
           S.peerClientId = r.d.peerClientId;
@@ -859,16 +905,19 @@
     }
     function finish(reason) {
       var wasCall = !!S.call;
+      var wasCallId = S.call && S.call.id;
       stopRing(); stopTimer();
       if (S.pollTm) { clearTimeout(S.pollTm); S.pollTm = 0; }
+      if (S.wdTm) { clearInterval(S.wdTm); S.wdTm = 0; }
       if (S.pc) { try { S.pc.close(); } catch (e) {} S.pc = null; }
       if (S.graph) { try { S.graph.src.disconnect(); S.graph.gain.disconnect(); } catch (e) {} S.graph = null; }
       if (S.localStream) { try { S.localStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.localStream = null; }
       try { $("remoteVideo").srcObject = null; $("remoteAudio").srcObject = null; $("localVideo").srcObject = null; } catch (e) {}
       S.mode = "idle"; S.call = null; S.cursor = 0; S.answeredAt = 0; S.pendingOffer = null; S.mediaReady = false; S.warnedCurrent = false;
+      if (wasCallId) S.handled[wasCallId] = 1;
       $("ovOutgoing").hidden = true; $("ovIncoming").hidden = true; $("ovActive").hidden = true;
       if (wasCall) { toast(reason || "تماس پایان یافت"); loadRecents(); }
-      pollInbox();
+      setTimeout(pollInbox, 500);
     }
 
     /* ============ شروع ============ */

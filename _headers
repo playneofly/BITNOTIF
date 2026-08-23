@@ -28,3 +28,9 @@
 
 /T.apk
   Cache-Control: public, max-age=86400
+
+/call.html
+  Permissions-Policy: camera=(self), microphone=(self), fullscreen=(self), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=()
+
+/tSpeak.html
+  Permissions-Policy: camera=(self), microphone=(self), fullscreen=(self), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=()
