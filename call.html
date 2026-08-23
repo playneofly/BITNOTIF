@@ -102,6 +102,26 @@
   .callbtn:active { transform: scale(.98); }
   .callbtn:disabled { opacity: .35; }
 
+  /* مخاطبین کنار کیپد */
+  .dialwrap { flex: 1; display: flex; gap: 10px; min-height: 0; }
+  .dialcol { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .contacts { width: 148px; flex: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow-y: auto; padding: 7px; }
+  .chead { font-size: 10px; color: var(--dim); font-weight: 800; padding: 4px 5px 8px; letter-spacing: .3px; }
+  .contact { border: 1px solid var(--line2); background: var(--bg2); border-radius: 8px; padding: 8px; margin-bottom: 6px; cursor: pointer; }
+  .contact:hover { border-color: var(--acc); }
+  .contact .crow { display: flex; align-items: center; gap: 7px; }
+  .contact .cav {
+    width: 26px; height: 26px; border-radius: 50%; flex: none; color: #060B14; font-size: 12px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, hsl(var(--h,215) 80% 65%), hsl(var(--h,215) 70% 44%));
+  }
+  .contact .cnm { font-size: 11px; font-weight: 800; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .copts { display: flex; gap: 5px; margin-top: 7px; }
+  .copts button { flex: 1; border: 0; border-radius: 6px; height: 30px; font-size: 10px; font-weight: 800; color: #fff; }
+  .copts .cv { background: linear-gradient(135deg, #5C9BFF, var(--acc2)); }
+  .copts .ca { background: linear-gradient(135deg, #3FCE84, #22A05C); }
+  .cempty { font-size: 9.5px; color: var(--dim); padding: 8px 5px; line-height: 1.8; }
+
   /* اخیر */
   .recents { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow-y: auto; }
   .rrow {
@@ -192,8 +212,10 @@
   #toast.show { opacity: 1; }
   @media (max-width: 430px) {
     body { padding: 6px; }
-    .key { height: 54px; }
+    .key { height: 50px; }
     .shell { max-height: none; }
+    .dialwrap { flex-direction: column-reverse; }
+    .contacts { width: 100%; max-height: 118px; }
   }
 </style>
 </head>
@@ -218,13 +240,21 @@
         <span class="mynum" id="myNum" title="کپی شمارهٔ من">—</span>
       </div>
 
-      <!-- کیپد -->
+      <!-- کیپد + مخاطبین -->
       <div class="view" id="viewDial">
+        <div class="dialwrap">
+        <div class="contacts" id="contactsBox">
+          <div class="chead">👥 مخاطبین</div>
+          <div id="cList"><div class="cempty">هرکی بهش زنگ بزنی، همین‌جا ثبت میشه</div></div>
+        </div>
+        <div class="dialcol">
         <div class="numdisp"><b id="numDisp" class="empty">شماره یا @آیدی…</b><button class="clr" id="btnClr">⌫</button></div>
         <div class="keypad" id="keypad"></div>
         <div class="dialrow">
           <button class="callbtn video" id="btnVideo">🎥 تماس تصویری</button>
           <button class="callbtn audio" id="btnAudio">📞 تماس صوتی</button>
+        </div>
+        </div>
         </div>
       </div>
 
@@ -394,6 +424,49 @@
     $("btnAudio").addEventListener("click", function () { startCall("audio"); });
     $("btnVideo").addEventListener("click", function () { startCall("video"); });
 
+    /* ============ مخاطبین ============ */
+    var contacts = [];
+    try { contacts = JSON.parse(localStorage.getItem("t-call-contacts") || "[]") || []; } catch (e) { contacts = []; }
+    function saveContacts() { try { localStorage.setItem("t-call-contacts", JSON.stringify(contacts.slice(0, 40))); } catch (e) {} }
+    function addContact(peer, number) {
+      if (!peer || !peer.username || !/^[0-9]{10}$/.test(String(number || ""))) return;
+      contacts = contacts.filter(function (c) { return c.username !== peer.username; });
+      contacts.unshift({ username: peer.username, displayName: peer.displayName || peer.username, hue: peer.hue || 215, number: String(number) });
+      contacts = contacts.slice(0, 40);
+      saveContacts(); renderContacts();
+    }
+    var openContact = null;
+    function renderContacts() {
+      var box = $("cList");
+      if (!contacts.length) { box.innerHTML = '<div class="cempty">هرکی بهش زنگ بزنی، همین‌جا ثبت میشه</div>'; return; }
+      box.innerHTML = contacts.map(function (c, i) {
+        var h = '<div class="contact" data-ci="' + i + '"><div class="crow">' +
+          '<span class="cav" style="--h:' + (c.hue || 215) + '">' + esc((c.displayName || "?").trim().charAt(0).toUpperCase()) + "</span>" +
+          '<span class="cnm">' + esc(c.displayName) + "</span></div>";
+        if (openContact === i) {
+          h += '<div class="copts">' +
+            '<button class="cv" data-cc="' + i + '" data-ck="video">🎥 تصویری</button>' +
+            '<button class="ca" data-cc="' + i + '" data-ck="audio">📞 صوتی</button></div>';
+        }
+        return h + "</div>";
+      }).join("");
+    }
+    $("contactsBox").addEventListener("click", function (e) {
+      var t = e.target;
+      var cc = t.getAttribute && t.getAttribute("data-cc");
+      var ck = t.getAttribute && t.getAttribute("data-ck");
+      if (cc !== null && cc !== undefined && ck) {
+        var c = contacts[Number(cc)];
+        if (c && /^[0-9]{10}$/.test(c.number)) { dial = c.number; renderDial(); startCall(ck); }
+        return;
+      }
+      var row = t.closest ? t.closest(".contact") : null;
+      if (!row) return;
+      var idx = Number(row.getAttribute("data-ci"));
+      openContact = openContact === idx ? null : idx;
+      renderContacts();
+    });
+
     /* ============ اخیر ============ */
     function statusTxt(c) {
       if (c.status === "missed") return c.outgoing ? "بی‌پاسخ" : "از دست رفته";
@@ -473,6 +546,7 @@
         if (!r.ok) { toast((r.d && r.d.error) || "زنگ نخورد"); return; }
         S.mode = "outgoing"; S.call = r.d.call; S.kind = r.d.call.kind; S.outgoing = true;
         S.clientId = r.d.clientId; S.cursor = 0; S.peerClientId = null;
+        addContact(r.d.call.peer, target);
         getMedia(function () {});
         $("oAv").textContent = (r.d.call.peer.displayName || "?").trim().charAt(0);
         $("oAv").style.setProperty("--h", r.d.call.peer.hue || 215);
@@ -529,6 +603,8 @@
       finish("رد شد");
     });
     $("iAccept").addEventListener("click", function () {
+      try { S.audioCtx = S.audioCtx || new (window.AudioContext || window.webkitAudioContext)(); S.audioCtx.resume(); } catch (e) {}
+      getMedia(function () {});
       api("/call/answer", { callId: S.call.id }).then(function (r) {
         if (!r.ok) { toast((r.d && r.d.error) || "تماس در دسترس نیست"); finish("تماس قطع شد"); return; }
         S.clientId = r.d.clientId;
@@ -627,6 +703,31 @@
       }, 1000);
     }
     function stopTimer() { if (S.timer) { clearInterval(S.timer); S.timer = 0; } }
+    function attachRemoteStream(stream) {
+      var hasVideo = S.kind === "video" || (stream && stream.getVideoTracks && stream.getVideoTracks().length > 0);
+      if (hasVideo) {
+        var rv = $("remoteVideo");
+        rv.muted = true;
+        rv.srcObject = stream; rv.hidden = false;
+        rv.play().catch(function () {});
+      }
+      try {
+        S.audioCtx = S.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (S.audioCtx.state === "suspended") S.audioCtx.resume();
+        if (S.graph) { try { S.graph.src.disconnect(); S.graph.gain.disconnect(); } catch (e) {} }
+        var srcNode = S.audioCtx.createMediaStreamSource(stream);
+        var gain = S.audioCtx.createGain();
+        gain.gain.value = 1;
+        srcNode.connect(gain); gain.connect(S.audioCtx.destination);
+        S.graph = { src: srcNode, gain: gain };
+        var ra = $("remoteAudio");
+        ra.muted = true; ra.srcObject = stream;
+      } catch (e) {
+        var ra2 = $("remoteAudio");
+        ra2.muted = false; ra2.srcObject = stream;
+        ra2.play().catch(function () { showUnlock(); });
+      }
+    }
     function makePC(initiator) {
       if (!hasRTC || S.pc) return S.pc;
       var pc = new RTCPeerConnection(ICE);
@@ -639,18 +740,14 @@
       pc.onicecandidate = function (e) { if (e.candidate) sig(S.peerClientId, { t: "ice", c: e.candidate }); };
       pc.ontrack = function (e) {
         S.remoteStream = e.streams[0];
-        try {
-          if (S.kind === "video" || (e.streams[0] && e.streams[0].getVideoTracks().length)) {
-            $("remoteVideo").srcObject = e.streams[0]; $("remoteVideo").hidden = false;
-            $("remoteVideo").play().catch(function () { showUnlock(); });
-            $("remoteAudio").srcObject = null;
-          } else {
-            $("remoteAudio").srcObject = e.streams[0];
-            $("remoteAudio").play().catch(function () { showUnlock(); });
-          }
-        } catch (err) {}
+        attachRemoteStream(e.streams[0]);
         $("aState").textContent = "متصل";
       };
+      setTimeout(function () {
+        if (S.pc === pc && S.mode === "active" && pc.connectionState !== "connected" && pc.connectionState !== "completed") {
+          try { $("aState").textContent = "بازسازی اتصال…"; pc.restartIce(); } catch (e2) {}
+        }
+      }, 7000);
       pc.onconnectionstatechange = function () {
         if (pc.connectionState === "connected") $("aState").textContent = "متصل";
         if (pc.connectionState === "failed" || pc.connectionState === "disconnected") $("aState").textContent = "اتصال ضعیف…";
@@ -765,6 +862,7 @@
       stopRing(); stopTimer();
       if (S.pollTm) { clearTimeout(S.pollTm); S.pollTm = 0; }
       if (S.pc) { try { S.pc.close(); } catch (e) {} S.pc = null; }
+      if (S.graph) { try { S.graph.src.disconnect(); S.graph.gain.disconnect(); } catch (e) {} S.graph = null; }
       if (S.localStream) { try { S.localStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.localStream = null; }
       try { $("remoteVideo").srcObject = null; $("remoteAudio").srcObject = null; $("localVideo").srcObject = null; } catch (e) {}
       S.mode = "idle"; S.call = null; S.cursor = 0; S.answeredAt = 0; S.pendingOffer = null; S.mediaReady = false; S.warnedCurrent = false;
@@ -778,6 +876,7 @@
       $("login").hidden = true; $("app").hidden = false;
       loadNumber();
       S.warnedCurrent = false;
+      renderContacts();
       pollInbox();
       setInterval(pollInbox, 1200);
     }
