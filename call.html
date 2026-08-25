@@ -688,8 +688,12 @@
         .catch(function () {});
     }
     var ringTm = 0, vibTm = 0;
+    var inNativeApp = false;
+    try { inNativeApp = !!(window.TApp && TApp.stopRing); } catch (e) {}
     function startRing(kind) {
       stopRing();
+      /* داخل اپ TCall: زنگ ورودی را نیتیو می‌زند — صدای وب نزن (ضد قاطی‌شدن صداها) */
+      if (kind === "in" && inNativeApp) return;
       var t = function () { blip(880, 0.05, 0.3); setTimeout(function () { blip(660, 0.05, 0.3); }, 360); };
       t();
       ringTm = setInterval(t, 1900);
@@ -967,14 +971,18 @@
     }
     function watchIncoming() {
       if (S.callRole !== "callee" || $("ovIncoming").hidden) return;
-      setTimeout(function () {
+      var miss = 0;
+      setTimeout(function step() {
         if (S.callRole !== "callee" || $("ovIncoming").hidden) return;
         api("/call/inbox").then(function (r) {
           if (S.callRole !== "callee" || $("ovIncoming").hidden) return;
           var inc = r.ok ? r.d.incoming : null;
-          if (!inc || inc.id !== S.callId) { toast("تماس قطع شد"); leaveRoom(); return; }
-          watchIncoming();
-        }).catch(function () { watchIncoming(); });
+          if (inc && inc.id === S.callId) { miss = 0; setTimeout(step, 350); return; }
+          /* فقط بعد از ۳ بار متوالی «پاسخ معتبر بدون تماس» قطع کن (ضد پرش و پرت‌پرت) */
+          miss++;
+          if (miss < 3) { setTimeout(step, 700); return; }
+          toast("تماس قطع شد"); leaveRoom();
+        }).catch(function () { miss = 0; setTimeout(step, 700); });
       }, 350);
     }
     $("iDecline").addEventListener("click", function () {
