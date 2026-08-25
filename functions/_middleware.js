@@ -9694,6 +9694,7 @@ app.get("/call/status", async (c) => {
   if (user instanceof Response) return user;
   const db = c.env.DB;
   await callInit(db);
+  await callSweep(db);
   const row = await one(db, `SELECT status, kind, answered_at, ended_at FROM calls WHERE id = ? AND (from_user = ? OR to_user = ?)`, c.req.query("callId") || "", user.id, user.id);
   if (!row) return jsonError(c, "تماس پیدا نشد", 404);
   return c.json({ status: row.status, kind: row.kind, answeredAt: row.answered_at || null, endedAt: row.ended_at || null });

@@ -956,12 +956,13 @@
         var inc = r.d.incoming;
         if (!inc || inc.status !== "ringing") return;
         S.callId = inc.id; S.callRole = "callee"; S.callKind = inc.kind || "audio";
-        S.callPeer = inc.peer; S.answeredAt = 0; S.callTimerOn = false;
-        addContact(inc.peer, inc.peerNumber, true); renderContacts();
-        $("iAv").textContent = (inc.peer.displayName || "?").trim().charAt(0);
-        $("iAv").style.setProperty("--h", inc.peer.hue || 215);
-        $("iName").textContent = inc.peer.displayName || inc.peer.username;
-        $("iNum").textContent = "@" + inc.peer.username;
+        var pr = inc.peer || { username: "?", displayName: "?", hue: 215 };
+        S.callPeer = pr; S.answeredAt = 0; S.callTimerOn = false;
+        addContact(pr, inc.peerNumber, true); renderContacts();
+        $("iAv").textContent = (pr.displayName || "?").trim().charAt(0);
+        $("iAv").style.setProperty("--h", pr.hue || 215);
+        $("iName").textContent = pr.displayName || pr.username;
+        $("iNum").textContent = "@" + pr.username;
         $("iKind").textContent = inc.kind === "video" ? "🎥 تماس تصویری ورودی" : "📞 تماس صوتی ورودی";
         $("ovIncoming").classList.add("ringing");
         $("ovIncoming").hidden = false;
@@ -1333,7 +1334,7 @@
         }
         updateRoomStatusByPeers();
         if (++rttCount % 3 === 0) updateRtt();
-        scheduleSync(S.drain ? 80 : 160);
+        scheduleSync(S.drain ? 80 : 350);
       }).catch(function () { S.syncBusy = false; if (++S.errCount > 4) setRoomStatus("ارتباط قطع — تلاش مجدد"); scheduleSync(1800); });
     }
     var rttCount = 0;
