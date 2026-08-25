@@ -638,7 +638,9 @@
     function startCallTimer() {
       stopCallTimer();
       if (!S.answeredAt) S.answeredAt = Date.now();
-      var base = S.answeredAt;
+      /* محافظ اختلاف ساعت: اگر ساعت گوشی با سرور ناهماهنگ بود، از ساعت خود گوشی بشمار (ضد فروزن شدن 00:00) */
+      var now = Date.now();
+      var base = (S.answeredAt > 0 && S.answeredAt <= now + 30000 && now - S.answeredAt < 3600000) ? S.answeredAt : now;
       $("callTimer").hidden = false;
       callTimerInt = setInterval(function () {
         var s = Math.max(0, Math.floor((Date.now() - base) / 1000));

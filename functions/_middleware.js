@@ -9655,6 +9655,20 @@ app.get("/call/inbox", async (c) => {
     current: cur ? await callHydrate(db, cur, user.id) : null
   });
 });
+/* لانگ‌پول نیتیو: تا ۱۵ ثانیه نگه می‌دارد و به‌محض زنگ خوردن فوراً برمی‌گردد (تأخیر زنگ ~صفر) */
+app.get("/call/wait", async (c) => {
+  const user = await auth(c);
+  if (user instanceof Response) return user;
+  const db = c.env.DB;
+  await callInit(db);
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    const inc = await one(db, `SELECT id FROM calls WHERE to_user = ? AND status = 'ringing' LIMIT 1`, user.id).catch(() => null);
+    if (inc) return c.json({ ringing: true });
+    await new Promise((r) => setTimeout(r, 800));
+  }
+  return c.json({ ringing: false });
+});
 app.post("/call/answer", async (c) => {
   const user = await auth(c);
   if (user instanceof Response) return user;
