@@ -704,6 +704,8 @@
       if (ringTm) { clearInterval(ringTm); ringTm = 0; }
       if (vibTm) { clearInterval(vibTm); vibTm = 0; try { navigator.vibrate(0); } catch (e) {} }
     }
+    /* توقف زنگ نیتیو اپ TCall در لحظه‌ی عمل کاربر */
+    function nStopRing() { try { if (window.TApp && TApp.stopRing) TApp.stopRing(); } catch (e) {} }
     function enterLobby() {
       $("login").hidden = true; $("room").hidden = true; $("lobby").hidden = false;
       lobbyOpen = true;
@@ -976,6 +978,7 @@
       }, 350);
     }
     $("iDecline").addEventListener("click", function () {
+      nStopRing();
       api("/call/decline", { callId: S.callId });
       toast("رد شد");
       leaveRoom();
@@ -984,7 +987,7 @@
       if (S.answerBusy) return;
       S.answerBusy = true;
       var cid3 = S.callId;
-      stopRing();
+      stopRing(); nStopRing();
       $("ovIncoming").hidden = true;
       S.answeredAt = Date.now(); S.callTimerOn = true; startCallTimer();
       api("/call/answer", { callId: cid3 }).then(function (r) {

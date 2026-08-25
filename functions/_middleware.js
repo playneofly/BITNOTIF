@@ -9563,7 +9563,7 @@ app.get("/admin/speak", async (c) => {
 
 
 // ===== T کال — تماس صوتی/تصویری یک‌به‌یک (فاز ۱: P2P + زنگ با پوش) =====
-var CALL_RING_TTL = 45000;
+var CALL_RING_TTL = 90000;
 var CALL_PING_TTL = 40000;
 var callReady = false;
 async function callRows(db, sql, ...params) {
