@@ -590,7 +590,7 @@
       <button class="btn primary" id="lgBtn" style="width:100%">ورود و اتصال</button>
       <div class="msg" id="lgMsg"></div>
       <div class="hintlink">حساب نداری؟ <a href="/" target="_blank" rel="noopener">در پیام‌رسان T بساز</a></div>
-      <div style="text-align:center;margin-top:10px;opacity:.4;font-size:11px">T کال — نسخهٔ ۱۰</div>
+      <div style="text-align:center;margin-top:10px;opacity:.4;font-size:11px">T کال — نسخهٔ ۱۱</div>
     </div>
 
     <div id="lobby" hidden>
@@ -735,7 +735,7 @@
 
   <div id="setWrap" hidden>
     <div class="prof-card">
-      <div class="pn">⚙️ تنظیمات کلیدها <small style="opacity:.45;font-size:11px">— نسخه ۱۰</small></div>
+      <div class="pn">⚙️ تنظیمات کلیدها <small style="opacity:.45;font-size:11px">— نسخه ۱۱</small></div>
       <div class="setrow">
         <div class="srow-t"><b>دکمهٔ نگه‌دار (PTT)</b><small>در حالت «نگه‌دار» این دکمه را نگه دار تا صدات برسد — می‌توانی با Shift ترکیب کنی</small></div>
         <div class="srow-b"><button class="btn" id="recPtt">🎧 Space</button><button class="mini" id="clrPtt">پیش‌فرض</button></div>
@@ -912,11 +912,17 @@
     var ringTm = 0, vibTm = 0;
     var inNativeApp = false;
     try { inNativeApp = !!(window.TApp && TApp.stopRing); } catch (e) {}
+    function nativeRinging() {
+      try { return !!(window.TApp && TApp.isRinging && TApp.isRinging()); } catch (e) { return false; }
+    }
     function startRing(kind) {
       stopRing();
-      /* داخل اپ TCall: زنگ ورودی را نیتیو می‌زند — صدای وب نزن (ضد قاطی‌شدن صداها) */
-      if (kind === "in" && inNativeApp) return;
-      var t = function () { blip(880, 0.05, 0.3); setTimeout(function () { blip(660, 0.05, 0.3); }, 360); };
+      /* داخل اپ: اگر نیتیو در حال زنگ است، وب ساکت؛ اگر نیتیو زنگ نخورده → وب خودش می‌زند (فال‌بک ضد سکوت) */
+      if (kind === "in" && inNativeApp && nativeRinging()) return;
+      var t = function () {
+        if (kind === "in" && inNativeApp && nativeRinging()) { stopRing(); return; } /* نیتیو بالا آمد → وب ساکت */
+        blip(880, 0.05, 0.3); setTimeout(function () { blip(660, 0.05, 0.3); }, 360);
+      };
       t();
       ringTm = setInterval(t, 1900);
       if (kind === "in" && navigator.vibrate) {

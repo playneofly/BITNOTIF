@@ -9663,11 +9663,12 @@ app.get("/call/wait", async (c) => {
   if (user instanceof Response) return user;
   const db = c.env.DB;
   await callInit(db);
+  const sleep = (ms) => new Promise((r) => { try { setTimeout(r, ms); } catch (e) { r(); } });
   const deadline = Date.now() + 15000;
-  while (Date.now() < deadline) {
+  for (let i = 0; i < 18 && Date.now() < deadline; i++) {
     const inc = await one(db, `SELECT id FROM calls WHERE to_user = ? AND status = 'ringing' LIMIT 1`, user.id).catch(() => null);
     if (inc) return c.json({ ringing: true });
-    await new Promise((r) => setTimeout(r, 800));
+    await sleep(800);
   }
   return c.json({ ringing: false });
 });
