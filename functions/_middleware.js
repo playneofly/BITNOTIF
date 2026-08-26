@@ -9579,6 +9579,8 @@ async function callInit(db) {
 async function callSweep(db) {
   const now = Date.now();
   await run(db, `UPDATE calls SET status='missed', ended_at=started_at WHERE status='ringing' AND started_at < ?`, now - CALL_RING_TTL).catch(() => {});
+  /* تماس فعال بدون هیچ عضوی در کانال = هر دو طرف رفتن → تمامش کن (ضد «مشغول است» ابدی) */
+  await run(db, `UPDATE calls SET status='ended', ended_at=? WHERE status='active' AND NOT EXISTS (SELECT 1 FROM speak_members m WHERE m.channel_id = calls.id)`, now).catch(() => {});
   await run(db, `DELETE FROM call_signals WHERE created_at < ?`, now - 60000).catch(() => {});
 }
 function callPeer(u) { return u ? { id: u.id, username: u.username, displayName: u.display_name || u.username, hue: u.hue || 220, premium: !!u.premium } : null; }

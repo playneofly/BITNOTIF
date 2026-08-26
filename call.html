@@ -895,11 +895,12 @@
     function prewarmAudio() {
       var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
       if (!gmd || S.preStream) return;
+      var keepPrewarm = function (st) { if (!S.callId || S.callRole !== "callee") { try { st.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; } S.preStream = st; };
       var cons0 = { audio: audioConstraints() };
       if (S.callKind === "video") cons0.video = { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
-      gmd.call(navigator.mediaDevices, cons0)
-        .then(function (st) { if (!S.callId || S.callRole !== "callee") { try { st.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; } S.preStream = st; })
-        .catch(function () {});
+      gmd.call(navigator.mediaDevices, cons0).then(keepPrewarm).catch(function () {
+        gmd.call(navigator.mediaDevices, { audio: audioConstraints() }).then(keepPrewarm).catch(function () {});
+      });
     }
     var ringTm = 0, vibTm = 0;
     var inNativeApp = false;
@@ -1195,7 +1196,8 @@
         if (S.callRole !== "callee" || $("ovIncoming").hidden) return;
         api("/call/inbox").then(function (r) {
           if (S.callRole !== "callee" || $("ovIncoming").hidden) return;
-          var inc = r.ok ? r.d.incoming : null;
+          if (!r.ok) { setTimeout(step, 700); return; } /* خطای شبکه ≠ قطع */
+          var inc = r.d.incoming;
           if (inc && inc.id === S.callId) { miss = 0; setTimeout(step, 350); return; }
           /* فقط بعد از ۳ بار متوالی «پاسخ معتبر بدون تماس» قطع کن (ضد پرش و پرت‌پرت) */
           miss++;
@@ -1268,10 +1270,16 @@
         return;
       }
       if (!gmd) { S.micDenied = true; S.localStream = null; _join(id); return; }
-      var cons1 = { audio: audioConstraints() };
-      if (S.callKind === "video") cons1.video = { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
-      gmd.call(navigator.mediaDevices, cons1)
-        .then(function (st) { S.localStream = st; _join(id); })
+      S.micDenied = false;
+      gmd.call(navigator.mediaDevices, { audio: audioConstraints() })
+        .then(function (ast) {
+          S.localStream = ast;
+          if (S.callKind === "video") {
+            gmd.call(navigator.mediaDevices, { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } } })
+              .then(function (vst) { try { vst.getVideoTracks().forEach(function (vt) { S.localStream.addTrack(vt); }); } catch (e) {} _join(id); })
+              .catch(function () { toast("دوربین شما در دسترس نیست — تصویر طرف مقابل را می‌بینید"); _join(id); });
+          } else _join(id);
+        })
         .catch(function () { S.micDenied = true; S.localStream = null; _join(id); });
     }
     function _join(id) {
@@ -1291,7 +1299,9 @@
         $("btnCam").hidden = !isVid; $("btnFlip").hidden = !isVid;
         $("videoWrap").hidden = !isVid;
         $("remoteVideo").hidden = !isVid; $("localVideo").hidden = !isVid;
-        if (isVid && S.localStream) { try { $("localVideo").srcObject = S.localStream; } catch (e) {} }
+        var hasVidT = !!(S.localStream && S.localStream.getVideoTracks && S.localStream.getVideoTracks().length);
+        $("localVideo").hidden = !isVid || !hasVidT; /* بدون دوربین: پنجره تصویر خودت مخفی، تصویر طرف مقابل می‌آید */
+        if (isVid && hasVidT) { try { $("localVideo").srcObject = S.localStream; } catch (e) {} }
         $("cuAv").textContent = (S.callPeer.displayName || S.callPeer.username || "?").trim().charAt(0).toUpperCase();
         $("cuAv").style.setProperty("--h", S.callPeer.hue || 215);
         $("cuName").textContent = S.callPeer.displayName || S.callPeer.username;
@@ -1327,6 +1337,11 @@
       if (S.localStream) {
         try {
           S.localStream.getTracks().forEach(function (t) { pc.addTrack(t, S.localStream); });
+          /* تصویر یک‌طرفه: اگر خودم دوربین/میک ندارم، جای دریافت آن‌ها را باز کن */
+          var hasAT = S.localStream.getAudioTracks().length > 0;
+          var hasVT = S.localStream.getVideoTracks().length > 0;
+          if (!hasAT) { try { pc.addTransceiver("audio", { direction: "recvonly" }); } catch (e3) {} }
+          if (S.callKind === "video" && !hasVT) { try { pc.addTransceiver("video", { direction: "recvonly" }); } catch (e3) {} }
           pc.getSenders().forEach(function (snd) {
             if (!snd || !snd.setParameters || !snd.track) return;
             try { snd.setParameters({ encodings: [{ maxBitrate: snd.track.kind === "video" ? 500000 : 32000 }] }); } catch (e2) {}
@@ -1814,6 +1829,64 @@
     });
 
     /* --- میکروفن --- */
+    /* انتشار یک ترک تازه روی اتصال‌های موجود (بازیابی میک/دوربین وسط تماس) */
+    function publishTrack(track) {
+      var stream = S.localStream || new MediaStream([track]);
+      Object.keys(S.pcs).forEach(function (cid) {
+        var pc = S.pcs[cid];
+        var done = false;
+        try {
+          (pc.getTransceivers ? pc.getTransceivers() : []).forEach(function (tr) {
+            if (done || !tr.sender) return;
+            var k = (tr.receiver && tr.receiver.track) ? tr.receiver.track.kind : ((tr.sender.track) ? tr.sender.track.kind : null);
+            if (k !== track.kind || tr.sender.track) return;
+            try { tr.direction = "sendrecv"; tr.sender.replaceTrack(track); done = true; } catch (e) {}
+          });
+        } catch (e) {}
+        if (!done) { try { pc.addTrack(track, stream); } catch (e) {} }
+        try {
+          if (pc.signalingState === "stable") {
+            pc.createOffer().then(function (of) {
+              return pc.setLocalDescription(of).then(function () { sendSignal(cid, { t: "offer", s: pc.localDescription }); });
+            }).catch(function () {});
+          }
+        } catch (e) {}
+      });
+    }
+    function reviveMic() {
+      if (S.localStream && S.localStream.getAudioTracks().length) return true;
+      var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+      if (!gmd) { toast("میکروفن در این مرورگر در دسترس نیست"); return false; }
+      toast("در حال وصل کردن میکروفن…");
+      gmd.call(navigator.mediaDevices, { audio: audioConstraints() }).then(function (st) {
+        var at = st.getAudioTracks()[0];
+        if (!at) { toast("میکروفنی پیدا نشد"); return; }
+        if (S.localStream) { try { S.localStream.addTrack(at); } catch (e) { S.localStream = st; } }
+        else S.localStream = st;
+        S.micDenied = false; S.micOn = true;
+        publishTrack(at);
+        applyMicState();
+        toast("میکروفن وصل شد 🎙");
+      }).catch(function () { toast("دسترسی میکروفن داده نشد — از تنظیمات گوشی اجازه بده"); });
+      return null;
+    }
+    function reviveCam() {
+      if (S.localStream && S.localStream.getVideoTracks().length) return true;
+      var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+      if (!gmd) { toast("دوربین در این مرورگر در دسترس نیست"); return false; }
+      gmd.call(navigator.mediaDevices, { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } } }).then(function (st) {
+        var vt = st.getVideoTracks()[0];
+        if (!vt) { toast("دوربینی پیدا نشد"); return; }
+        if (S.localStream) { try { S.localStream.addTrack(vt); } catch (e) { S.localStream = st; } }
+        else S.localStream = st;
+        publishTrack(vt);
+        try { $("localVideo").srcObject = S.localStream; } catch (e) {}
+        if (S.callKind === "video") { $("videoWrap").hidden = false; $("localVideo").hidden = false; }
+        toast("دوربین وصل شد 🎥");
+      }).catch(function () { toast("دسترسی دوربین داده نشد — از تنظیمات گوشی اجازه بده"); });
+      return null;
+    }
+
     function micBroadcast() {
       if (S.micDenied || S.forcedMuted || !S.localStream) return false;
       if (S.micMode === "ptt") return S.holding && S.micOn;
@@ -1846,6 +1919,7 @@
     }
     $("btnMic").addEventListener("click", function () {
       if (S.forcedMuted) { toast("مدیر میکروفنت را بسته است"); return; }
+      if (!S.localStream || !S.localStream.getAudioTracks().length) { reviveMic(); return; }
       if (S.micMode === "ptt") { toast("در حالت نگه‌دار، دکمهٔ «نگه دار» را فشار بده"); return; }
       if (S.micMode === "voice") { toast("در این حالت صدا خودش میکروفن را باز می‌کند — یا با کلید میان‌بر ببند"); return; }
       S.micOn = !S.micOn; applyMicState();
@@ -2114,9 +2188,9 @@
     $("cuSpeaker").addEventListener("click", function () { S.speakerOn = !S.speakerOn; applySpeakerMode(); });
     $("cuCam").addEventListener("click", function () { $("btnCam").click(); this.classList.toggle("off"); });
     $("cuFlip").addEventListener("click", function () { $("btnFlip").click(); });
-    $("cuFlip").addEventListener("click", function () { $("btnFlip").click(); });
     $("cuEnd").addEventListener("click", function () { $("btnLeave").click(); });
     $("btnCam").addEventListener("click", function () {
+      if (!S.localStream || !S.localStream.getVideoTracks().length) { reviveCam(); return; }
       if (S.localStream) S.localStream.getVideoTracks().forEach(function (t) { t.enabled = !t.enabled; });
       this.classList.toggle("ghost");
     });
