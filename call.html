@@ -577,7 +577,6 @@
     position: fixed; inset: 0; z-index: 130; background: #0C1017;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
   }
-  #bootCallTxt { color: #93A4BC; font-size: 14px; font-weight: 700; letter-spacing: .3px; }
   #localVideo { box-shadow: 0 10px 30px rgba(0,0,0,.6); background: #000; }
 </style>
 </head>
@@ -762,7 +761,6 @@
         <div class="banter-loader__box"></div>
         <div class="banter-loader__box"></div>
       </div>
-      <div id="bootCallTxt">در حال اتصال…</div>
     </div>
   <div id="toast"></div>
 
@@ -791,8 +789,8 @@
     }
     var hasRTC = typeof RTCPeerConnection !== "undefined";
     var ICE = { iceServers: [
-      { urls: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"] },
-      { urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"],
+      { urls: ["stun:stun.cloudflare.com:3478", "stun:stun.sipgate.de:3478", "stun:stun.1und1.de:3478"] },
+      { urls: ["turn:openrelay.metered.ca:443?transport=tcp", "turn:openrelay.metered.ca:80?transport=tcp", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:80"],
         username: "openrelayproject", credential: "openrelayproject" }
     ] };
     function angleOf(cid) {
@@ -881,11 +879,13 @@
       });
       return ok;
     }
-    function showBootCall(txt) {
-      $("bootCallTxt").textContent = txt || "در حال اتصال…";
+    function showBootCall() {
       $("bootCall").hidden = false;
       if (bootTm) clearTimeout(bootTm);
-      bootTm = setTimeout(hideBootCall, 12000); /* ایمنی: هرگز گیر نکند */
+      bootTm = setTimeout(function () {
+        hideBootCall();
+        if (S.callKind === "video" && !anyConn()) toast("اتصال کند است — هنوز در تلاش…");
+      }, 10000); /* ایمنی: هرگز گیر نکند */
     }
     function hideBootCall() {
       if (bootTm) { clearTimeout(bootTm); bootTm = 0; }
@@ -1024,9 +1024,8 @@
       var cc = t.getAttribute && t.getAttribute("data-cc");
       var ck = t.getAttribute && t.getAttribute("data-ck");
       if (cc !== null && cc !== undefined && ck) {
-        if (ck === "video") { toast("🎥 تماس تصویری به‌زودی می‌آید!"); return; }
         var c = contacts[Number(cc)];
-        if (c && /^[0-9]{10}$/.test(c.number)) { dial = c.number; renderDial(); startCall("audio"); }
+        if (c && /^[0-9]{10}$/.test(c.number)) { dial = c.number; renderDial(); startCall(ck === "video" ? "video" : "audio"); }
         return;
       }
       var row = t.closest ? t.closest(".contact") : null;
@@ -1083,7 +1082,7 @@
       if (S.callId || S.dialBusy || !dial) return;
       var target = dial.trim();
       if (!/^[0-9]{10}$/.test(target)) { toast("شمارهٔ ۱۰ رقمی را کامل بزن"); return; }
-      S.dialBusy = true; S.callKind = kind;
+      S.dialBusy = true; S.callKind = kind; S.callRole = "caller";
       $("btnAudio").disabled = true;
       $("btnAudio").textContent = "در حال زنگ…";
       var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
@@ -1099,7 +1098,7 @@
           if (S.preStream) { try { S.preStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.preStream = null; }
           toast((r.d && r.d.error) || "زنگ نخورد"); resetDialButton(); return;
         }
-        S.callId = r.d.call.id; S.callRole = "caller"; S.callKind = r.d.call.kind || kind;
+        S.callId = r.d.call.id; S.callKind = r.d.call.kind || kind;
         S.callPeer = r.d.call.peer; S.answeredAt = 0; S.callTimerOn = false;
         addContact(r.d.call.peer, target);
         joinChannel(r.d.call.id);
@@ -1338,6 +1337,27 @@
       }
       pc.onicecandidate = function (e) { if (e.candidate) sendSignal(m.clientId, { t: "ice", c: e.candidate }); };
       pc.ontrack = function (e) { attachRemote(m, e.streams[0]); };
+      pc.oniceconnectionstatechange = function () {
+        var ist = pc.iceConnectionState;
+        if (ist === "connected" || ist === "completed") { try { hideBootCall(); } catch (e) {} return; }
+        if (ist === "disconnected" || ist === "failed") {
+          setTimeout(function () {
+            if (S.pcs[m.clientId] !== pc) return;
+            var st2 = pc.iceConnectionState;
+            if (st2 === "connected" || st2 === "completed") return;
+            try {
+              if (pc.restartIce && shouldInitiate(m)) {
+                pc.restartIce();
+                pc.createOffer({ iceRestart: true }).then(function (of) {
+                  return pc.setLocalDescription(of).then(function () {
+                    sendSignal(m.clientId, { t: "offer", s: pc.localDescription });
+                  });
+                }).catch(function () {});
+              }
+            } catch (e) {}
+          }, 3500);
+        }
+      };
       pc.onconnectionstatechange = function () {
         if (pc.connectionState === "connected" || pc.connectionState === "completed") { try { hideBootCall(); } catch (e) {} }
         if (pc.connectionState === "failed") {
@@ -1361,6 +1381,7 @@
       return S.speakerOn ? Math.min(2.0, base * 1.75) : base * 0.85;
     }
     function attachRemote(m, stream) {
+      try { hideBootCall(); } catch (e) {}
       try {
         if (stream && stream.getVideoTracks && stream.getVideoTracks().length > 0) {
           var rvv = $("remoteVideo");
