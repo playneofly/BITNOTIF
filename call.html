@@ -897,7 +897,7 @@
       if (!gmd || S.preStream) return;
       var keepPrewarm = function (st) { if (!S.callId || S.callRole !== "callee") { try { st.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; } S.preStream = st; };
       var cons0 = { audio: audioConstraints() };
-      if (S.callKind === "video") cons0.video = { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
+      if (S.callKind === "video") cons0.video = true;
       gmd.call(navigator.mediaDevices, cons0).then(keepPrewarm).catch(function () {
         gmd.call(navigator.mediaDevices, { audio: audioConstraints() }).then(keepPrewarm).catch(function () {});
       });
@@ -1089,7 +1089,7 @@
       var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
       if (gmd && !S.preStream) {
         var cons = { audio: audioConstraints() };
-        if (kind === "video") cons.video = { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
+        if (kind === "video") cons.video = true;
         gmd.call(navigator.mediaDevices, cons)
           .then(function (st) { if (S.callRole === "caller" && !S.channelId) S.preStream = st; else { try { st.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} } })
           .catch(function () {});
@@ -1266,7 +1266,12 @@
       if (pre && pre.getAudioTracks && pre.getAudioTracks().length) {
         S.preStream = null;
         S.localStream = pre;
-        _join(id);
+        if (S.callKind === "video" && gmd && !(pre.getVideoTracks && pre.getVideoTracks().length)) {
+          /* پیش‌گرم فقط صدا شده بود — دوربین را جداً امتحان کن (تصویر یک‌طرفه) */
+          gmd.call(navigator.mediaDevices, { video: true })
+            .then(function (vst) { try { vst.getVideoTracks().forEach(function (vt) { S.localStream.addTrack(vt); }); } catch (e) {} _join(id); })
+            .catch(function () { _join(id); });
+        } else _join(id);
         return;
       }
       if (!gmd) { S.micDenied = true; S.localStream = null; _join(id); return; }
@@ -1275,7 +1280,7 @@
         .then(function (ast) {
           S.localStream = ast;
           if (S.callKind === "video") {
-            gmd.call(navigator.mediaDevices, { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } } })
+            gmd.call(navigator.mediaDevices, { video: true })
               .then(function (vst) { try { vst.getVideoTracks().forEach(function (vt) { S.localStream.addTrack(vt); }); } catch (e) {} _join(id); })
               .catch(function () { toast("دوربین شما در دسترس نیست — تصویر طرف مقابل را می‌بینید"); _join(id); });
           } else _join(id);
@@ -1874,7 +1879,7 @@
       if (S.localStream && S.localStream.getVideoTracks().length) return true;
       var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
       if (!gmd) { toast("دوربین در این مرورگر در دسترس نیست"); return false; }
-      gmd.call(navigator.mediaDevices, { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } } }).then(function (st) {
+      gmd.call(navigator.mediaDevices, { video: true }).then(function (st) {
         var vt = st.getVideoTracks()[0];
         if (!vt) { toast("دوربینی پیدا نشد"); return; }
         if (S.localStream) { try { S.localStream.addTrack(vt); } catch (e) { S.localStream = st; } }
@@ -2199,8 +2204,9 @@
       var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
       if (!gmd) return;
       var facing = S.localStream.getVideoTracks()[0] && S.localStream.getVideoTracks()[0].label && S.localStream.getVideoTracks()[0].label.indexOf("back") !== -1 ? "user" : "environment";
-      gmd.call(navigator.mediaDevices, { video: { facingMode: facing } }).then(function (st) {
+      var applyFlip = function (st) {
         var nt = st.getVideoTracks()[0];
+        if (!nt) { toast("دوربین عوض نشد"); return; }
         Object.keys(S.pcs).forEach(function (cid) {
           var snd = S.pcs[cid].getSenders().filter(function (x) { return x.track && x.track.kind === "video"; })[0];
           if (snd) snd.replaceTrack(nt);
@@ -2209,7 +2215,10 @@
         if (old) old.stop();
         S.localStream.removeTrack(old); S.localStream.addTrack(nt);
         try { $("localVideo").srcObject = S.localStream; } catch (e) {}
-      }).catch(function () { toast("دوربین عوض نشد"); });
+      };
+      gmd.call(navigator.mediaDevices, { video: { facingMode: facing } })
+        .then(applyFlip)
+        .catch(function () { gmd.call(navigator.mediaDevices, { video: true }).then(applyFlip).catch(function () { toast("دوربین عوض نشد"); }); });
     });
     document.addEventListener("keydown", function (e) {
       if ($("login").hidden && $("lobby").hidden === false && dial !== undefined && S.st === undefined) {
