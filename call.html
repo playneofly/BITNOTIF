@@ -734,7 +734,7 @@
 
   <div id="setWrap" hidden>
     <div class="prof-card">
-      <div class="pn">⚙️ تنظیمات کلیدها</div>
+      <div class="pn">⚙️ تنظیمات کلیدها <small style="opacity:.45;font-size:11px">— نسخه ۹</small></div>
       <div class="setrow">
         <div class="srow-t"><b>دکمهٔ نگه‌دار (PTT)</b><small>در حالت «نگه‌دار» این دکمه را نگه دار تا صدات برسد — می‌توانی با Shift ترکیب کنی</small></div>
         <div class="srow-b"><button class="btn" id="recPtt">🎧 Space</button><button class="mini" id="clrPtt">پیش‌فرض</button></div>
@@ -884,8 +884,14 @@
       if (bootTm) clearTimeout(bootTm);
       bootTm = setTimeout(function () {
         hideBootCall();
-        if (S.callKind === "video" && !anyConn()) toast("اتصال کند است — هنوز در تلاش…");
-      }, 10000); /* ایمنی: هرگز گیر نکند */
+        if (!anyConn() && S.callId) {
+          api("/call/status?callId=" + S.callId).then(function (r) {
+            if (!S.callId) return;
+            if (r.ok && r.d.status !== "active" && r.d.status !== "ringing") { toast("تماس برقرار نشد"); leaveRoom(); return; }
+            toast("اتصال کند است — هنوز در تلاش…");
+          }).catch(function () { toast("اتصال کند است — هنوز در تلاش…"); });
+        }
+      }, 10000); /* ایمنی: هرگز گیر نکند و اتاق مرده نشان ندهد */
     }
     function hideBootCall() {
       if (bootTm) { clearTimeout(bootTm); bootTm = 0; }
@@ -1276,17 +1282,35 @@
       }
       if (!gmd) { S.micDenied = true; S.localStream = null; _join(id); return; }
       S.micDenied = false;
-      gmd.call(navigator.mediaDevices, { audio: audioConstraints() })
-        .then(function (ast) {
-          S.localStream = ast;
-          if (S.callKind === "video") {
-            gmd.call(navigator.mediaDevices, { video: true })
-              .then(function (vst) { try { vst.getVideoTracks().forEach(function (vt) { S.localStream.addTrack(vt); }); } catch (e) {} _join(id); })
-              .catch(function () { toast("دوربین شما در دسترس نیست — تصویر طرف مقابل را می‌بینید"); _join(id); });
-          } else _join(id);
-        })
-        .catch(function () { S.micDenied = true; S.localStream = null; _join(id); });
+      var joinWith = function (st2) { S.localStream = st2; _join(id); };
+      var gumErr = function (e) { return (e && e.name) ? e.name : "خطا"; };
+      var firstC = { audio: audioConstraints() };
+      if (S.callKind === "video") firstC.video = true;
+      gmd.call(navigator.mediaDevices, firstC)
+        .then(joinWith)
+        .catch(function (e1) {
+          /* یکجا نشد → جدا: صدا حیاتی، دوربین تلاش جداگانه */
+          if (S.callKind === "video") toast("دوربین/میک یکجا نشد (" + gumErr(e1) + ") — جداگانه امتحان می‌شود");
+          gmd.call(navigator.mediaDevices, { audio: audioConstraints() })
+            .then(function (ast) {
+              joinWith(ast);
+              if (S.callKind === "video") {
+                countCams(function (n) {
+                  if (n === 0) { toast("دوربینی روی این دستگاه پیدا نشد"); return; }
+                  gumVideoBest(function (vst) {
+                    if (!vst) { toast("دوربین باز نشد — تصویر طرف مقابل را می‌بینید"); return; }
+                    try {
+                      vst.getVideoTracks().forEach(function (vt) { S.localStream.addTrack(vt); });
+                      publishTrack(vst.getVideoTracks()[0]);
+                    } catch (e) {}
+                  });
+                });
+              }
+            })
+            .catch(function (e3) { toast("میکروفن: " + gumErr(e3)); S.micDenied = true; S.localStream = null; _join(id); });
+        });
     }
+    function _tKeepScreen(on) { try { if (window.TApp && TApp.keepScreen) TApp.keepScreen(!!on); } catch (e) {} }
     function _join(id) {
       api("/speak/channels/" + id + "/join", {}).then(function (r) {
         if (!r.ok) { toast((r.d && r.d.error) || "ورود نشد"); return; }
@@ -1318,6 +1342,7 @@
         $("callUI").classList.toggle("vidmode", isVid);
         $("cuCam").hidden = !isVid; $("cuFlip").hidden = !isVid;
         $("callUI").hidden = false;
+        _tKeepScreen(true);
         if ((S.callRole === "callee" || (S.callKind === "video" && $("ovOutgoing").hidden)) && !anyConn()) showBootCall("در حال اتصال…");
         $("btnSpatial").classList.toggle("on", S.spatial);
         applyModeUI();
@@ -1359,6 +1384,7 @@
       pc.ontrack = function (e) { attachRemote(m, e.streams[0]); };
       pc.oniceconnectionstatechange = function () {
         var ist = pc.iceConnectionState;
+        try { var rs = $("roomStatusTxt"); if (rs && S.callId) rs.textContent = ist === "connected" || ist === "completed" ? "متصل" : ("اتصال: " + ist); } catch (e) {}
         if (ist === "connected" || ist === "completed") { try { hideBootCall(); } catch (e) {} return; }
         if (ist === "disconnected" || ist === "failed") {
           setTimeout(function () {
@@ -1834,6 +1860,28 @@
     });
 
     /* --- میکروفن --- */
+    /* نردبان امتحان دوربین — از ساده‌ترین کانسترینت تا خاص‌ترین */
+    function gumVideoBest(cb) {
+      var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+      if (!gmd) { cb(null); return; }
+      var tries = [{ video: true }, { video: { width: 640 } }, { video: { facingMode: "user" } }, { video: { facingMode: "environment" } }];
+      var i = 0;
+      (function next() {
+        if (i >= tries.length) { cb(null); return; }
+        gmd.call(navigator.mediaDevices, tries[i++]).then(function (st) {
+          if (!st.getVideoTracks().length) { try { st.getTracks().forEach(function (x) { x.stop(); }); } catch (e) {} next(); return; }
+          cb(st);
+        }).catch(function () { next(); });
+      })();
+    }
+    function countCams(cb) {
+      try {
+        navigator.mediaDevices.enumerateDevices().then(function (ds) {
+          cb(ds.filter(function (d) { return d.kind === "videoinput"; }).length);
+        }).catch(function () { cb(-1); });
+      } catch (e) { cb(-1); }
+    }
+
     /* انتشار یک ترک تازه روی اتصال‌های موجود (بازیابی میک/دوربین وسط تماس) */
     function publishTrack(track) {
       var stream = S.localStream || new MediaStream([track]);
@@ -1879,7 +1927,8 @@
       if (S.localStream && S.localStream.getVideoTracks().length) return true;
       var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
       if (!gmd) { toast("دوربین در این مرورگر در دسترس نیست"); return false; }
-      gmd.call(navigator.mediaDevices, { video: true }).then(function (st) {
+      gumVideoBest(function (st) {
+        if (!st) { toast("دوربین باز نشد — دسترسی را از تنظیمات گوشی چک کن"); return; }
         var vt = st.getVideoTracks()[0];
         if (!vt) { toast("دوربینی پیدا نشد"); return; }
         if (S.localStream) { try { S.localStream.addTrack(vt); } catch (e) { S.localStream = st; } }
@@ -2127,7 +2176,7 @@
       S.callId = null; S.callRole = null; S.callTimerOn = false; S.hadPeer = false; S.dialBusy = false; S.answerBusy = false; S.speakerOn = false;
       stopActiveCallWatch(); resetDialButton();
       try { $("faceGuard").hidden = true; } catch (e) {}
-      stopRing(); stopCallTimer(); hideBootCall();
+      stopRing(); stopCallTimer(); hideBootCall(); _tKeepScreen(false);
       $("ovOutgoing").hidden = true; $("ovOutgoing").classList.remove("ringing");
       $("ovIncoming").hidden = true; $("ovIncoming").classList.remove("ringing");
       $("videoWrap").hidden = true;
