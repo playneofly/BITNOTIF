@@ -1,5 +1,5 @@
 /* T Messenger — service worker: پوستهٔ آفلاین + نوتیفیکیشن */
-var VERSION = "t-sw-v4";
+var VERSION = "t-sw-v5";
 var SHELL = [
   "/",
   "/assets/index-Dk7welQn.js",

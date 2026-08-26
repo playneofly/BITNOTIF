@@ -590,7 +590,7 @@
       <button class="btn primary" id="lgBtn" style="width:100%">ورود و اتصال</button>
       <div class="msg" id="lgMsg"></div>
       <div class="hintlink">حساب نداری؟ <a href="/" target="_blank" rel="noopener">در پیام‌رسان T بساز</a></div>
-      <div style="text-align:center;margin-top:10px;opacity:.4;font-size:11px">T کال — نسخهٔ ۹</div>
+      <div style="text-align:center;margin-top:10px;opacity:.4;font-size:11px">T کال — نسخهٔ ۱۰</div>
     </div>
 
     <div id="lobby" hidden>
@@ -735,7 +735,7 @@
 
   <div id="setWrap" hidden>
     <div class="prof-card">
-      <div class="pn">⚙️ تنظیمات کلیدها <small style="opacity:.45;font-size:11px">— نسخه ۹</small></div>
+      <div class="pn">⚙️ تنظیمات کلیدها <small style="opacity:.45;font-size:11px">— نسخه ۱۰</small></div>
       <div class="setrow">
         <div class="srow-t"><b>دکمهٔ نگه‌دار (PTT)</b><small>در حالت «نگه‌دار» این دکمه را نگه دار تا صدات برسد — می‌توانی با Shift ترکیب کنی</small></div>
         <div class="srow-b"><button class="btn" id="recPtt">🎧 Space</button><button class="mini" id="clrPtt">پیش‌فرض</button></div>
@@ -1093,14 +1093,7 @@
       S.dialBusy = true; S.callKind = kind; S.callRole = "caller";
       $("btnAudio").disabled = true;
       $("btnAudio").textContent = "در حال زنگ…";
-      var gmd = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-      if (gmd && !S.preStream) {
-        var cons = { audio: audioConstraints() };
-        if (kind === "video") cons.video = true;
-        gmd.call(navigator.mediaDevices, cons)
-          .then(function (st) { if (S.callRole === "caller" && !S.channelId) S.preStream = st; else { try { st.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} } })
-          .catch(function () {});
-      }
+      /* دوربین در joinChannel گرفته می‌شود — درخواست موازی نمی‌زنیم (ضد ریس دوربین WebView) */
       api("/call/dial", { target: target, kind: kind }).then(function (r) {
         if (!r.ok) {
           if (S.preStream) { try { S.preStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} S.preStream = null; }
@@ -1312,6 +1305,25 @@
         });
     }
     function _tKeepScreen(on) { try { if (window.TApp && TApp.keepScreen) TApp.keepScreen(!!on); } catch (e) {} }
+    function forceLocalVideo() {
+      try {
+        var lv = $("localVideo");
+        if (!S.localStream || !S.localStream.getVideoTracks().length) return;
+        lv.hidden = false;
+        lv.srcObject = S.localStream;
+        var pp = lv.play(); if (pp && pp.catch) pp.catch(function () {});
+        if (!S._vidRetry) {
+          S._vidRetry = true;
+          setTimeout(function () {
+            if (!S.localStream || !S.localStream.getVideoTracks().length) return;
+            var lv2 = $("localVideo");
+            if (lv2.videoWidth > 0) return;
+            var vt = S.localStream.getVideoTracks()[0];
+            if (vt && vt.readyState !== "live") { toast("دوربین فریم نداد — تلاش مجدد"); reviveCam(); }
+          }, 3000);
+        }
+      } catch (e) {}
+    }
     function _join(id) {
       api("/speak/channels/" + id + "/join", {}).then(function (r) {
         if (!r.ok) { toast((r.d && r.d.error) || "ورود نشد"); return; }
@@ -1330,8 +1342,8 @@
         $("videoWrap").hidden = !isVid;
         $("remoteVideo").hidden = !isVid; $("localVideo").hidden = !isVid;
         var hasVidT = !!(S.localStream && S.localStream.getVideoTracks && S.localStream.getVideoTracks().length);
-        $("localVideo").hidden = !isVid || !hasVidT; /* بدون دوربین: پنجره تصویر خودت مخفی، تصویر طرف مقابل می‌آید */
-        if (isVid && hasVidT) { try { $("localVideo").srcObject = S.localStream; } catch (e) {} }
+        $("localVideo").hidden = !isVid || !hasVidT;
+        if (isVid && hasVidT) forceLocalVideo();
         $("cuAv").textContent = (S.callPeer.displayName || S.callPeer.username || "?").trim().charAt(0).toUpperCase();
         $("cuAv").style.setProperty("--h", S.callPeer.hue || 215);
         $("cuName").textContent = S.callPeer.displayName || S.callPeer.username;
